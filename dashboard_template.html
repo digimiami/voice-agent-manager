@@ -189,7 +189,7 @@ tr:last-child td{border-bottom:none}
         <td><div class="flex gap-2">
           <a href="tel:{{ lead.phone }}" class="text-[#4ade80] text-xs hover:underline" title="Call">📞</a>
           <a href="#" onclick="callLead('{{ lead.id }}')" class="text-[#818cf8] text-xs hover:underline" title="AI Call">🤖</a>
-          <a href="#" onclick="editLead('{{ lead.id }}','{{ (lead.name or '')|e }}','{{ (lead.phone or '')|e }}','{{ (lead.business_name or '')|e }}')" class="text-[#fbbf24] text-xs hover:underline" title="Edit">✏️</a>
+          <a href="#" onclick='editLead({{ (lead.id|string)|tojson }},{{ (lead.name or "")|tojson }},{{ (lead.phone or "")|tojson }},{{ (lead.business_name or "")|tojson }})' class="text-[#fbbf24] text-xs hover:underline" title="Edit">✏️</a>
           <form method="POST" action="/lead/delete/{{ lead.id }}" onsubmit="return confirm('Delete this lead?')" class="inline"><button type="submit" class="text-red-400 text-xs" style="background:none;border:none;cursor:pointer" title="Delete">🗑️</button></form>
         </div></td>
       </tr>
