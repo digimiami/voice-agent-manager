@@ -166,6 +166,7 @@ tr:last-child td{border-bottom:none}
     <form method="POST" action="/upload-leads" enctype="multipart/form-data" id="csvUploadForm" class="inline">
       <input type="file" name="csv" id="csvInput" accept=".csv" style="display:none">
       <button type="button" class="btn-secondary text-xs" id="uploadBtn" onclick="document.getElementById('csvInput').click()">📤 Upload CSV</button>
+      <button type="submit" id="csvSubmitBtn" style="display:none"></button>
     </form>
     <a href="/static/lead_template.csv" download class="btn-secondary text-xs">📄 CSV Template</a>
     <form method="POST" action="/campaign/reset" onsubmit="return confirm('Reset campaign counters?')" class="inline"><button type="submit" class="btn-secondary text-xs">🔄 Reset</button></form>
@@ -262,7 +263,7 @@ tr:last-child td{border-bottom:none}
   function closeEditLeadModal(){document.getElementById('editLeadModal').classList.remove('show');}
   function submitEditLead(){var id=document.getElementById('editLeadId').value;var name=document.getElementById('editLeadName').value.trim();var phone=document.getElementById('editLeadPhone').value.trim();var biz=document.getElementById('editLeadBiz').value.trim();var err=document.getElementById('editLeadError');var btn=document.getElementById('editLeadBtn');if(!id||!phone){err.textContent='Phone required';err.classList.remove('hidden');return}btn.disabled=true;btn.textContent='Saving...';fetch('/lead/update',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},body:'id='+encodeURIComponent(id)+'&name='+encodeURIComponent(name)+'&phone='+encodeURIComponent(phone)+'&business_name='+encodeURIComponent(biz)}).then(function(r){return r.json()}).then(function(d){btn.disabled=false;btn.textContent='💾 Save';if(d.success){alert(d.message);closeEditLeadModal();location.reload()}else{err.textContent=d.message;err.classList.remove('hidden')}}).catch(function(){btn.disabled=false;btn.textContent='💾 Save';err.textContent='Network error';err.classList.remove('hidden')});}
   function filterLeads(val){var q=val.toLowerCase().trim();var rows=document.querySelectorAll('.lead-row');var visible=0;rows.forEach(function(r){var search=r.getAttribute('data-search')||'';if(!q||search.indexOf(q)!==-1){r.style.display='';visible++}else{r.style.display='none'}});document.getElementById('noLeadsMsg').classList.toggle('hidden',visible>0);}
-  (function(){var el=document.getElementById('csvInput');if(el){el.addEventListener('change',function(){if(this.files&&this.files[0]){document.getElementById('uploadBtn').textContent='⏳ Uploading...';document.getElementById('uploadBtn').disabled=true;this.form.submit()}})}})();
+  (function(){var el=document.getElementById('csvInput');if(el){el.addEventListener('change',function(){if(this.files&&this.files[0]){document.getElementById('uploadBtn').textContent='⏳ Uploading...';document.getElementById('uploadBtn').disabled=true;document.getElementById('csvSubmitBtn').click()}})}})();
   </script>
 
   <!-- ======== TAB: PHONE NUMBERS ======== -->
