@@ -163,10 +163,10 @@ tr:last-child td{border-bottom:none}
   <div class="flex gap-3 mb-6 flex-wrap items-center">
     <form method="POST" action="/campaign/start" onsubmit="return confirm('Start calling leads now?')"><button type="submit" class="btn-primary text-xs">▶ Start Campaign</button></form>
     <button onclick="showAddLeadModal()" class="btn-secondary text-xs">+ Add Lead</button>
-    <form method="POST" action="/upload-leads" enctype="multipart/form-data" id="csvUploadForm" class="inline">
-      <input type="file" name="csv" id="csvInput" accept=".csv" style="position:fixed;left:-9999px;top:-9999px;opacity:0;width:1px;height:1px">
-      <button type="button" class="btn-secondary text-xs" id="uploadBtn" onclick="document.getElementById('csvInput').click()">📤 Upload CSV</button>
-      <button type="submit" id="csvSubmitBtn" style="display:none"></button>
+    <form method="POST" action="/upload-leads" enctype="multipart/form-data" id="csvUploadForm" class="inline" style="display:inline-flex;align-items:center;gap:6px">
+      <label for="csvInput" class="btn-secondary text-xs" style="cursor:pointer;padding:8px 14px;margin:0">📤 Choose CSV</label>
+      <input type="file" name="csv" id="csvInput" accept=".csv" style="position:fixed;left:-9999px;top:-9999px;opacity:0;width:1px;height:1px" onchange="var f=this.files[0];if(f){document.getElementById('csvFileName').textContent=f.name;this.form.requestSubmit?this.form.requestSubmit():this.form.submit()}">
+      <span id="csvFileName" class="text-xs text-[#7a7a8e]">No file chosen</span>
     </form>
     <a href="/static/lead_template.csv" download class="btn-secondary text-xs">📄 CSV Template</a>
     <form method="POST" action="/campaign/reset" onsubmit="return confirm('Reset campaign counters?')" class="inline"><button type="submit" class="btn-secondary text-xs">🔄 Reset</button></form>
@@ -263,7 +263,6 @@ tr:last-child td{border-bottom:none}
   function closeEditLeadModal(){document.getElementById('editLeadModal').classList.remove('show');}
   function submitEditLead(){var id=document.getElementById('editLeadId').value;var name=document.getElementById('editLeadName').value.trim();var phone=document.getElementById('editLeadPhone').value.trim();var biz=document.getElementById('editLeadBiz').value.trim();var err=document.getElementById('editLeadError');var btn=document.getElementById('editLeadBtn');if(!id||!phone){err.textContent='Phone required';err.classList.remove('hidden');return}btn.disabled=true;btn.textContent='Saving...';fetch('/lead/update',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},body:'id='+encodeURIComponent(id)+'&name='+encodeURIComponent(name)+'&phone='+encodeURIComponent(phone)+'&business_name='+encodeURIComponent(biz)}).then(function(r){return r.json()}).then(function(d){btn.disabled=false;btn.textContent='💾 Save';if(d.success){alert(d.message);closeEditLeadModal();location.reload()}else{err.textContent=d.message;err.classList.remove('hidden')}}).catch(function(){btn.disabled=false;btn.textContent='💾 Save';err.textContent='Network error';err.classList.remove('hidden')});}
   function filterLeads(val){var q=val.toLowerCase().trim();var rows=document.querySelectorAll('.lead-row');var visible=0;rows.forEach(function(r){var search=r.getAttribute('data-search')||'';if(!q||search.indexOf(q)!==-1){r.style.display='';visible++}else{r.style.display='none'}});document.getElementById('noLeadsMsg').classList.toggle('hidden',visible>0);}
-  (function(){var el=document.getElementById('csvInput');if(el){el.addEventListener('change',function(){if(this.files&&this.files[0]){document.getElementById('uploadBtn').textContent='⏳ Uploading...';document.getElementById('uploadBtn').disabled=true;document.getElementById('csvSubmitBtn').click()}})}})();
   </script>
 
   <!-- ======== TAB: PHONE NUMBERS ======== -->
