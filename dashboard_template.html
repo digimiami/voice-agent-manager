@@ -381,7 +381,18 @@ tr:last-child td{border-bottom:none}
     </div>
     <div class="card">
       <h3 class="font-bold mb-3">🧠 Knowledge Base</h3>
-      <form method="POST" action="/update-kb"><textarea name="kb" rows="6" class="w-full text-xs">{{ biz_info.knowledge_base or '' }}</textarea><button type="submit" class="btn-primary text-xs mt-3 w-full">Save Knowledge Base</button></form>
+      <form method="POST" action="/update-script" onsubmit="event.stopPropagation()">
+        <div class="mb-2">
+          <p class="text-xs text-[#7a7a8e] mb-2">What the AI knows about your business. Used for <strong>outbound calls</strong>.</p>
+          <textarea name="knowledge_base" rows="6" class="w-full text-xs" id="kbTextarea">{{ biz_info.knowledge_base or '' }}</textarea>
+        </div>
+        <div class="flex gap-2 mb-3">
+          <button type="button" onclick="generateKB('outbound')" id="genKBBtn" class="btn-secondary text-xs" style="padding:6px 12px">🤖 AI Generate KB</button>
+          <button type="button" onclick="generateKB('inbound')" id="genInboundBtn" class="btn-secondary text-xs" style="padding:6px 12px">📞 AI Generate Inbound KB</button>
+        </div>
+        <div id="kbGenStatus" class="hidden text-xs mb-2"></div>
+        <button type="submit" class="btn-primary text-xs w-full">💾 Save Knowledge Base</button>
+      </form>
     </div>
     <div class="card">
       <h3 class="font-bold mb-3">🗣️ AI Voice</h3>
@@ -519,6 +530,8 @@ function browseNumbers(){var ld=document.getElementById('browseLoading');var res
 document.addEventListener('click',function(e){if(e.target&&e.target.classList.contains('buy-btn')){buyNum(e.target,e.target.getAttribute('data-phone'))}});
 // Auto-load numbers
 setTimeout(browseNumbers,500);
+// Knowledge Base generator
+function generateKB(type){var btn=document.getElementById(type==='inbound'?'genInboundBtn':'genKBBtn');var status=document.getElementById('kbGenStatus');var ta=document.getElementById('kbTextarea');btn.disabled=true;btn.textContent='⏳ Generating...';status.className='text-xs mb-2 text-[#c084fc]';status.textContent='Generating '+type+' knowledge base via AI...';fetch('/api/generate-kb',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({method:'venice',type:type})}).then(function(r){return r.json()}).then(function(d){btn.disabled=false;btn.textContent=type==='inbound'?'📞 AI Generate Inbound KB':'🤖 AI Generate KB';if(d.success){ta.value=d.content;status.className='text-xs mb-2 text-[#4ade80]';status.textContent='✅ '+d.message}else{status.className='text-xs mb-2 text-red-400';status.textContent='❌ '+(d.message||'Generation failed')}}).catch(function(){btn.disabled=false;btn.textContent=type==='inbound'?'📞 AI Generate Inbound KB':'🤖 AI Generate KB';status.className='text-xs mb-2 text-red-400';status.textContent='❌ Network error'})}
 // Play Voice
 function playVoice(voiceId){var text="Hi, this is your AI voice assistant.";var audio=new Audio('/api/test-voice?voice_id='+encodeURIComponent(voiceId)+'&text='+encodeURIComponent(text)+'&speed=1.0&t='+Date.now());audio.play().catch(function(e){console.log('Play failed:',e)});}
 </script>

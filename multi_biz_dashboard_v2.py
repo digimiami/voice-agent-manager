@@ -3613,8 +3613,95 @@ FAQ:
 @login_required
 def api_generate_kb():
     """Generate knowledge base content via templates or AI."""
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     method = data.get('method', 'ai')
+    
+    # Method: AI via Venice (outbound or inbound)
+    if method in ('venice', 'ai'):
+        kb_type = data.get('type', 'outbound')
+        bid = session['business_id']
+        db = get_db()
+        c = db.cursor()
+        c.execute("SELECT name, industry FROM businesses WHERE id=?", (bid,))
+        biz = c.fetchone()
+        biz_name = (biz['name'] if biz else 'Your Business')
+        industry = (biz['industry'] or 'your industry') if biz else 'your industry'
+        
+        # Load Venice API key
+        api_key = os.environ.get('VENICE_API_KEY', '')
+        if not api_key:
+            try:
+                with open('/root/voice-agent-manager/api_keys.json') as f:
+                    keys = json.load(f)
+                api_key = keys.get('VENICE_API_KEY', '')
+            except:
+                pass
+        
+        if api_key and method == 'venice':
+            try:
+                if kb_type == 'inbound':
+                    sys_p = "You write concise, practical knowledge base content for AI voice assistants handling INCOMING calls."
+                    usr_p = f"""Write a knowledge base for an AI answering incoming calls for "{biz_name}" in {industry}. Include: business info, common questions, hours, pricing ranges, booking process, escalation. 3-5 paragraphs plain English."""
+                else:
+                    sys_p = "You write concise, practical knowledge base content for AI voice assistants making OUTBOUND sales calls."
+                    usr_p = f"""Write a knowledge base for an AI making outbound calls for "{biz_name}" in {industry}. Include: offerings, selling points, objections, pricing, booking process. 3-5 paragraphs plain English."""
+                r = requests.post("https://api.venice.ai/api/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json={"model": "venice-uncensored-1-2", "messages": [{"role":"system","content":sys_p},{"role":"user","content":usr_p}], "max_tokens":1000, "temperature":0.7},
+                    timeout=30)
+                content = r.json()['choices'][0]['message']['content'].strip()
+                label = "Inbound Call KB" if kb_type == 'inbound' else "Knowledge Base"
+                return jsonify({'success': True, 'content': content, 'message': f'{label} generated via AI!'})
+            except Exception as e:
+                return jsonify({'success': False, 'message': f'AI generation failed: {str(e)}'}), 500
+        
+        # Fallback: template-based AI generation
+        if kb_type == 'inbound':
+            kb = f"""🏢 BUSINESS: {biz_name}
+📍 LOCATION: [Your City, State]
+🕐 HOURS: Mon-Fri 9am-6pm (customize below)
+📞 PHONE: [Your Phone Number]
+
+What we do: We are a {industry} business serving our local community. We provide quality service to every customer.
+
+Common Questions & Answers:
+• Pricing: [Describe your pricing model]
+• Availability: [Your hours and scheduling]
+• Services: [Describe what you offer]
+• Location: [Your service area]
+
+Call Handling:
+• Listen to the customer's needs first
+• Answer questions clearly and professionally
+• Collect: name, phone, address, and description of need
+• Offer to book an appointment or send information
+• If you can't help, offer to transfer to a team member"""
+        else:
+            kb = f"""🏢 BUSINESS: {biz_name} ({industry})
+📍 SERVICE AREA: [Your City, State]
+🕐 HOURS: Mon-Fri 9am-6pm
+
+What we offer:
+• [Service/Product 1]
+• [Service/Product 2]
+• [Service/Product 3]
+
+Key Selling Points:
+• Free consultations / estimates
+• Quality service guaranteed
+• Competitive pricing
+
+Handling Objections:
+• Price concern: Explain value and offer payment options
+• Not interested: Ask if they'd like info sent via text/email
+• Need to think: Offer to follow up later
+
+Booking Process:
+1. Confirm interest
+2. Collect contact info (name, phone, email)
+3. Schedule appointment
+4. Send confirmation"""
+        return jsonify({'success': True, 'content': kb, 'message': f'Template KB generated!'})
     
     # Method: Templates
     if method == 'template':
