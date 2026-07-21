@@ -72,7 +72,7 @@ def twilio_api_post(path, data):
     except Exception as e:
         return None, str(e)
 
-def search_available_numbers(area_code=None, contains=None, limit=10):
+def search_available_numbers(area_code=None, contains=None, locality=None, region=None, limit=10):
     """Search for available local numbers on Twilio."""
     path = "AvailablePhoneNumbers/US/Local.json"
     params = []
@@ -80,6 +80,10 @@ def search_available_numbers(area_code=None, contains=None, limit=10):
         params.append(f"AreaCode={area_code}")
     if contains:
         params.append(f"Contains={contains}")
+    if locality:
+        params.append(f"InLocality={locality}")
+    if region:
+        params.append(f"InRegion={region}")
     params.append(f"Limit={limit}")
     if params:
         path += "?" + "&".join(params)
@@ -89,7 +93,7 @@ def search_available_numbers(area_code=None, contains=None, limit=10):
         return None, error
     nums = result.get('available_phone_numbers', [])
     if not nums:
-        return None, "No numbers available in that area code"
+        return None, "No numbers available" + (f" in that area code" if area_code else "")
     return nums, None
 
 def buy_twilio_number(phone_number, voice_url=None):

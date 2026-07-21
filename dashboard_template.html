@@ -307,13 +307,59 @@ tr:last-child td{border-bottom:none}
 
   <!-- ======== TAB: PHONE NUMBERS ======== -->
   {% elif tab == 'numbers' %}
+  
+  <!-- Your Numbers -->
   <div class="card mb-6">
-    <h3 class="font-bold mb-3">📱 Your Numbers</h3>
+    <h3 class="font-bold mb-4">📱 Your Numbers</h3>
     {% if assigned_numbers %}
     {% for n in assigned_numbers %}
-    <div class="flex justify-between items-center p-3 bg-[#1a1a26] rounded-lg mb-2"><div><div class="font-mono text-sm font-bold">{{ n.number }}</div><div class="text-xs text-[#7a7a8e]">{{ n.name or 'Active' }}</div></div><span class="badge badge-success">Active</span></div>
+    <div class="flex justify-between items-center p-3 bg-[#1a1a26] rounded-lg mb-2">
+      <div>
+        <div class="font-mono text-sm font-bold">{{ n.number }}</div>
+        <div class="text-xs text-[#7a7a8e]">{{ n.name or 'Active' }}</div>
+      </div>
+      <span class="badge badge-success">Active</span>
+    </div>
     {% endfor %}
-    {% else %}<p class="text-sm text-[#5c5c70]">No phone numbers assigned</p>{% endif %}
+    {% if not biz_info.number_paid %}
+    <div class="mt-3 p-3 rounded-lg text-xs" style="background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.3)">
+      💳 You have an active number but may have a pending payment. <a href="/buy-number?pay=1" class="text-[#c084fc] hover:underline">Complete payment →</a>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="text-center py-6 text-[#5c5c70]">
+      <p class="mb-2">No phone numbers assigned yet.</p>
+      <p class="text-xs">Search and buy a number below — $9.99/mo via Stripe</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Buy a New Number -->
+  <div class="card">
+    <h3 class="font-bold mb-3">🔍 Buy a Number</h3>
+    <p class="text-xs text-[#7a7a8e] mb-4">Search by area code or city/state to find available local numbers. $9.99/month billed via Stripe.</p>
+    
+    <div class="grid md:grid-cols-2 gap-3 mb-4">
+      <div>
+        <label class="text-xs text-[#7a7a8e] block mb-1">📞 Area Code</label>
+        <div class="flex gap-2">
+          <input type="text" id="areaCodeInput" placeholder="e.g. 305" maxlength="3" class="flex-1" style="background:#1a1a26;border:1px solid #252533;border-radius:8px;padding:8px 12px;color:#f1f1f5;outline:none" oninput="this.value=this.value.replace(/\D/g,'').slice(0,3)">
+          <button onclick="searchNumbers()" class="btn-primary text-xs" style="padding:8px 16px">Search</button>
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-[#7a7a8e] block mb-1">🏙️ City or State</label>
+        <div class="flex gap-2">
+          <input type="text" id="cityInput" placeholder="e.g. Miami or FL" class="flex-1" style="background:#1a1a26;border:1px solid #252533;border-radius:8px;padding:8px 12px;color:#f1f1f5;outline:none">
+          <button onclick="searchNumbers()" class="btn-primary text-xs" style="padding:8px 16px">Search</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="searchResults" class="hidden"></div>
+    <div id="searchLoading" class="hidden text-center py-6 text-[#7a7a8e]"><p>🔍 Searching...</p></div>
+    <div id="searchError" class="hidden text-center py-4"><p class="text-red-400 text-sm"></p></div>
   </div>
 
   <!-- ======== TAB: SETTINGS ======== -->
@@ -453,6 +499,9 @@ function enableNoteEdit(id){document.getElementById('note-view-'+id).classList.a
 function cancelNoteEdit(id){document.getElementById('note-view-'+id).classList.remove('hidden');document.getElementById('note-edit-'+id).classList.add('hidden');document.getElementById('note-edit-btn-'+id).classList.remove('hidden')}
 function saveNote(id){var val=document.getElementById('note-input-'+id).value.trim();fetch('/call-note/update',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'call_id='+encodeURIComponent(id)+'&notes='+encodeURIComponent(val)}).then(r=>r.json()).then(function(d){if(d.success){document.getElementById('note-text-'+id).textContent=val||'No notes yet.';cancelNoteEdit(id)}else{alert(d.message||'Error saving note')}}).catch(function(){alert('Network error')})}
 function deleteNote(id){if(!confirm('Delete this note?'))return;fetch('/call-note/delete',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'call_id='+encodeURIComponent(id)}).then(r=>r.json()).then(function(d){if(d.success){document.getElementById('note-text-'+id).textContent='No notes yet.';cancelNoteEdit(id)}else{alert(d.message||'Error deleting note')}}).catch(function(){alert('Network error')})}
+// Number search & buy functions
+function searchNumbers(){var ac=document.getElementById('areaCodeInput').value.trim();var city=document.getElementById('cityInput').value.trim();var results=document.getElementById('searchResults');var loading=document.getElementById('searchLoading');var error=document.getElementById('searchError');if(!ac&&!city){error.querySelector('p').textContent='Enter an area code or city/state';error.classList.remove('hidden');return}error.classList.add('hidden');loading.classList.remove('hidden');results.classList.add('hidden');var params=ac?'area_code='+encodeURIComponent(ac):'';if(city){if(params)params+='&';if(/^[A-Z]{2}$/i.test(city)){params+='region='+encodeURIComponent(city.toUpperCase())}else{params+='locality='+encodeURIComponent(city)}}fetch('/api/search-numbers?'+params).then(function(r){return r.json()}).then(function(d){loading.classList.add('hidden');if(!d.success){error.querySelector('p').textContent=d.message;error.classList.remove('hidden');return}if(!d.numbers||d.numbers.length===0){error.querySelector('p').textContent='No numbers found';error.classList.remove('hidden');return}var html='<div class=\"mt-4 border-t border-[#252533] pt-4\"><p class=\"text-xs text-[#7a7a8e] mb-3\">Found '+d.numbers.length+' numbers:</p>';d.numbers.forEach(function(n,i){var loc=[n.locality,n.region].filter(Boolean).join(', ');html+='<div class=\"flex items-center justify-between p-3 bg-[#1a1a26] rounded-lg mb-2\"><div><div class=\"font-mono text-sm font-bold\">'+n.friendly_name+'</div><div class=\"text-xs text-[#7a7a8e]\">'+loc+'</div></div><button onclick=\"buyNum(this,\\'+n.phone_number+'\\')\" class=\"btn-primary text-xs\" style=\"padding:6px 14px\">Buy $9.99/mo</button></div>'});html+='</div>';results.innerHTML=html;results.classList.remove('hidden')}).catch(function(){loading.classList.add('hidden');error.querySelector('p').textContent='Search failed. Try again.';error.classList.remove('hidden')})}
+function buyNum(btn,phone){if(!confirm('Buy '+phone+' for $9.99/month?'))return;btn.disabled=true;btn.textContent='⏳...';var fd=new FormData();fd.append('phone_number',phone);fd.append('email','');fetch('/buy-number',{method:'POST',body:fd}).then(function(r){return r.json()}).then(function(d){if(d.checkout_url){window.location.href=d.checkout_url}else{alert(d.message||'Error');btn.disabled=false;btn.textContent='Buy $9.99/mo'}}).catch(function(){alert('Network error');btn.disabled=false;btn.textContent='Buy $9.99/mo'})}
 // Play Voice
 function playVoice(voiceId){var text="Hi, this is your AI voice assistant.";var audio=new Audio('/api/test-voice?voice_id='+encodeURIComponent(voiceId)+'&text='+encodeURIComponent(text)+'&speed=1.0&t='+Date.now());audio.play().catch(function(e){console.log('Play failed:',e)});}
 </script>

@@ -5013,11 +5013,14 @@ def update_hours():
 def api_search_numbers():
     """Search available phone numbers via Twilio."""
     area_code = request.args.get('area_code', '').strip()
-    contains = request.args.get('contains', '').strip()
+    locality = request.args.get('locality', '').strip()
+    region = request.args.get('region', '').strip()
     from twilio_helper import search_available_numbers
-    nums, error = search_available_numbers(area_code=area_code if area_code else None,
-                                            contains=contains if contains else None,
-                                            limit=15)
+    nums, error = search_available_numbers(
+        area_code=area_code if area_code else None,
+        locality=locality if locality else None,
+        region=region if region else None,
+        limit=15)
     if error:
         return jsonify({'success': False, 'message': error})
     result = []
