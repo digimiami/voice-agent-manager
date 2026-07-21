@@ -110,7 +110,6 @@ tr:last-child td{border-bottom:none}
     <div class="card text-center"><div class="stat-value">{{ stats.calls_made or 0 }}</div><div class="text-xs text-[#7a7a8e] mt-1">📞 Calls Made</div></div>
     <div class="card text-center"><div class="stat-value">{{ stats.appointments or 0 }}</div><div class="text-xs text-[#7a7a8e] mt-1">📅 Appointments</div></div>
     <div class="card text-center"><div class="stat-value">{{ stats.leads_total or 0 }}</div><div class="text-xs text-[#7a7a8e] mt-1">📋 Total Leads</div></div>
-    <div class="card text-center"><div class="stat-value">${{ "%.2f"|format(stats.total_cost|float) if stats.total_cost else "0.00" }}</div><div class="text-xs text-[#7a7a8e] mt-1">💰 Total Spent</div></div>
   </div>
 
   <div class="grid md:grid-cols-2 gap-6">
@@ -203,13 +202,12 @@ tr:last-child td{border-bottom:none}
     <h3 class="font-bold mb-3">Call Log ({{ call_logs|length }})</h3>
     {% if call_logs %}
     <table>
-      <thead><tr><th>Phone</th><th>Outcome</th><th>Duration</th><th>Cost</th><th>Transcript</th><th>Time</th></tr></thead>
+      <thead><tr><th>Phone</th><th>Outcome</th><th>Duration</th><th>Transcript</th><th>Time</th></tr></thead>
       <tbody>{% for c in call_logs %}
         <tr>
           <td class="font-mono text-xs">{{ (c.phone or '')[:14] }}</td>
           <td>{% if c.outcome == 'appointment_booked' %}<span class="badge badge-success">📅 Booked</span>{% elif c.outcome == 'completed' %}<span class="badge badge-info">✅ Done</span>{% elif c.outcome == 'no_answer' %}<span class="badge badge-error">📵 No Ans</span>{% elif c.outcome == 'voicemail' %}<span class="badge badge-warning">📠 VM</span>{% else %}<span class="badge badge-warning">{{ (c.outcome or 'called')[:12] }}</span>{% endif %}</td>
           <td class="text-xs">{{ c.duration or 0 }}s</td>
-          <td class="text-xs">${{ "%.4f"|format(c.cost or 0) }}</td>
           <td class="text-xs text-[#7a7a8e] max-w-[200px] truncate">{{ (c.transcript or '')[:60] }}</td>
           <td class="text-xs text-[#7a7a8e]">{{ (c.created_at or '')[:16] }}</td>
         </tr>
