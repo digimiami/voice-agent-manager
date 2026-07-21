@@ -602,6 +602,340 @@ function submitSignup(e) {
 </body>
 </html>"""
 
+LANDING_PAGE = """<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diazites — AI Voice Agents for Local Businesses</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>@import url('https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap');
+*{font-family:'Inter',sans-serif;margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#f1f1f5;overflow-x:hidden}
+.gradient-text{background:linear-gradient(135deg,#c084fc,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.gradient-bg{background:linear-gradient(135deg,#a855f7,#ec4899)}
+.btn-primary{background:linear-gradient(135deg,#a855f7,#ec4899);color:white;padding:12px 28px;border-radius:10px;font-weight:600;border:none;cursor:pointer;transition:opacity .2s,transform .2s;display:inline-block}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px)}
+.btn-outline{border:1px solid #3b3b50;color:#f1f1f5;padding:12px 28px;border-radius:10px;font-weight:500;background:transparent;cursor:pointer;transition:all .2s;display:inline-block}
+.btn-outline:hover{border-color:#a855f7;color:#c084fc}
+.card{background:#12121a;border:1px solid #252533;border-radius:16px;padding:24px;transition:transform .2s,border-color .2s}
+.card:hover{transform:translateY(-2px);border-color:#a855f744}
+.glass{background:rgba(18,18,26,.7);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+html{scroll-behavior:smooth}
+/* Audio player styles */
+.audio-card{background:#12121a;border:1px solid #252533;border-radius:16px;padding:20px;transition:all .3s}
+.audio-card:hover{border-color:#ec489966;transform:translateY(-2px)}
+.audio-card.active{border-color:#a855f7;box-shadow:0 0 30px rgba(168,85,247,.15)}
+.play-btn{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#a855f7,#ec4899);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .2s}
+.play-btn:hover{transform:scale(1.1)}
+.play-btn svg{width:20px;height:20px;fill:white;margin-left:2px}
+.waveform-bar{width:3px;border-radius:2px;background:#a855f7;transition:height .3s}
+/* Floating animation */
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.float-anim{animation:float 4s ease-in-out infinite}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 20px rgba(168,85,247,.1)}50%{box-shadow:0 0 40px rgba(168,85,247,.25)}}
+.pulse-glow{animation:pulse-glow 3s ease-in-out infinite}
+/* Call flow animation */
+@keyframes ring{0%,100%{transform:scale(1)}20%{transform:scale(1.05)}40%{transform:scale(1)}60%{transform:scale(1.05)}}
+.ring-anim{animation:ring 2s ease-in-out infinite}
+@keyframes dots{0%,20%{opacity:0}50%{opacity:1}80%,100%{opacity:0}}
+.dot-1,.dot-2,.dot-3{display:inline-block;animation:dots 1.5s infinite}
+.dot-2{animation-delay:.3s}
+.dot-3{animation-delay:.6s}
+/* Step connector line */
+.step-line{position:absolute;top:40px;left:50%;width:100%;height:2px;background:linear-gradient(90deg,#a855f744,#ec489944);transform:translateX(0)}
+@media(max-width:768px){.step-line{display:none}}
+</style></head><body>
+
+<!-- NAV -->
+<nav class="glass flex items-center justify-between max-w-6xl mx-auto px-6 py-4 sticky top-0 z-50" style="border-bottom:1px solid #252533">
+<div class="flex items-center gap-2">
+<div class="text-2xl">🎙️</div>
+<span class="text-lg font-bold gradient-text">Diazites</span>
+</div>
+<div class="flex items-center gap-4">
+<a href="#demos" class="text-sm text-[#7a7a8e] hover:text-[#c084fc]">Live Demos</a>
+<a href="#features" class="text-sm text-[#7a7a8e] hover:text-[#c084fc]">Features</a>
+<a href="#industries" class="text-sm text-[#7a7a8e] hover:text-[#c084fc]">Industries</a>
+<a href="/login" class="btn-primary text-sm px-5 py-2">Login</a>
+</div>
+</nav>
+
+<!-- HERO -->
+<section class="max-w-6xl mx-auto px-6 pt-16 pb-12 text-center relative">
+<div class="absolute inset-0 overflow-hidden pointer-events-none" style="top:-100px">
+<div class="absolute top-20 left-1/4 w-96 h-96 rounded-full opacity-[0.04]" style="background:radial-gradient(circle,#a855f7,transparent);transform:translateX(-50%)"></div>
+<div class="absolute top-40 right-1/4 w-80 h-80 rounded-full opacity-[0.03]" style="background:radial-gradient(circle,#ec4899,transparent);transform:translateX(50%)"></div>
+</div>
+<div class="relative">
+<img src="/static/images/hero-banner.png" alt="Diazites AI Voice Agents" class="w-full max-w-4xl mx-auto rounded-2xl mb-8 pulse-glow" style="max-height:360px;object-fit:cover">
+<h1 class="text-5xl md:text-6xl font-bold mb-4">AI Voice Agents <span class="gradient-text">for Your Business</span></h1>
+<p class="text-lg text-[#7a7a8e] max-w-2xl mx-auto mb-8 leading-relaxed">
+Never miss a lead again. Diazites deploys intelligent AI voice agents that answer calls, book appointments, and qualify leads — <strong class="text-[#f1f1f5]">24/7, in multiple languages</strong>, at a fraction of the cost of a human receptionist.
+</p>
+<div class="flex items-center justify-center gap-4 flex-wrap mb-10">
+<a href="/login" class="btn-primary text-base px-8 py-3">Access Your Dashboard →</a>
+<a href="#demos" class="btn-outline text-base px-8 py-3">▶ Hear Live Demos</a>
+</div>
+</div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="max-w-5xl mx-auto px-6 pb-16">
+<h2 class="text-3xl font-bold text-center mb-12">How It <span class="gradient-text">Works</span></h2>
+<div class="grid md:grid-cols-4 gap-6 relative">
+<div class="card text-center py-8 relative z-10">
+<div class="text-4xl mb-3 ring-anim">📞</div>
+<div class="text-xs text-[#a855f7] font-bold mb-1">STEP 1</div>
+<h3 class="font-semibold mb-1">Customer Calls</h3>
+<p class="text-xs text-[#7a7a8e]">Your AI agent answers instantly, 24/7</p>
+</div>
+<div class="card text-center py-8 relative z-10">
+<div class="text-4xl mb-3 float-anim">🤖</div>
+<div class="text-xs text-[#a855f7] font-bold mb-1">STEP 2</div>
+<h3 class="font-semibold mb-1">AI Qualifies Lead</h3>
+<p class="text-xs text-[#7a7a8e]">Natural conversation captures details & intent</p>
+</div>
+<div class="card text-center py-8 relative z-10">
+<div class="text-4xl mb-3 float-anim" style="animation-delay:1s">📅</div>
+<div class="text-xs text-[#a855f7] font-bold mb-1">STEP 3</div>
+<h3 class="font-semibold mb-1">Books Appointment</h3>
+<p class="text-xs text-[#7a7a8e]">Auto-schedules and sends confirmation</p>
+</div>
+<div class="card text-center py-8 relative z-10">
+<div class="text-4xl mb-3 float-anim" style="animation-delay:2s">📊</div>
+<div class="text-xs text-[#a855f7] font-bold mb-1">STEP 4</div>
+<h3 class="font-semibold mb-1">Dashboard Review</h3>
+<p class="text-xs text-[#7a7a8e]">View calls, leads, and analytics in real-time</p>
+</div>
+</div>
+</section>
+
+<!-- STATS -->
+<section class="max-w-5xl mx-auto px-6 pb-16">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+<div class="card py-8" style="border-color:#a855f744"><div class="text-4xl font-bold gradient-text">24/7</div><div class="text-sm text-[#7a7a8e] mt-1">Always-On Availability</div></div>
+<div class="card py-8" style="border-color:#a855f744"><div class="text-4xl font-bold gradient-text">60%</div><div class="text-sm text-[#7a7a8e] mt-1">More Leads Captured</div></div>
+<div class="card py-8" style="border-color:#a855f744"><div class="text-4xl font-bold gradient-text">10+</div><div class="text-sm text-[#7a7a8e] mt-1">Industries Served</div></div>
+<div class="card py-8" style="border-color:#a855f744"><div class="text-4xl font-bold gradient-text">99%</div><div class="text-sm text-[#7a7a8e] mt-1">Call Answer Rate</div></div>
+</div>
+</section>
+
+<!-- LIVE VOICE DEMOS -->
+<section id="demos" class="max-w-5xl mx-auto px-6 pb-16">
+<h2 class="text-3xl font-bold text-center mb-3">🎧 Hear It In <span class="gradient-text">Action</span></h2>
+<p class="text-[#7a7a8e] text-center mb-10 max-w-xl mx-auto">Click any demo to hear how Diazites voice agents handle real business calls — naturally, professionally, instantly.</p>
+
+<div class="grid md:grid-cols-3 gap-5">
+<!-- Plumber Demo -->
+<div class="audio-card" data-demo="plumber" onclick="toggleAudio(this,'/static/audio/demo-plumber.mp3')">
+<div class="flex items-start gap-4 mb-3">
+<button class="play-btn" id="play-plumber"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1"><span class="text-lg">🔧</span><span class="font-semibold">Plumber</span><span class="text-[10px] px-2 py-0.5 rounded-full" style="background:#a855f722;color:#c084fc">Emergency</span></div>
+<p class="text-xs text-[#7a7a8e]">Burst pipe call — AI triages urgency, captures address, dispatches plumber</p>
+</div>
+</div>
+<div class="flex items-center gap-1" id="waveform-plumber">
+<div class="waveform-bar" style="height:12px"></div><div class="waveform-bar" style="height:18px"></div><div class="waveform-bar" style="height:24px"></div><div class="waveform-bar" style="height:32px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:48px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:32px"></div><div class="waveform-bar" style="height:24px"></div><div class="waveform-bar" style="height:18px"></div><div class="waveform-bar" style="height:12px"></div>
+</div>
+<div class="flex items-center justify-between mt-2">
+<span class="text-[10px] text-[#5c5c70]" id="time-plumber">0:00 / 0:20</span>
+<span class="text-[10px] text-[#c084fc]" id="status-plumber">▶ Click to play</span>
+</div>
+</div>
+
+<!-- Dentist Demo -->
+<div class="audio-card" data-demo="dentist" onclick="toggleAudio(this,'/static/audio/demo-dentist.mp3')">
+<div class="flex items-start gap-4 mb-3">
+<button class="play-btn" id="play-dentist"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1"><span class="text-lg">🦷</span><span class="font-semibold">Dentist</span><span class="text-[10px] px-2 py-0.5 rounded-full" style="background:#22c55e22;color:#4ade80">Booking</span></div>
+<p class="text-xs text-[#7a7a8e]">Patient calls — AI checks availability, schedules appointment, sets reminder</p>
+</div>
+</div>
+<div class="flex items-center gap-1" id="waveform-dentist">
+<div class="waveform-bar" style="height:14px"></div><div class="waveform-bar" style="height:20px"></div><div class="waveform-bar" style="height:28px"></div><div class="waveform-bar" style="height:36px"></div><div class="waveform-bar" style="height:42px"></div><div class="waveform-bar" style="height:46px"></div><div class="waveform-bar" style="height:48px"></div><div class="waveform-bar" style="height:42px"></div><div class="waveform-bar" style="height:36px"></div><div class="waveform-bar" style="height:28px"></div><div class="waveform-bar" style="height:20px"></div><div class="waveform-bar" style="height:14px"></div>
+</div>
+<div class="flex items-center justify-between mt-2">
+<span class="text-[10px] text-[#5c5c70]" id="time-dentist">0:00 / 0:23</span>
+<span class="text-[10px] text-[#c084fc]" id="status-dentist">▶ Click to play</span>
+</div>
+</div>
+
+<!-- Real Estate Demo -->
+<div class="audio-card" data-demo="realestate" onclick="toggleAudio(this,'/static/audio/demo-realestate.mp3')">
+<div class="flex items-start gap-4 mb-3">
+<button class="play-btn" id="play-realestate"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1"><span class="text-lg">🏡</span><span class="font-semibold">Real Estate</span><span class="text-[10px] px-2 py-0.5 rounded-full" style="background:#f59e0b22;color:#fbbf24">Qualification</span></div>
+<p class="text-xs text-[#7a7a8e]">Property inquiry — AI qualifies buyer, schedules showing, confirms by text</p>
+</div>
+</div>
+<div class="flex items-center gap-1" id="waveform-realestate">
+<div class="waveform-bar" style="height:10px"></div><div class="waveform-bar" style="height:16px"></div><div class="waveform-bar" style="height:22px"></div><div class="waveform-bar" style="height:30px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:48px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:30px"></div><div class="waveform-bar" style="height:22px"></div><div class="waveform-bar" style="height:16px"></div><div class="waveform-bar" style="height:10px"></div>
+</div>
+<div class="flex items-center justify-between mt-2">
+<span class="text-[10px] text-[#5c5c70]" id="time-realestate">0:00 / 0:21</span>
+<span class="text-[10px] text-[#c084fc]" id="status-realestate">▶ Click to play</span>
+</div>
+</div>
+</div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" class="max-w-5xl mx-auto px-6 pb-16">
+<h2 class="text-3xl font-bold text-center mb-10">Everything You <span class="gradient-text">Need</span></h2>
+<div class="grid md:grid-cols-3 gap-5">
+<div class="card p-0 overflow-hidden">
+<img src="/static/images/feature-smart-receptionist.png" alt="Smart AI Receptionist" class="w-full" style="height:180px;object-fit:cover">
+<div class="p-5"><h3 class="font-semibold mb-1">🤖 Smart AI Receptionist</h3><p class="text-sm text-[#7a7a8e]">Natural conversations that qualify leads and book calls automatically. Never miss a business opportunity.</p></div>
+</div>
+<div class="card p-0 overflow-hidden">
+<img src="/static/images/feature-call-forwarding.png" alt="Call Forwarding" class="w-full" style="height:180px;object-fit:cover">
+<div class="p-5"><h3 class="font-semibold mb-1">📞 Call Forwarding</h3><p class="text-sm text-[#7a7a8e]">Route calls to your personal line during business hours. AI handles after-hours and overflow automatically.</p></div>
+</div>
+<div class="card p-0 overflow-hidden">
+<img src="/static/images/feature-campaign-dashboard.png" alt="Campaign Dashboard" class="w-full" style="height:180px;object-fit:cover">
+<div class="p-5"><h3 class="font-semibold mb-1">📊 Campaign Dashboard</h3><p class="text-sm text-[#7a7a8e]">Start, pause, and monitor outbound campaigns with real-time analytics and performance metrics.</p></div>
+</div>
+<div class="card p-0 overflow-hidden">
+<img src="/static/images/feature-custom-scripts.png" alt="Custom Scripts" class="w-full" style="height:180px;object-fit:cover">
+<div class="p-5"><h3 class="font-semibold mb-1">📝 Custom Scripts</h3><p class="text-sm text-[#7a7a8e]">Tailor your AI agent's script and knowledge base to your exact business needs and brand voice.</p></div>
+</div>
+<div class="card p-0 overflow-hidden">
+<img src="/static/images/feature-multi-language.png" alt="Multi-Language" class="w-full" style="height:180px;object-fit:cover">
+<div class="p-5"><h3 class="font-semibold mb-1">🌎 Multi-Language</h3><p class="text-sm text-[#7a7a8e]">Speak with customers in English, Spanish, and more — naturally, with full context switching.</p></div>
+</div>
+<div class="card p-0 overflow-hidden">
+<img src="/static/images/feature-sms-followups.png" alt="SMS Follow-Ups" class="w-full" style="height:180px;object-fit:cover">
+<div class="p-5"><h3 class="font-semibold mb-1">📱 SMS Follow-Ups</h3><p class="text-sm text-[#7a7a8e]">Auto-send appointment reminders, missed-call texts, and follow-up messages to warm leads.</p></div>
+</div>
+</div>
+</section>
+
+<!-- INDUSTRIES -->
+<section id="industries" class="max-w-5xl mx-auto px-6 pb-16">
+<h2 class="text-3xl font-bold text-center mb-10">Built for <span class="gradient-text">Local Businesses</span></h2>
+<div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-plumber.png" alt="Plumber" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">🔧 Plumber</div></div>
+<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-dentist.png" alt="Dentist" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">🦷 Dentist</div></div>
+<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-roofer.png" alt="Roofer" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">🏠 Roofer</div></div>
+<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-hvac.png" alt="HVAC" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">❄️ HVAC</div></div>
+<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-lawyer.png" alt="Lawyer" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">⚖️ Lawyer</div></div>
+<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-realestate.png" alt="Real Estate" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">🏡 Real Estate</div></div>
+<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-auto.png" alt="Auto Mechanic" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">🚗 Auto Mechanic</div></div>
+<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-cleaning.png" alt="Cleaning" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">🧹 Cleaning</div></div>
+<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-pest.png" alt="Pest Control" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">🐜 Pest Control</div></div>
+<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-landscaper.png" alt="Landscaper" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">🌿 Landscaper</div></div>
+</div>
+</section>
+
+<!-- CTA -->
+<section class="max-w-3xl mx-auto px-6 pb-20 text-center">
+<div class="card py-16 px-8 pulse-glow" style="border-color:#a855f744">
+<div class="text-5xl mb-5">🚀</div>
+<h2 class="text-3xl font-bold gradient-text mb-3">Ready to Get Started?</h2>
+<p class="text-[#7a7a8e] mb-8 max-w-md mx-auto">Existing clients can log in with their Business ID to manage their dashboard, view analytics, and configure their voice agent.</p>
+<a href="/login" class="btn-primary text-lg px-12 py-4">Login to Your Dashboard</a>
+</div>
+</section>
+
+<!-- FOOTER -->
+<footer class="border-t border-[#252533] py-8 text-center text-xs text-[#5c5c70]">
+<div class="flex items-center justify-center gap-2 mb-3"><div class="text-lg">🎙️</div><span class="text-sm gradient-text font-bold">Diazites</span></div>
+<p>© 2026 Diazites. AI-powered voice agents for local businesses.</p>
+</footer>
+
+<script>
+// Audio player
+let currentAudio = null;
+let currentCard = null;
+
+function toggleAudio(card, src) {
+    const demo = card.dataset.demo;
+    const playBtn = document.getElementById('play-' + demo);
+    const timeEl = document.getElementById('time-' + demo);
+    const statusEl = document.getElementById('status-' + demo);
+    const waveform = document.getElementById('waveform-' + demo);
+    const bars = waveform ? waveform.querySelectorAll('.waveform-bar') : [];
+
+    if (currentAudio && currentAudio.dataset.demo === demo) {
+        if (!currentAudio.paused) {
+            currentAudio.pause();
+            playBtn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>';
+            statusEl.textContent = '⏸ Paused';
+            card.classList.remove('active');
+            return;
+        } else {
+            currentAudio.play();
+            playBtn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+            statusEl.textContent = '▶ Playing...';
+            card.classList.add('active');
+            return;
+        }
+    }
+
+    // Stop previous
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        const oldDemo = currentAudio.dataset.demo;
+        const oldBtn = document.getElementById('play-' + oldDemo);
+        const oldStatus = document.getElementById('status-' + oldDemo);
+        const oldCard = document.querySelector('.audio-card[data-demo="' + oldDemo + '"]');
+        if (oldBtn) oldBtn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>';
+        if (oldStatus) oldStatus.textContent = '▶ Click to play';
+        if (oldCard) oldCard.classList.remove('active');
+    }
+
+    // Create and play new
+    const audio = new Audio(src);
+    audio.dataset.demo = demo;
+    currentAudio = audio;
+    currentCard = card;
+
+    audio.addEventListener('timeupdate', function() {
+        const mins = Math.floor(this.currentTime / 60);
+        const secs = Math.floor(this.currentTime % 60);
+        const tmins = Math.floor(this.duration / 60);
+        const tsecs = Math.floor(this.duration % 60);
+        timeEl.textContent = mins + ':' + String(secs).padStart(2,'0') + ' / ' + tmins + ':' + String(tsecs).padStart(2,'0');
+        // Waveform animation
+        const progress = this.currentTime / (this.duration || 1);
+        if (bars.length) {
+            bars.forEach((bar, i) => {
+                const idx = i / bars.length;
+                const amp = 10 + 38 * (1 - Math.abs(idx - progress) * 2);
+                bar.style.height = Math.min(48, Math.max(8, amp)) + 'px';
+                bar.style.background = idx <= progress ? 'linear-gradient(180deg,#a855f7,#ec4899)' : '#a855f7';
+            });
+        }
+    });
+
+    audio.addEventListener('ended', function() {
+        playBtn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>';
+        statusEl.textContent = '✓ Done';
+        card.classList.remove('active');
+        currentAudio = null;
+        currentCard = null;
+    });
+
+    audio.play();
+    playBtn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+    statusEl.textContent = '▶ Playing...';
+    card.classList.add('active');
+}
+
+// Smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', function(e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) target.scrollIntoView({behavior:'smooth'});
+    });
+});
+</script>
+
+</body></html>"""
+
 LOGIN_FORM = """<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Diazites Login</title><script src="https://cdn.tailwindcss.com"></script>
@@ -663,7 +997,7 @@ def admin_required(f):
 def index():
     if 'business_id' in session:
         return dashboard()
-    return redirect(url_for('login_page'))
+    return render_template_string(LANDING_PAGE)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
