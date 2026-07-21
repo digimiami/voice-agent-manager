@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.bak
+*.swp
+*.swo
+.DS_Store
+
+# Environment
+.env
+.venv
+venv/
+
+# Database
+voice-agent-businesses.db
+*.db
+*.db-*
+
+# Config files with secrets
+api_keys.json
+stripe_config.json
+smtp_config.json
+twilio_config.json
+ga_config.json
+agent-tars.config.json
+
+# Temp / cache
+/tmp/
+*.mp3
+*.wav
+
+# Static generated
+static/product_images/
+static/deliverables/
+static/lead_template.csv
+
+# Generated
+notion_*.json
+maps_*.png
