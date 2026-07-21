@@ -4382,21 +4382,53 @@ def upload_leads():
     db = get_db()
     c = db.cursor()
     count = 0
-    stream = io.StringIO(file.stream.read().decode('utf-8'))
+    skipped = 0
+    
+    raw = file.stream.read()
+    # Handle BOM
+    if raw.startswith(b'\xef\xbb\xbf'):
+        raw = raw[3:]
+    text = raw.decode('utf-8-sig')
+    stream = io.StringIO(text)
     reader = csv.DictReader(stream)
     
+    # Normalize headers to lowercase
+    if reader.fieldnames:
+        reader.fieldnames = [h.strip().lower() for h in reader.fieldnames]
+    
     for row in reader:
-        phone = row.get('phone', row.get('Phone', row.get('number', ''))).strip()
-        if not phone: continue
+        # Handle empty rows (all None or empty)
+        if all(not v or not v.strip() for v in row.values() if v):
+            continue
+        # Lowercase row keys for consistency
+        row = {k.lower().strip(): (v or '').strip() for k, v in row.items()}
+        
+        # Try multiple column name variations for phone
+        phone = row.get('phone') or row.get('number') or row.get('phone number') or row.get('phone_number') or ''
+        phone = phone.strip()
+        if not phone:
+            skipped += 1
+            continue
+        
+        # Name variations
+        name = row.get('name') or row.get('first name') or row.get('first_name') or row.get('contact') or ''
+        # Business name variations
+        biz = row.get('business_name') or row.get('business') or row.get('company') or row.get('company_name') or row.get('business name') or ''
+        # Email variations
+        email = row.get('email') or row.get('e-mail') or row.get('email address') or ''
+        
         lid = hashlib.md5((phone + bid + str(time.time())).encode()).hexdigest()[:12]
-        email = row.get('email', row.get('Email', '')).strip()
         c.execute("INSERT OR IGNORE INTO leads (id, business_id, phone, name, business_name, email, state) VALUES (?,?,?,?,?,?,'NEW')",
-            (lid, bid, phone, row.get('name',''), row.get('business_name',''), email))
+            (lid, bid, phone, name, biz, email))
         count += 1
     
     c.execute("UPDATE campaigns SET leads_imported = COALESCE(leads_imported,0) + ? WHERE business_id = ?", (count, bid))
     db.commit()
-    return jsonify({'message': f'✅ {count} leads imported!'})
+    
+    msg = f'✅ {count} leads imported!'
+    if skipped:
+        msg += f' ({skipped} skipped - missing phone numbers)'
+    return jsonify({'message': msg})
 
 @app.route('/lead/call/<lead_id>', methods=['POST'])
 @login_required
