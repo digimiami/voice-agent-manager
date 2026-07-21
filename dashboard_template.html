@@ -203,21 +203,76 @@ tr:last-child td{border-bottom:none}
   <!-- ======== TAB: CALL HISTORY ======== -->
   {% elif tab == 'calls' %}
   <div class="card">
-    <h3 class="font-bold mb-3">Call Log ({{ call_logs|length }})</h3>
+    <h3 class="font-bold mb-3">📞 Call Log ({{ call_logs|length }})</h3>
     {% if call_logs %}
-    <table>
-      <thead><tr><th>Phone</th><th>Outcome</th><th>Duration</th><th>Transcript</th><th>Time</th></tr></thead>
-      <tbody>{% for c in call_logs %}
-        <tr>
-          <td class="font-mono text-xs">{{ (c.phone or '')[:14] }}</td>
-          <td>{% if c.outcome == 'appointment_booked' %}<span class="badge badge-success">📅 Booked</span>{% elif c.outcome == 'completed' %}<span class="badge badge-info">✅ Done</span>{% elif c.outcome == 'no_answer' %}<span class="badge badge-error">📵 No Ans</span>{% elif c.outcome == 'voicemail' %}<span class="badge badge-warning">📠 VM</span>{% else %}<span class="badge badge-warning">{{ (c.outcome or 'called')[:12] }}</span>{% endif %}</td>
-          <td class="text-xs">{{ c.duration or 0 }}s</td>
-          <td class="text-xs text-[#7a7a8e] max-w-[200px] truncate">{{ (c.transcript or '')[:60] }}</td>
-          <td class="text-xs text-[#7a7a8e]">{{ (c.created_at or '')[:16] }}</td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
+    <div class="space-y-3">
+    {% for c in call_logs %}
+    <div class="call-card" style="background:#1a1a26;border:1px solid #252533;border-radius:12px;padding:16px;transition:border-color .2s" onmouseover="this.style.borderColor='#a855f744'" onmouseout="this.style.borderColor='#252533'">
+      <!-- Header row -->
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+        <div class="flex items-center gap-3">
+          <span class="font-mono text-sm font-bold">{{ (c.phone or '')[:16] }}</span>
+          <span class="text-xs text-[#5c5c70]">{{ (c.created_at or '')[:16] }}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          {% if c.outcome == 'appointment_booked' %}<span class="badge badge-success">📅 Booked</span>
+          {% elif c.outcome == 'completed' %}<span class="badge badge-info">✅ Done</span>
+          {% elif c.outcome == 'no_answer' %}<span class="badge badge-error">📵 No Ans</span>
+          {% elif c.outcome == 'voicemail' %}<span class="badge badge-warning">📠 VM</span>
+          {% else %}<span class="badge badge-warning">{{ (c.outcome or 'called')[:12] }}</span>{% endif %}
+          <span class="text-xs text-[#7a7a8e]">{{ c.duration or 0 }}s</span>
+        </div>
+      </div>
+
+      <!-- Recording + Transcript buttons -->
+      <div class="flex items-center gap-2 flex-wrap mb-3">
+        {% if c.recording_url %}
+        <button onclick="toggleRecording('{{ c.id }}','{{ c.recording_url|e }}')" class="btn-secondary text-xs" id="rec-btn-{{ c.id }}" style="padding:4px 10px">🔊 Play Recording</button>
+        <a href="{{ c.recording_url }}" target="_blank" download class="btn-secondary text-xs" style="padding:4px 10px;text-decoration:none">⬇️ Download</a>
+        {% else %}
+        <span class="text-xs text-[#5c5c70]">🔇 No recording</span>
+        {% endif %}
+        {% if c.transcript %}
+        <button onclick="toggleTranscript('{{ c.id }}')" class="btn-secondary text-xs" id="trans-btn-{{ c.id }}" style="padding:4px 10px">📝 Show Transcript</button>
+        <a href="data:text/plain;charset=utf-8,{{ (c.transcript or '')|urlencode }}" download="transcript-{{ c.id[:8] }}.txt" class="btn-secondary text-xs" style="padding:4px 10px;text-decoration:none">⬇️ Transcript</a>
+        {% endif %}
+      </div>
+
+      <!-- Recording audio player (hidden) -->
+      <div id="rec-player-{{ c.id }}" class="hidden mb-3">
+        <audio controls style="width:100%;max-width:400px;height:36px" preload="none">
+          <source src="{{ c.recording_url }}" type="audio/mpeg">
+        </audio>
+      </div>
+
+      <!-- Transcript (hidden) -->
+      <div id="transcript-{{ c.id }}" class="hidden mb-3 p-3 rounded-lg" style="background:#12121a;border:1px solid #252533">
+        <pre class="text-xs text-[#d1d1d5] whitespace-pre-wrap leading-relaxed" style="font-family:inherit;max-height:200px;overflow-y:auto">{{ c.transcript or '' }}</pre>
+      </div>
+
+      <!-- Notes -->
+      <div class="border-t border-[#252533] pt-3 mt-1">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xs font-semibold text-[#c084fc]">📝 Notes</span>
+          <button onclick="enableNoteEdit('{{ c.id }}')" class="text-[10px] text-[#7a7a8e] hover:text-[#c084fc]" style="background:none;border:none;cursor:pointer" id="note-edit-btn-{{ c.id }}">✏️ Edit</button>
+        </div>
+        <div id="note-view-{{ c.id }}">
+          <p class="text-xs text-[#d1d1d5] leading-relaxed" id="note-text-{{ c.id }}">{{ c.notes or 'No notes yet.' }}</p>
+        </div>
+        <div id="note-edit-{{ c.id }}" class="hidden">
+          <textarea id="note-input-{{ c.id }}" rows="2" class="w-full text-xs mb-2" style="background:#12121a;border:1px solid #252533;border-radius:8px;padding:8px;color:#f1f1f5;outline:none;resize:vertical">{{ c.notes or '' }}</textarea>
+          <div class="flex gap-2">
+            <button onclick="saveNote('{{ c.id }}')" class="btn-primary text-xs" style="padding:4px 12px">💾 Save</button>
+            <button onclick="cancelNoteEdit('{{ c.id }}')" class="btn-secondary text-xs" style="padding:4px 12px">Cancel</button>
+            {% if c.notes %}
+            <button onclick="deleteNote('{{ c.id }}')" class="text-red-400 text-xs" style="padding:4px 12px;background:none;border:1px solid rgba(248,113,113,0.3);border-radius:8px;cursor:pointer">🗑️ Delete</button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+    </div>
     {% else %}<div class="text-center py-10 text-[#5c5c70]"><p>No call logs yet.</p></div>{% endif %}
   </div>
 
@@ -391,6 +446,13 @@ function editLead(id,name,phone,business){document.getElementById('editLeadId').
 function closeEditLeadModal(){document.getElementById('editLeadModal').classList.remove('show');}
 function submitEditLead(){var id=document.getElementById('editLeadId').value;var name=document.getElementById('editLeadName').value.trim();var phone=document.getElementById('editLeadPhone').value.trim();var biz=document.getElementById('editLeadBiz').value.trim();var err=document.getElementById('editLeadError');var btn=document.getElementById('editLeadBtn');if(!id||!phone){err.textContent='Phone required';err.classList.remove('hidden');return}btn.disabled=true;btn.textContent='Saving...';fetch('/lead/update',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},body:'id='+encodeURIComponent(id)+'&name='+encodeURIComponent(name)+'&phone='+encodeURIComponent(phone)+'&business_name='+encodeURIComponent(biz)}).then(function(r){return r.json()}).then(function(d){btn.disabled=false;btn.textContent='💾 Save';if(d.success){alert(d.message);closeEditLeadModal();location.reload()}else{err.textContent=d.message;err.classList.remove('hidden')}}).catch(function(){btn.disabled=false;btn.textContent='💾 Save';err.textContent='Network error';err.classList.remove('hidden')});}
 function filterLeads(val){var q=val.toLowerCase().trim();var rows=document.querySelectorAll('.lead-row');var visible=0;rows.forEach(function(r){var search=r.getAttribute('data-search')||'';if(!q||search.indexOf(q)!==-1){r.style.display='';visible++}else{r.style.display='none'}});document.getElementById('noLeadsMsg').classList.toggle('hidden',visible>0);}
+// Call History functions
+function toggleRecording(id,url){var p=document.getElementById('rec-player-'+id);var btn=document.getElementById('rec-btn-'+id);if(p.classList.contains('hidden')){p.classList.remove('hidden');btn.textContent='🔊 Playing...';p.querySelector('audio').play()}else{p.classList.add('hidden');btn.textContent='🔊 Play Recording';p.querySelector('audio').pause();p.querySelector('audio').currentTime=0}}
+function toggleTranscript(id){var t=document.getElementById('transcript-'+id);var btn=document.getElementById('trans-btn-'+id);if(t.classList.contains('hidden')){t.classList.remove('hidden');btn.textContent='📝 Hide Transcript'}else{t.classList.add('hidden');btn.textContent='📝 Show Transcript'}}
+function enableNoteEdit(id){document.getElementById('note-view-'+id).classList.add('hidden');document.getElementById('note-edit-'+id).classList.remove('hidden');document.getElementById('note-edit-btn-'+id).classList.add('hidden')}
+function cancelNoteEdit(id){document.getElementById('note-view-'+id).classList.remove('hidden');document.getElementById('note-edit-'+id).classList.add('hidden');document.getElementById('note-edit-btn-'+id).classList.remove('hidden')}
+function saveNote(id){var val=document.getElementById('note-input-'+id).value.trim();fetch('/call-note/update',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'call_id='+encodeURIComponent(id)+'&notes='+encodeURIComponent(val)}).then(r=>r.json()).then(function(d){if(d.success){document.getElementById('note-text-'+id).textContent=val||'No notes yet.';cancelNoteEdit(id)}else{alert(d.message||'Error saving note')}}).catch(function(){alert('Network error')})}
+function deleteNote(id){if(!confirm('Delete this note?'))return;fetch('/call-note/delete',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'call_id='+encodeURIComponent(id)}).then(r=>r.json()).then(function(d){if(d.success){document.getElementById('note-text-'+id).textContent='No notes yet.';cancelNoteEdit(id)}else{alert(d.message||'Error deleting note')}}).catch(function(){alert('Network error')})}
 // Play Voice
 function playVoice(voiceId){var text="Hi, this is your AI voice assistant.";var audio=new Audio('/api/test-voice?voice_id='+encodeURIComponent(voiceId)+'&text='+encodeURIComponent(text)+'&speed=1.0&t='+Date.now());audio.play().catch(function(e){console.log('Play failed:',e)});}
 </script>

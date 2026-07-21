@@ -4371,6 +4371,33 @@ def bulk_leads():
     flash(f'✅ {count} leads imported!', 'success')
     return redirect('/?tab=leads')
 
+@app.route('/call-note/update', methods=['POST'])
+@login_required
+def update_call_note():
+    bid = session['business_id']
+    call_id = request.form.get('call_id', '')
+    notes = request.form.get('notes', '').strip()
+    if not call_id:
+        return jsonify({'success': False, 'message': 'Call ID required'}), 400
+    db = get_db()
+    c = db.cursor()
+    c.execute("UPDATE call_log SET notes=? WHERE id=? AND business_id=?", (notes, call_id, bid))
+    db.commit()
+    return jsonify({'success': True, 'message': '✅ Note saved!'})
+
+@app.route('/call-note/delete', methods=['POST'])
+@login_required
+def delete_call_note():
+    bid = session['business_id']
+    call_id = request.form.get('call_id', '')
+    if not call_id:
+        return jsonify({'success': False, 'message': 'Call ID required'}), 400
+    db = get_db()
+    c = db.cursor()
+    c.execute("UPDATE call_log SET notes='' WHERE id=? AND business_id=?", (call_id, bid))
+    db.commit()
+    return jsonify({'success': True, 'message': '✅ Note deleted!'})
+
 @app.route('/upload-leads', methods=['POST'])
 @login_required
 def upload_leads():
