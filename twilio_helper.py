@@ -75,18 +75,17 @@ def twilio_api_post(path, data):
 def search_available_numbers(area_code=None, contains=None, locality=None, region=None, limit=10):
     """Search for available local numbers on Twilio."""
     path = "AvailablePhoneNumbers/US/Local.json"
-    params = []
+    params = {}
     if area_code:
-        params.append(f"AreaCode={area_code}")
+        params["AreaCode"] = area_code
     if contains:
-        params.append(f"Contains={contains}")
+        params["Contains"] = contains
     if locality:
-        params.append(f"InLocality={locality}")
+        params["InLocality"] = locality
     if region:
-        params.append(f"InRegion={region}")
-    params.append(f"Limit={limit}")
-    if params:
-        path += "?" + "&".join(params)
+        params["InRegion"] = region
+    params["Limit"] = str(limit)
+    path += "?" + urllib.parse.urlencode(params)
     
     result, error = twilio_api_get(path)
     if error:
