@@ -164,7 +164,7 @@ tr:last-child td{border-bottom:none}
     <form method="POST" action="/campaign/start" onsubmit="return confirm('Start calling leads now?')"><button type="submit" class="btn-primary text-xs">▶ Start Campaign</button></form>
     <button onclick="showAddLeadModal()" class="btn-secondary text-xs">+ Add Lead</button>
     <form method="POST" action="/upload-leads" enctype="multipart/form-data" id="csvUploadForm" class="inline">
-      <input type="file" name="csv" id="csvInput" accept=".csv" style="display:none">
+      <input type="file" name="csv" id="csvInput" accept=".csv" style="position:fixed;left:-9999px;top:-9999px;opacity:0;width:1px;height:1px">
       <button type="button" class="btn-secondary text-xs" id="uploadBtn" onclick="document.getElementById('csvInput').click()">📤 Upload CSV</button>
       <button type="submit" id="csvSubmitBtn" style="display:none"></button>
     </form>
