@@ -4428,7 +4428,13 @@ def upload_leads():
     msg = f'✅ {count} leads imported!'
     if skipped:
         msg += f' ({skipped} skipped - missing phone numbers)'
-    return jsonify({'message': msg})
+    
+    # If AJAX request (has Accept: application/json or X-Requested-With), return JSON
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept', ''):
+        return jsonify({'message': msg})
+    # Form fallback: redirect with flash
+    flash(msg, 'success')
+    return redirect('/?tab=leads')
 
 @app.route('/lead/call/<lead_id>', methods=['POST'])
 @login_required
