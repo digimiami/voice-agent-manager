@@ -9,6 +9,7 @@ from legal_page import legal_page
 import navigation
 from ads_generator import ads_manager_html, generate_all_ads, AD_TEMPLATES, get_product
 import campaigns as _cmp
+import course_system
 
 DB_PATH = "/root/voice-agent-businesses.db"
 ADMIN_PASSWORD = "admin123"
@@ -178,6 +179,9 @@ input:focus,select:focus,textarea:focus{border-color:#a855f7;box-shadow:0 0 0 3p
 TOP_NAV = navigation.generate()
 
 LAYOUT_FOOT = '</body></html>'
+
+# Register course system routes
+course_system.register_routes(app, LAYOUT_HEAD, TOP_NAV, LAYOUT_FOOT)
 
 def admin_required(f):
     @wraps(f)
@@ -1376,8 +1380,7 @@ def hermes_product_detail(product_id):
   <div class="flex items-center gap-3 text-xs text-[#5c5c70] mt-1"><span style="color:''' + color + '''">''' + PRODUCT_TYPE_LABELS.get(p['product_type'],'Product') + '''</span>
   <span>$''' + str(p.get('price',0)) + '''</span><span>''' + str(p.get('downloads_count',0)) + ''' dl</span>
   <span class="px-1.5 py-0.5 rounded text-[10px]" style="background:''' + color + '''15;color:''' + color + '''">''' + (p.get('status','') or '') + '''</span></div></div>
-  <div class="flex gap-2"><a href="/product/''' + p['id'] + '''" class="btn-secondary text-xs" style="padding:8px 16px"><i class="fas fa-eye"></i> Live</a>
-  <a href="/api/product/pdf/''' + p['id'] + '''" class="btn-secondary text-xs" style="padding:8px 16px"><i class="fas fa-file-pdf"></i> PDF</a></div></div>''' + tabs + '''</div>''' + tab_html + '''
+  <div class="flex gap-2"><a href="/product/''' + p['id'] + '''" class="btn-secondary text-xs" style="padding:8px 16px"><i class="fas fa-eye"></i> Live</a>''' + ('''<a href="/course/builder/''' + p['id'] + '''" class="btn-primary text-xs" style="padding:8px 16px"><i class="fas fa-book-open"></i> Course Builder</a>''' if p.get('product_type') == 'course' else '') + '''<a href="/api/product/pdf/''' + p['id'] + '''" class="btn-secondary text-xs" style="padding:8px 16px"><i class="fas fa-file-pdf"></i> PDF</a></div></div>''' + tabs + '''</div>''' + tab_html + '''<script>
 <script>
 function switchTab(tab,btn){document.querySelectorAll('#productTabs button').forEach(b=>{b.classList.remove('text-white','border-b-2','border-[#a855f7]');b.classList.add('text-[#5c5c70]')});btn.classList.add('text-white','border-b-2','border-[#a855f7]');document.querySelectorAll('.tab-pane').forEach(p=>p.classList.add('hidden'));const el=document.getElementById('tab-'+tab);if(el)el.classList.remove('hidden')}
 </script>'''
