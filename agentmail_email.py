@@ -21,7 +21,7 @@ import urllib.request
 from datetime import datetime, timedelta
 
 # ── Config ──
-API_KEY = "am_us_425018b8425264e53d0c5003a393ee99d2b48e8c80eba6ba739224d64d087fbc"
+API_KEY = "am_us_c5cf4cf40b8b25b09546e54890bb4d570a00d3a93cd9f09cfa762b6f7f139c90"
 INBOX = "diazites@agentmail.to"
 API_BASE = "https://api.agentmail.to"
 

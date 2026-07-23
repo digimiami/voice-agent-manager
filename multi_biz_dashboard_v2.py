@@ -3915,9 +3915,9 @@ def campaign_monitor():
         total = c.fetchone()[0]
         
         # Leads with retry info
-        c.execute("SELECT COUNT(*) FROM leads WHERE business_id=? AND (retry_count IS NULL OR retry_count < 3)", (bid,))
+        c.execute("SELECT COUNT(*) FROM leads WHERE business_id=? AND (retry_count IS NULL OR retry_count < 1)", (bid,))
         retryable = c.fetchone()[0]
-        c.execute("SELECT COUNT(*) FROM leads WHERE business_id=? AND retry_count >= 3", (bid,))
+        c.execute("SELECT COUNT(*) FROM leads WHERE business_id=? AND retry_count >= 1", (bid,))
         exhausted = c.fetchone()[0]
         
         # Recent campaign log (last 30 entries)
@@ -4286,8 +4286,8 @@ def run_campaign_bg(bid):
                 db.close()
                 return
         
-            # Safety: only call leads with retry_count < 3
-            c.execute("SELECT COUNT(*) as cnt FROM leads WHERE business_id = ? AND state = 'NEW' AND (retry_count IS NULL OR retry_count < 3)", (bid,))
+            # Safety: only call leads with retry_count < 1
+            c.execute("SELECT COUNT(*) as cnt FROM leads WHERE business_id = ? AND state = 'NEW' AND (retry_count IS NULL OR retry_count < 1)", (bid,))
             available = c.fetchone()['cnt']
             calls_to_make = min(max_calls, available)
         
@@ -4302,7 +4302,7 @@ def run_campaign_bg(bid):
         
         # Mark as CALLING — use subquery to limit rows (SQLite doesn't support LIMIT in UPDATE)
             c.execute("UPDATE leads SET state = 'CALLING', last_called_at = datetime('now'), retry_count = COALESCE(retry_count,0) + 1 "
-                       "WHERE rowid IN (SELECT rowid FROM leads WHERE business_id = ? AND state = 'NEW' AND (retry_count IS NULL OR retry_count < 3) LIMIT ?)",
+                       "WHERE rowid IN (SELECT rowid FROM leads WHERE business_id = ? AND state = 'NEW' AND (retry_count IS NULL OR retry_count < 1) LIMIT ?)",
                        (bid, calls_to_make))
             c.execute("UPDATE campaigns SET calls_made = calls_made + ?, last_run_at = datetime('now') WHERE business_id = ?", (calls_to_make, bid))
             db.commit()
@@ -4349,18 +4349,18 @@ def run_campaign_bg(bid):
                 log_campaign(bid, f'🔄 {remaining} leads remaining. Sleeping {call_delay}s before next cycle...', 'info')
             else:
                 # After all leads called: reset those still under retry limit back to NEW
-                c.execute("SELECT COUNT(*) as cnt FROM leads WHERE business_id=? AND (retry_count IS NULL OR retry_count < 3)", (bid,))
+                c.execute("SELECT COUNT(*) as cnt FROM leads WHERE business_id=? AND (retry_count IS NULL OR retry_count < 1)", (bid,))
                 retryable = c.fetchone()['cnt']
-                c.execute("SELECT COUNT(*) as cnt FROM leads WHERE business_id=? AND retry_count >= 3", (bid,))
+                c.execute("SELECT COUNT(*) as cnt FROM leads WHERE business_id=? AND retry_count >= 1", (bid,))
                 exhausted = c.fetchone()['cnt']
                 if retryable == 0:
-                    log_campaign(bid, f'🎉 All {exhausted} leads reached max retries (3). Campaign complete.', 'info')
+                    log_campaign(bid, f'🎉 All {exhausted} leads reached max retries. Campaign complete.', 'info')
                     c.execute("UPDATE campaigns SET status='completed', calls_made=0 WHERE business_id=?", (bid,))
                     db.commit()
                     db.close()
                     return
                 # Reset only retryable leads back to NEW for next cycle
-                c.execute("UPDATE leads SET state='NEW' WHERE business_id=? AND state='CALLED' AND (retry_count IS NULL OR retry_count < 3)", (bid,))
+                c.execute("UPDATE leads SET state='NEW' WHERE business_id=? AND state='CALLED' AND (retry_count IS NULL OR retry_count < 1)", (bid,))
                 c.execute("UPDATE campaigns SET calls_made=0 WHERE business_id=?", (bid,))
                 db.commit()
                 log_campaign(bid, f'🔄 {retryable} leads reset to NEW for next cycle ({exhausted} exhausted). Cycle #{cycle_count}/{max_cycles}', 'info')
