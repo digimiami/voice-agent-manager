@@ -151,6 +151,7 @@ ADMIN_HTML = """<!DOCTYPE html>
                 ('industries', 'industry', 'Industries'),
                 ('email', 'envelope', 'Email Config'),
                 ('sms', 'message', 'SMS/Calendar'),
+                ('calendar', 'calendar-alt', 'Calendar'),
                 ('stripe', 'credit-card', 'Stripe'),
                 ('agent-tars', 'robot', 'Agent TARS'),
                 ('agent-api', 'key', 'Agent API')
@@ -1323,6 +1324,80 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
             loadApiKeys();
         });
         </script>
+        {% elif tab == 'calendar' %}
+        <h2 class="text-xl font-bold mb-6">📅 All Appointments</h2>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div class="stat-box"><div class="text-2xl font-bold text-[#818cf8]">{{ all_appointments|length }}</div><div class="text-xs text-[#64748b] mt-1">Total Appointments</div></div>
+            <div class="stat-box"><div class="text-2xl font-bold text-[#4ade80]">{{ all_appointments|selectattr('status','equalto','booked')|list|length }}</div><div class="text-xs text-[#64748b] mt-1">Booked</div></div>
+            <div class="stat-box"><div class="text-2xl font-bold text-[#fbbf24]">{{ all_appointments|selectattr('status','equalto','completed')|list|length }}</div><div class="text-xs text-[#64748b] mt-1">Completed</div></div>
+            <div class="stat-box"><div class="text-2xl font-bold text-[#f472b6]">{{ all_appointments|selectattr('status','equalto','cancelled')|list|length }}</div><div class="text-xs text-[#64748b] mt-1">Cancelled</div></div>
+        </div>
+
+        <!-- Business filter -->
+        <div class="flex gap-3 mb-4 items-center">
+            <select id="calBizFilter" class="text-sm max-w-xs" onchange="filterCalendar()">
+                <option value="">— All Businesses —</option>
+                {% for biz in businesses %}
+                <option value="{{ biz.id }}">{{ biz.name }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" id="calSearch" class="text-sm max-w-xs" placeholder="🔍 Search prospect name or phone..." oninput="filterCalendar()">
+            <span class="text-xs text-[#64748b] ml-auto"><span id="calCount">{{ all_appointments|length }}</span> appointments</span>
+        </div>
+
+        <!-- Appointments table -->
+        <div class="overflow-x-auto card">
+            {% if all_appointments %}
+            <table id="calTable">
+                <thead>
+                    <tr><th>Business</th><th>Prospect</th><th>Phone</th><th>Time</th><th>Status</th><th>Notes</th><th>Created</th></tr>
+                </thead>
+                <tbody>
+                    {% for apt in all_appointments %}
+                    <tr class="cal-row" data-biz="{{ apt.business_id }}" data-search="{{ (apt.prospect_name or apt.lead_name or '')|lower }} {{ (apt.phone or '') }}">
+                        <td class="font-semibold text-sm">{{ apt.biz_name or apt.business_id[:12]+'..' }}</td>
+                        <td>{{ apt.prospect_name or apt.lead_name or 'Prospect' }}</td>
+                        <td class="font-mono text-xs">{{ apt.phone or '-' }}</td>
+                        <td class="text-xs text-[#94a3b8]">{{ apt.appointment_time or '-' }}</td>
+                        <td>
+                            {% if apt.status == 'booked' %}<span class="badge badge-active">📅 Booked</span>
+                            {% elif apt.status == 'completed' %}<span class="badge badge-success">✅ Done</span>
+                            {% elif apt.status == 'cancelled' %}<span class="badge badge-error">❌ Cancelled</span>
+                            {% else %}<span class="badge badge-inactive">{{ apt.status }}</span>{% endif %}
+                        </td>
+                        <td class="text-xs text-[#64748b] max-w-[200px] truncate" title="{{ apt.notes or '' }}">{{ apt.notes[:60] or '-' }}</td>
+                        <td class="text-xs text-[#64748b]">{{ (apt.created_at or '')[:10] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-center py-12">
+                <div class="text-4xl mb-3">📅</div>
+                <p class="text-[#64748b] font-medium">No appointments yet</p>
+                <p class="text-xs text-[#5c5c70] mt-1">Appointments will appear here when AI agents book them.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <script>
+        function filterCalendar() {
+            var biz = document.getElementById('calBizFilter').value.toLowerCase();
+            var q = document.getElementById('calSearch').value.toLowerCase().trim();
+            var rows = document.querySelectorAll('.cal-row');
+            var count = 0;
+            rows.forEach(function(r) {
+                var show = true;
+                if (biz && r.getAttribute('data-biz') !== biz) show = false;
+                if (q && (r.getAttribute('data-search') || '').indexOf(q) === -1) show = false;
+                r.style.display = show ? '' : 'none';
+                if (show) count++;
+            });
+            document.getElementById('calCount').textContent = count;
+        }
+        </script>
         {% endif %}
     </div>
 
@@ -2275,12 +2350,22 @@ def admin_dashboard():
             elif row[0] == 'chatbot_api_key': chatbot_api_key = '***' if row[1] else ''
     except: pass
     
+    # All appointments across all businesses
+    c.execute("""
+        SELECT a.*, b.name as biz_name
+        FROM appointments a
+        LEFT JOIN businesses b ON a.business_id = b.id
+        ORDER BY a.created_at DESC LIMIT 100
+    """)
+    all_appointments = [dict(r) for r in c.fetchall()]
+    
     return render_template_string(ADMIN_HTML,
         session=session, tab=tab, businesses=businesses,
         industries=INDUSTRY_PRESETS, tiers=PRICING_TIERS,
         VAPI_API_KEY=VAPI_API_KEY, sub_counts=sub_counts,
         vapi_numbers=vapi_numbers, vapi_assistant_count=vapi_assistant_count,
         chatbot_provider=chatbot_provider, chatbot_model=chatbot_model, chatbot_api_key=chatbot_api_key,
+        all_appointments=all_appointments,
         tars_result=json.load(open('/dev/shm/tars_result.json'))['result'] if os.path.exists('/dev/shm/tars_result.json') else None,
         tars_status=json.load(open('/dev/shm/tars_status.json')) if os.path.exists('/dev/shm/tars_status.json') else None,
         last_task=session.get('tars_last_task', ''),

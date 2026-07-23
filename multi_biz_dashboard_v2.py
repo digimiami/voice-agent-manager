@@ -4052,37 +4052,8 @@ def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
             except (KeyError, TypeError):
                 vm_detection = 'google'
         
-        if vm_detection and vm_detection != 'off':
-            payload["voicemailDetection"] = {
-                "provider": vm_detection,
-                "voicemailExpectedDurationSeconds": 15,
-                "voicemailDetectionTypes": ["machine_detected"]
-            }
-            vm_action = biz.get('voicemail_action') if isinstance(biz, dict) else 'hangup'
-            if not vm_action:
-                try:
-                    vm_action = biz['voicemail_action']
-                except (KeyError, TypeError):
-                    vm_action = 'hangup'
-            
-            if vm_action == 'leave_message':
-                vm_msg = biz.get('voicemail_message') if isinstance(biz, dict) else ''
-                if not vm_msg:
-                    try:
-                        vm_msg = biz['voicemail_message'] or ''
-                    except (KeyError, TypeError):
-                        vm_msg = ''
-                
-                if not vm_msg:
-                    biz_name = biz.get('name', 'our office') if isinstance(biz, dict) else 'our office'
-                    try:
-                        biz_name = biz['name']
-                    except (KeyError, TypeError):
-                        biz_name = 'our office'
-                    vm_msg = f"Hi, this is a message from {biz_name}. We tried to reach you but couldn't get through. Please give us a call back at your earliest convenience. Our number is listed on our website. Thank you!"
-                
-                if vm_msg:
-                    payload["voicemailMessage"] = vm_msg
+        # Note: voicemailDetection and voicemailMessage should NOT be sent at the top level
+        # of the /call payload — VAPI rejects them with 400.
         
         r = subprocess.run(["curl","-s","-X","POST",f"{VAPI_BASE}/call",
             "-H",f"Authorization: Bearer {VAPI_API_KEY}",
