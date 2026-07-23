@@ -249,9 +249,35 @@ def customer_dashboard():
     if not email:
         return redirect('/account/login')
     db = get_db()
+    
+    # Get digital product purchases (from product_orders)
     orders = db.execute("SELECT po.*, p.title, p.file_path, p.product_type FROM product_orders po JOIN products p ON po.product_id = p.id WHERE po.customer_email=? ORDER BY po.created_at DESC", (email,)).fetchall()
+    
+    # Get course access
+    customer = db.execute("SELECT id FROM customer_accounts WHERE email=?", (email,)).fetchone()
+    courses = []
+    if customer:
+        cid = customer[0]
+        courses = db.execute("""
+            SELECT p.id, p.title, p.product_type, ca.granted_at 
+            FROM course_access ca 
+            JOIN products p ON ca.product_id=p.id 
+            WHERE ca.customer_id=? 
+            ORDER BY ca.granted_at DESC
+        """, (cid,)).fetchall()
+    
     db.close()
+    
     rows = ""
+    
+    # Show course access
+    for c in courses:
+        icon = product_type_icon(c["product_type"] if c["product_type"] else "course")
+        title = c["title"] or "Course"
+        date = (c["granted_at"] or "")[:10]
+        rows += f'<div class="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-900/20 to-black/30 rounded-xl border border-purple-500/20"><span class="text-3xl">{icon}</span><div class="flex-1 min-w-0"><div class="text-sm font-semibold text-white truncate">{title[:50]}</div><div class="text-[10px] text-gray-500">Access granted {date}</div></div><a href="/course/{c["id"]}/" class="btn-primary text-xs" style="padding:8px 16px;background:linear-gradient(135deg,#4ade80,#22c55e)"><i class="fas fa-graduation-cap"></i> Access Course</a></div>'
+    
+    # Show digital product purchases
     for o in orders:
         icon = product_type_icon(o["product_type"] if o["product_type"] else "")
         dl_link = ""
@@ -260,9 +286,11 @@ def customer_dashboard():
         title = o["title"] or "Product"
         date = (o["created_at"] or "")[:10]
         rows += f'<div class="flex items-center gap-4 p-4 bg-black/30 rounded-xl border border-white/10"><span class="text-3xl">{icon}</span><div class="flex-1 min-w-0"><div class="text-sm font-semibold text-white truncate">{title[:50]}</div><div class="text-[10px] text-gray-500">Purchased {date}</div></div>{dl_link}</div>'
+    
     if not rows:
         rows = '<div class="text-center py-12 text-gray-500"><p class="text-sm">No purchases yet.</p><a href="/" class="text-[#38bdf8] text-xs mt-2 inline-block">Browse products</a></div>'
-    body = f'<div class="max-w-3xl mx-auto px-4 py-6"><div class="flex items-center justify-between mb-6"><div><h1 class="text-xl font-bold">My Purchases</h1><p class="text-xs text-gray-500">{email}</p></div><a href="/account/logout" class="text-xs text-gray-400"><i class="fas fa-sign-out-alt"></i> Logout</a></div><div class="space-y-3">{rows}</div><div class="mt-6 text-center"><a href="/" class="btn-secondary text-xs" style="padding:10px 24px"><i class="fas fa-arrow-left"></i> Continue Shopping</a></div></div>'
+    
+    body = f'<div class="max-w-3xl mx-auto px-4 py-6"><div class="flex items-center justify-between mb-6"><div><h1 class="text-xl font-bold">My Account</h1><p class="text-xs text-gray-500">{email}</p></div><a href="/account/logout" class="text-xs text-gray-400"><i class="fas fa-sign-out-alt"></i> Logout</a></div><div class="space-y-3">{rows}</div><div class="mt-6 text-center"><a href="/" class="btn-secondary text-xs" style="padding:10px 24px"><i class="fas fa-arrow-left"></i> Continue Shopping</a></div></div>'
     return LAYOUT_HEAD + TOP_NAV + body + LAYOUT_FOOT
 
 @app.route('/account/register', methods=['GET', 'POST'])
@@ -5009,6 +5037,24 @@ def product_detail_page(product_id):
     img = '<div class="aspect-[4/3] rounded-2xl bg-gradient-to-br from-purple-900/30 to-black/40 border border-white/10 flex items-center justify-center"><span class="text-7xl opacity-30">' + icon + '</span></div>'
     if hero:
         img = '<div class="rounded-2xl overflow-hidden bg-black/40 border border-white/10"><div class="aspect-[4/3]"><img src="' + hero.replace('"','') + '" alt="' + title.replace('"','')[:60] + '" class="w-full h-full object-cover hover:scale-105 transition-transform duration-700 cursor-zoom-in" onclick="window.open(this.src,' + Q + '_blank' + Q + ')"></div></div>'
+    # Gallery from screenshots/Venice AI
+    screenshots_raw = p.get('screenshot_urls') or '[]'
+    gallery_list = []
+    try:
+        gallery_list = _json.loads(screenshots_raw) if isinstance(screenshots_raw, str) else screenshots_raw
+    except:
+        gallery_list = []
+    if hero and hero not in gallery_list:
+        gallery_list.insert(0, hero)
+    gallery_html = ''
+    if len(gallery_list) > 1:
+        items = ''
+        for gi in gallery_list[:5]:
+            gi_url = gi.replace(chr(34), '')
+            items += '<div class="cursor-pointer rounded-xl overflow-hidden border border-white/10 hover:border-purple-500/30 transition flex-shrink-0" style="width:160px;height:100px" onclick="window.open(' + chr(39) + gi_url + chr(39) + ',\'_blank\')"><img src=' + chr(34) + gi_url + chr(34) + ' class=\"w-full h-full object-cover\" loading=\"lazy\"></div>'
+        gallery_html = '<div class="mt-3 overflow-x-auto" style="scrollbar-width:thin"><div class="flex gap-2 pb-2">' + items + '</div></div>'
+        img = img + gallery_html
+
     inc = {"prompt_pack":["Full prompt collection (TXT)","Usage guide (PDF)","Examples","Lifetime updates"],"template":["Deliverable files","Setup guide","Tutorial","Updates"],"ebook":["Full ebook (TXT)","Professional PDF","Resources","Updates"],"code":["Source code","Documentation","Tests","Requirements"],"checklist":["Complete checklist (TXT)","Printable PDF","Examples","Updates"],"notion_template":["Notion template (JSON)","Setup guide (TXT)","Database structure","Video walkthrough"],"business_doc":["Document templates (TXT)","Usage guide (PDF)","Examples","Updates"],"marketing":["Content templates","Strategy guide","Calendar","Updates"],"marketing_tool":["Content engine","Setup guide","Templates","Updates"]}.get(ptype, ["Digital files","Guide","Docs","Updates"])
     ih = "".join(['<div class="flex items-start gap-3 p-3 bg-black/30 rounded-xl border border-white/10"><div class="w-6 h-6 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0"><i class="fas fa-check text-green-400 text-[10px]"></i></div><span class="text-xs font-medium">' + x + '</span></div>' for x in inc])
     ss = [("Type",label,icon),("Format",fmt,"fa-file"),("Level",diff,"fa-signal"),("Version",version,"fa-code-branch"),("Updated",now.strftime("%b %Y"),"fa-calendar"),("Compat",compat,"fa-desktop"),("License",ltype.capitalize(),"fa-scale-balanced")]
