@@ -26,6 +26,8 @@ import secrets
 
 DB_PATH = "/root/voice-agent-businesses.db"
 VAPI_API_KEY = os.environ.get("VAPI_API_KEY", "") or "d9486ec8-b862-460b-97ba-64bbb639f234"
+# Force use of the actual calling key (the env var may contain the admin key)
+VAPI_API_KEY = "d9486ec8-b862-460b-97ba-64bbb639f234"
 VAPI_BASE = "https://api.vapi.ai"
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)

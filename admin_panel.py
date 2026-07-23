@@ -19,6 +19,7 @@ from datetime import datetime, date, timedelta
 from pathlib import Path
 from flask import Flask, render_template_string, jsonify, request, redirect, session, url_for, flash
 from functools import wraps
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Import Agent API module
 from agent_api import agent_api, init_api_keys_table, generate_api_key, validate_api_key
@@ -31,6 +32,11 @@ VAPI_BASE = "https://api.vapi.ai"
 app = Flask(__name__)
 app.secret_key = "admin-secret-key-hermes-2026"
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
+# Trust X-Forwarded-Proto from nginx so cookie Secure flag works behind reverse proxy
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
 
 # Register Agent API blueprint
 app.register_blueprint(agent_api)
@@ -1013,6 +1019,12 @@ ADMIN_HTML = """<!DOCTYPE html>
                     </div>
                     <button type="submit" class="btn-primary text-sm w-full"><i class="fas fa-key mr-1"></i> Generate Key</button>
                 </form>
+                <!-- Error display -->
+                <div id="generateKeyError" class="mt-3 hidden">
+                    <div class="bg-red-900/30 border border-red-700/40 rounded-lg p-3 text-sm text-red-300">
+                        <span id="generateKeyErrorText"></span>
+                    </div>
+                </div>
                 <!-- Generated key display -->
                 <div id="newKeyResult" class="mt-4 hidden">
                     <div class="bg-[#0a0a12] border border-[#22c55e]/30 rounded-lg p-4">
@@ -1168,8 +1180,14 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
         // ── Generate API Key ──
         function generateApiKey(e) {
             e.preventDefault();
+            // Hide previous error and result
+            document.getElementById('generateKeyError').classList.add('hidden');
+            document.getElementById('newKeyResult').classList.add('hidden');
             var name = document.getElementById('keyName').value.trim();
-            if (!name) { alert('Key name is required'); return false; }
+            if (!name) {
+                showGenerateError('Key name is required');
+                return false;
+            }
             var btn = e.target.querySelector('button[type=submit]');
             btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Generating...';
 
@@ -1201,14 +1219,23 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                     document.getElementById('keyDesc').value = '';
                     loadApiKeys();
                 } else {
-                    alert('Error: ' + (d.error || 'Failed to generate key'));
+                    showGenerateError(d.error || 'Failed to generate key');
                 }
             })
             .catch(function(err) {
                 btn.disabled = false; btn.innerHTML = '<i class="fas fa-key mr-1"></i> Generate Key';
-                alert('❌ ' + err.message);
+                showGenerateError(err.message || 'Connection error — are you logged in?');
             });
             return false;
+        }
+
+        function showGenerateError(msg) {
+            document.getElementById('generateKeyErrorText').textContent = '❌ ' + msg;
+            document.getElementById('generateKeyError').classList.remove('hidden');
+            // Auto-hide after 10s
+            setTimeout(function() {
+                document.getElementById('generateKeyError').classList.add('hidden');
+            }, 10000);
         }
 
         // ── Revoke Key ──
