@@ -1129,7 +1129,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
         <script>
         // ── Load API Keys ──
         function loadApiKeys() {
-            fetch('/api/v1/auth/keys')
+            fetch('/api/v1/auth/keys', {credentials: 'same-origin'})
             .then(function(r) { 
                 if (!r.ok) throw new Error('Auth failed — ensure you are logged in as admin');
                 return r.json(); 
@@ -1175,6 +1175,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
 
             fetch('/api/v1/auth/generate', {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     name: name,
@@ -1183,7 +1184,14 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                     expires_in_days: parseInt(document.getElementById('keyExpiry').value)
                 })
             })
-            .then(function(r) { return r.json(); })
+            .then(function(r) {
+                if (!r.ok) {
+                    return r.json().then(function(errData) {
+                        throw new Error(errData.error || 'Request failed (HTTP ' + r.status + ')');
+                    });
+                }
+                return r.json();
+            })
             .then(function(d) {
                 btn.disabled = false; btn.innerHTML = '<i class="fas fa-key mr-1"></i> Generate Key';
                 if (d.success) {
@@ -1198,7 +1206,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
             })
             .catch(function(err) {
                 btn.disabled = false; btn.innerHTML = '<i class="fas fa-key mr-1"></i> Generate Key';
-                alert('Error: ' + err.message);
+                alert('❌ ' + err.message);
             });
             return false;
         }
@@ -1206,7 +1214,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
         // ── Revoke Key ──
         function revokeKey(keyId) {
             if (!confirm('Revoke this API key? Agents using it will lose access immediately.')) return;
-            fetch('/api/v1/auth/keys/' + keyId, {method: 'DELETE'})
+            fetch('/api/v1/auth/keys/' + keyId, {method: 'DELETE', credentials: 'same-origin'})
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 if (d.success) loadApiKeys();
@@ -1218,7 +1226,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
         // ── Reactivate Key ──
         function reactivateKey(keyId) {
             if (!confirm('Reactivate this API key?')) return;
-            fetch('/api/v1/auth/keys/' + keyId + '?reactivate=true', {method: 'POST'})
+            fetch('/api/v1/auth/keys/' + keyId + '?reactivate=true', {method: 'POST', credentials: 'same-origin'})
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 if (d.success) loadApiKeys();
@@ -1353,6 +1361,7 @@ def admin_login():
         return render_template_string(ADMIN_HTML, session=session, error='Invalid password', tab='')
     # If already logged in, show dashboard with data
     if session.get('admin_logged_in'):
+        session.permanent = True  # Refresh session expiry on every page view
         return admin_dashboard()
     return render_template_string(ADMIN_HTML, session=session, error='', tab='')
 
