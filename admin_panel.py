@@ -40,7 +40,7 @@ init_api_keys_table()
 try:
     db = sqlite3.connect(DB_PATH)
     c = db.cursor()
-    c.execute("SELECT COUNT(*) FROM api_keys")
+    c.execute("SELECT COUNT(*) FROM agent_api_keys")
     if c.fetchone()[0] == 0:
         key_id, raw_key, _ = generate_api_key(
             name="Default Admin Key",
@@ -1129,11 +1129,9 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
         <script>
         // ── Load API Keys ──
         function loadApiKeys() {
-            fetch('/api/v1/auth/keys', {
-                headers: {'Authorization': 'Bearer admin-api-check'}
-            })
+            fetch('/api/v1/auth/keys')
             .then(function(r) { 
-                if (!r.ok) throw new Error('Auth failed — use admin password login');
+                if (!r.ok) throw new Error('Auth failed — ensure you are logged in as admin');
                 return r.json(); 
             })
             .then(function(d) {
@@ -1177,10 +1175,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
 
             fetch('/api/v1/auth/generate', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer admin-api-check'
-                },
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     name: name,
                     description: document.getElementById('keyDesc').value.trim(),
@@ -1211,10 +1206,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
         // ── Revoke Key ──
         function revokeKey(keyId) {
             if (!confirm('Revoke this API key? Agents using it will lose access immediately.')) return;
-            fetch('/api/v1/auth/keys/' + keyId, {
-                method: 'DELETE',
-                headers: {'Authorization': 'Bearer admin-api-check'}
-            })
+            fetch('/api/v1/auth/keys/' + keyId, {method: 'DELETE'})
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 if (d.success) loadApiKeys();
@@ -1226,10 +1218,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
         // ── Reactivate Key ──
         function reactivateKey(keyId) {
             if (!confirm('Reactivate this API key?')) return;
-            fetch('/api/v1/auth/keys/' + keyId + '?reactivate=true', {
-                method: 'POST',
-                headers: {'Authorization': 'Bearer admin-api-check'}
-            })
+            fetch('/api/v1/auth/keys/' + keyId + '?reactivate=true', {method: 'POST'})
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 if (d.success) loadApiKeys();
@@ -1348,6 +1337,10 @@ def admin_required(f):
             return redirect('/admin')
         return f(*args, **kwargs)
     return decorated
+
+@app.route('/')
+def admin_root():
+    return redirect('/admin')
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin_login():

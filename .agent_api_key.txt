@@ -1,0 +1,5 @@
+AGENT API KEY: dz_296e2ea10c0b491ebcb6dd0fe9c64980_20c2c4dbacb5483b
+ID: key_982dce2f9735
+PERMISSIONS: read,write,admin
+CREATED: 2026-07-23
+DESCRIPTION: Primary Admin Key for AI agents to manage Diazites system

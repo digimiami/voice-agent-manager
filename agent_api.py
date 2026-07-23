@@ -25,7 +25,7 @@ def init_api_keys_table():
     db = sqlite3.connect(DB_PATH)
     c = db.cursor()
     c.execute("""
-        CREATE TABLE IF NOT EXISTS api_keys (
+        CREATE TABLE IF NOT EXISTS agent_api_keys (
             id TEXT PRIMARY KEY,
             key_hash TEXT UNIQUE NOT NULL,
             name TEXT NOT NULL,
@@ -50,7 +50,7 @@ def generate_api_key(name, description="", permissions="read,write", created_by=
     db = sqlite3.connect(DB_PATH)
     c = db.cursor()
     c.execute("""
-        INSERT INTO api_keys (id, key_hash, name, description, permissions, created_by, expires_at)
+        INSERT INTO agent_api_keys (id, key_hash, name, description, permissions, created_by, expires_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (key_id, key_hash, name, description, permissions, created_by, expires_at))
     db.commit()
@@ -70,8 +70,9 @@ def validate_api_key(raw_key):
     """Validate an API key. Returns key data dict or None."""
     key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
     db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
     c = db.cursor()
-    c.execute("SELECT * FROM api_keys WHERE key_hash = ? AND active = 1", (key_hash,))
+    c.execute("SELECT * FROM agent_api_keys WHERE key_hash = ? AND active = 1", (key_hash,))
     row = c.fetchone()
     if not row:
         db.close()
@@ -82,7 +83,7 @@ def validate_api_key(raw_key):
         db.close()
         return None
     # Update last_used_at
-    c.execute("UPDATE api_keys SET last_used_at = datetime('now') WHERE id = ?", (row['id'],))
+    c.execute("UPDATE agent_api_keys SET last_used_at = datetime('now') WHERE id = ?", (row['id'],))
     db.commit()
     db.close()
     return dict(row)
@@ -172,7 +173,7 @@ def api_list_keys(api_key):
     db = sqlite3.connect(DB_PATH)
     db.row_factory = sqlite3.Row
     c = db.cursor()
-    c.execute("SELECT id, name, description, permissions, created_at, last_used_at, expires_at, active, created_by FROM api_keys ORDER BY created_at DESC")
+    c.execute("SELECT id, name, description, permissions, created_at, last_used_at, expires_at, active, created_by FROM agent_api_keys ORDER BY created_at DESC")
     keys = [dict(r) for r in c.fetchall()]
     db.close()
 
@@ -189,10 +190,10 @@ def api_revoke_key(api_key, key_id):
     c = db.cursor()
 
     if request.method == 'POST' and request.args.get('reactivate') == 'true':
-        c.execute("UPDATE api_keys SET active = 1 WHERE id = ?", (key_id,))
+        c.execute("UPDATE agent_api_keys SET active = 1 WHERE id = ?", (key_id,))
         msg = 'reactivated'
     else:
-        c.execute("UPDATE api_keys SET active = 0 WHERE id = ?", (key_id,))
+        c.execute("UPDATE agent_api_keys SET active = 0 WHERE id = ?", (key_id,))
         msg = 'revoked'
 
     db.commit()
@@ -789,11 +790,19 @@ def api_export_businesses(api_key):
 # ── Helpers for auth middleware ──
 
 def api_key_required(permission='read'):
-    """Decorator factory for requiring API key with specific permission."""
+    """Decorator factory for requiring API key with specific permission (or admin session)."""
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
             auth = request.headers.get('Authorization', '')
+            
+            # Check admin session first
+            from flask import session as flask_session
+            if flask_session.get('admin_logged_in'):
+                kwargs['api_key'] = {'permissions': 'read,write,admin', 'name': 'Admin UI Session', 'id': 'admin-session'}
+                return f(*args, **kwargs)
+            
+            # Fall back to API key
             if not auth.startswith('Bearer '):
                 return jsonify({'error': 'Missing Authorization header. Use: Bearer <key>'}), 401
             key_data = validate_api_key(auth[7:])
