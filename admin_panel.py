@@ -2324,4 +2324,4 @@ if __name__ == '__main__':
     print(f"📊 DB: {DB_PATH}")
     print("🌐 http://localhost:8086/admin")
     print("🔑 Password: admin123")
-    app.run(host='0.0.0.0', port=8086, debug=False)
+    app.run(host='0.0.0.0', port=8086, debug=False, threaded=True)

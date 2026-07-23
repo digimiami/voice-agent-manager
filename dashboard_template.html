@@ -66,6 +66,7 @@ tr:last-child td{border-bottom:none}
     <a href="/?tab=numbers" class="nav-item {% if tab == 'numbers' %}active{% endif %}"><span>📱</span> Phone Numbers</a>
     <a href="/?tab=settings" class="nav-item {% if tab == 'settings' %}active{% endif %}"><span>⚙️</span> Settings</a>
     <a href="/?tab=landing" class="nav-item {% if tab == 'landing' %}active{% endif %}"><span>🌐</span> Landing Page</a>
+    <a href="/?tab=calendar" class="nav-item {% if tab == 'calendar' %}active{% endif %}"><span>📅</span> Calendar</a>
     <a href="/?tab=billing" class="nav-item {% if tab == 'billing' %}active{% endif %}"><span>💳</span> Billing</a>
   </nav>
   
@@ -88,6 +89,7 @@ tr:last-child td{border-bottom:none}
         {% elif tab == 'numbers' %}📱 Phone Numbers
         {% elif tab == 'settings' %}⚙️ Settings
         {% elif tab == 'landing' %}🌐 Landing Page
+        {% elif tab == 'calendar' %}📅 Calendar
         {% elif tab == 'billing' %}💳 Billing
         {% endif %}
       </h1>
@@ -581,6 +583,72 @@ setTimeout(refreshMonitor, 500);
     <div class="flex items-center gap-3 mb-4 p-3 bg-green-500/10 rounded-lg border border-green-500/20"><span class="text-green-400 text-lg">✅</span><div><div class="font-semibold text-sm">Published</div><div class="text-xs text-[#7a7a8e]">https://diazites.online/lp/{{ session.business_id }}</div></div></div>
     {% endif %}
     <p class="text-sm text-[#5c5c70]">AI-generated landing pages coming soon.</p>
+  </div>
+
+  <!-- ======== TAB: CALENDAR ======== -->
+  {% elif tab == 'calendar' %}
+
+  <!-- Stats row -->
+  <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="card text-center">
+      <div class="stat-value">{{ appointments|length }}</div>
+      <div class="text-xs text-[#7a7a8e] mt-1">📅 Upcoming Appointments</div>
+    </div>
+    <div class="card text-center">
+      <div class="stat-value" style="background:linear-gradient(135deg,#38bdf8,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent">{{ appointments|selectattr('appointment_time','defined')|list|length }}</div>
+      <div class="text-xs text-[#7a7a8e] mt-1">⏰ Scheduled</div>
+    </div>
+    <div class="card text-center">
+      <div class="stat-value" style="background:linear-gradient(135deg,#4ade80,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent">{{ stats.appointments or 0 }}</div>
+      <div class="text-xs text-[#7a7a8e] mt-1">📊 Total Booked</div>
+    </div>
+  </div>
+
+  <!-- Appointment List -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold">📅 Upcoming Appointments</h3>
+      <span class="text-xs text-[#7a7a8e]">{{ appointments|length }} total</span>
+    </div>
+    {% if appointments %}
+    <div class="space-y-3">
+      {% for apt in appointments %}
+      <div class="bg-[#1a1a26] rounded-xl p-4 border border-[#252533] hover:border-[#a855f7]/30 transition-all">
+        <div class="flex items-start justify-between mb-2">
+          <div>
+            <div class="font-semibold text-sm flex items-center gap-2">
+              <span class="w-8 h-8 rounded-full bg-[#a855f7]/20 flex items-center justify-center text-sm">👤</span>
+              {{ apt.prospect_name or apt.lead_name or 'Prospect' }}
+            </div>
+            <div class="text-xs text-[#7a7a8e] mt-1">{{ apt.phone or '' }}</div>
+          </div>
+          <div class="text-right">
+            <div class="badge badge-success text-xs">📅 Booked</div>
+            <div class="text-xs text-[#7a7a8e] mt-1">{{ apt.appointment_time or 'No time set' }}</div>
+          </div>
+        </div>
+        {% if apt.notes %}
+        <div class="text-xs text-[#94a3b8] mt-2 bg-[#12121a] rounded-lg p-3">
+          <span class="text-[#64748b]">📝 Notes:</span> {{ apt.notes[:200] }}
+        </div>
+        {% endif %}
+        {% if apt.call_log_id %}
+        <div class="mt-2 text-right">
+          <a href="/calendar/download/{{ apt.call_log_id }}" class="text-xs text-[#38bdf8] hover:underline">
+            <i class="fas fa-download mr-1"></i>📥 Download .ics
+          </a>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-12">
+      <div class="text-4xl mb-3">📅</div>
+      <p class="text-[#7a7a8e] font-medium">No appointments yet</p>
+      <p class="text-xs text-[#5c5c70] mt-1">Appointments will appear here when your AI agent books them.</p>
+    </div>
+    {% endif %}
   </div>
 
   <!-- ======== TAB: BILLING ======== -->
