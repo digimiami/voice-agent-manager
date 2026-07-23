@@ -760,7 +760,61 @@ def course_view(product_id, module_slug=None):
             if i < len(modules) - 1:
                 next_link = f'<a href="/course/{product_id}/{modules[i+1][3]}" class="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1">{modules[i+1][2][:30]} <span>&rarr;</span></a>'
     
-    page = LAYOUT_HEAD.replace('</head>', '<style>.course-content h1{font-size:1.5rem;font-weight:700;margin:1.5rem 0 0.5rem 0;color:#f1f1f5}.course-content h2{font-size:1.25rem;font-weight:600;margin:1.25rem 0 0.4rem 0;color:#e8e8f0}.course-content h3{font-size:1.1rem;font-weight:600;margin:1rem 0 0.3rem 0;color:#d0d0e0}.course-content p{margin:0.5rem 0;line-height:1.7;color:#c0c0d0}.course-content ul,.course-content ol{margin:0.5rem 0 0.5rem 1.5rem;line-height:1.7}.course-content li{margin:0.3rem 0;color:#c0c0d0}.course-content code{background:#1a1a26;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.85em;color:#a855f7}.course-content pre{background:#0e0e16;padding:1rem;border-radius:12px;overflow-x:auto;margin:0.8rem 0;border:1px solid #1a1a26;font-size:0.85em}.course-content blockquote{border-left:3px solid #a855f7;padding-left:1rem;margin:0.8rem 0;color:#8080a0;font-style:italic}.course-content img{max-width:100%;border-radius:12px;margin:1rem 0}.course-content a{color:#a855f7}.course-content table{width:100%;border-collapse:collapse;margin:1rem 0}.course-content th,.course-content td{padding:0.5rem;border:1px solid #1a1a26;text-align:left;font-size:0.9em}.course-content th{background:#1a1a26;color:#c0c0d0}</style></head>') + TOP_NAV + f'''
+    import json as _json_mod
+    # AI Course Tutor context
+    course_title = product[1] if product else 'this course'
+    
+    chatbot_widget = f'''
+<style>
+.chat-toggle{{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#a855f7,#ec4899);color:white;border:none;font-size:24px;cursor:pointer;z-index:999;box-shadow:0 4px 20px rgba(168,85,247,0.4);transition:all .3s}}
+.chat-toggle:hover{{transform:scale(1.1);box-shadow:0 6px 30px rgba(168,85,247,0.6)}}
+.chat-panel{{position:fixed;bottom:90px;right:24px;width:360px;height:500px;background:#0e0e16;border:1px solid #252533;border-radius:16px;z-index:998;display:none;flex-direction:column;box-shadow:0 10px 50px rgba(0,0,0,0.5);overflow:hidden}}
+.chat-panel.open{{display:flex}}
+.chat-header{{padding:14px 16px;background:linear-gradient(135deg,#1a0a2e,#0e0e16);border-bottom:1px solid #252533;display:flex;align-items:center;gap:10px;flex-shrink:0}}
+.chat-avatar{{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#a855f7,#ec4899);display:flex;align-items:center;justify-content:center;font-size:14px}}
+.chat-title{{font-size:13px;font-weight:600;color:white}}
+.chat-subtitle{{font-size:10px;color:#5c5c70}}
+.chat-close{{margin-left:auto;background:none;border:none;color:#5c5c70;cursor:pointer;font-size:18px;padding:4px}}
+.chat-messages{{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}}
+.chat-msg{{max-width:85%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.5;animation:fadeIn .3s}}
+.chat-msg.bot{{align-self:flex-start;background:#1a1a26;color:#d0d0e0;border-bottom-left-radius:4px}}
+.chat-msg.user{{align-self:flex-end;background:linear-gradient(135deg,#a855f722,#ec489922);color:white;border-bottom-right-radius:4px}}
+.chat-input-area{{padding:12px;border-top:1px solid #252533;display:flex;gap:8px;flex-shrink:0;background:#0a0a12}}
+.chat-input{{flex:1;background:#1a1a26;border:1px solid #252533;border-radius:10px;padding:10px 14px;color:white;font-size:13px;outline:none}}
+.chat-input:focus{{border-color:#a855f7}}
+.chat-send{{background:linear-gradient(135deg,#a855f7,#ec4899);color:white;border:none;border-radius:10px;padding:10px 14px;font-size:14px;cursor:pointer;white-space:nowrap}}
+.chat-send:hover{{opacity:.9}}
+.chat-loading{{align-self:flex-start;color:#5c5c70;font-size:12px;padding:8px 12px;animation:pulse 1.5s infinite}}
+.listen-btn{{background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.2);color:#c084fc;padding:6px 14px;border-radius:8px;font-size:11px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:5px}}
+.listen-btn:hover{{background:rgba(168,85,247,0.2)}}
+.listen-btn.speaking{{background:rgba(236,72,153,0.2);border-color:rgba(236,72,153,0.4);color:#f472b6;animation:pulse 1s infinite}}
+@keyframes fadeIn{{from{{opacity:0;transform:translateY(8px)}}to{{opacity:1;transform:translateY(0)}}}}
+@keyframes pulse{{0%,100%{{opacity:1}}50%{{opacity:0.6}}}}
+</style>
+<div class="chat-toggle" id="chatToggle" onclick="toggleChat()">💬</div>
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-header">
+    <div class="chat-avatar">🤖</div>
+    <div><div class="chat-title">AI Course Tutor</div><div class="chat-subtitle">Ask me anything about this module</div></div>
+    <button class="chat-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div class="chat-messages" id="chatMessages">
+    <div class="chat-msg bot">Hi! I'm your AI tutor for this course. Ask me anything about affiliate marketing, or about this specific module content 🎓</div>
+  </div>
+  <div class="chat-input-area">
+    <input class="chat-input" id="chatInput" placeholder="Ask a question..." onkeydown="if(event.key==='Enter')sendChat()">
+    <button class="chat-send" onclick="sendChat()">Send</button>
+  </div>
+</div>
+<script>
+function toggleChat(){{const p=document.getElementById('chatPanel');p.classList.toggle('open');if(p.classList.contains('open'))setTimeout(()=>document.getElementById('chatInput').focus(),300)}}
+function sendChat(){{const i=document.getElementById('chatInput'),q=i.value.trim();if(!q)return;i.value='';const m=document.getElementById('chatMessages');m.innerHTML+='<div class=\"chat-msg user\">'+q.replace(/</g,'&lt;')+'</div>';const li=document.createElement('div');li.className='chat-loading';li.textContent='AI is thinking...';m.appendChild(li);m.scrollTop=m.scrollHeight
+fetch('/api/course/chat',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{question:q,product_id:''' + _json_mod.dumps(product_id) + '''}})}}).then(r=>r.json()).then(d=>{{li.remove();const answer=d.answer||'Sorry, I could not process that.';m.innerHTML+='<div class=\"chat-msg bot\">'+answer.replace(/\\n/g,'<br>')+'</div>';m.scrollTop=m.scrollHeight}}).catch(e=>{{li.textContent='Connection error. Please try again.'}})}}
+function speakText(){{const el=document.querySelector('.course-content');if(!el)return;const txt=el.innerText.slice(0,3000);if(!txt)return;if(window.speechSynthesis.speaking){{window.speechSynthesis.cancel();document.querySelector('.listen-btn')?.classList.remove('speaking');return}}
+const u=new SpeechSynthesisUtterance(txt);u.rate=0.9;u.pitch=1;u.volume=1;u.lang='en-US';u.onend=()=>document.querySelector('.listen-btn')?.classList.remove('speaking');u.onerror=()=>document.querySelector('.listen-btn')?.classList.remove('speaking');document.querySelector('.listen-btn')?.classList.add('speaking');window.speechSynthesis.speak(u)}}
+</script>'''
+
+    page = LAYOUT_HEAD.replace('</head>', '<style>.course-content h1{font-size:1.5rem;font-weight:700;margin:1.5rem 0 0.5rem 0;color:#f1f1f5}.course-content h2{font-size:1.25rem;font-weight:600;margin:1.25rem 0 0.4rem 0;color:#e8e8f0}.course-content h3{font-size:1.1rem;font-weight:600;margin:1rem 0 0.3rem 0;color:#d0d0e0}.course-content p{margin:0.5rem 0;line-height:1.7;color:#c0c0d0}.course-content ul,.course-content ol{margin:0.5rem 0 0.5rem 1.5rem;line-height:1.7}.course-content li{margin:0.3rem 0;color:#c0c0d0}.course-content code{background:#1a1a26;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.85em;color:#a855f7}.course-content pre{background:#0e0e16;padding:1rem;border-radius:12px;overflow-x:auto;margin:0.8rem 0;border:1px solid #1a1a26;font-size:0.85em}.course-content blockquote{border-left:3px solid #a855f7;padding-left:1rem;margin:0.8rem 0;color:#8080a0;font-style:italic}.course-content img{max-width:100%;border-radius:12px;margin:1rem 0}.course-content a{color:#a855f7}.course-content table{width:100%;border-collapse:collapse;margin:1rem 0}.course-content th,.course-content td{padding:0.5rem;border:1px solid #1a1a26;text-align:left;font-size:0.9em}.course-content th{background:#1a1a26;color:#c0c0d0}</style></head>') + TOP_NAV + chatbot_widget + f'''
     <div class="max-w-7xl mx-auto px-4 py-6">
       <div class="flex items-center gap-2 text-xs text-[#5c5c70] mb-4">
         <a href="/my-courses/" class="hover:text-purple-400">My Courses</a>
@@ -782,6 +836,7 @@ def course_view(product_id, module_slug=None):
           <div class="card p-6 md:p-8">
             <div class="flex items-center justify-between mb-6">
               <h1 class="text-xl font-bold text-white">M{current_module["module_num"]:02d}: {current_module["title"]}</h1>
+              <button class="listen-btn" onclick="speakText()"><span>🔊</span> Listen</button>
             </div>
             <div class="course-content">
               {content_html}
@@ -802,6 +857,70 @@ def course_view(product_id, module_slug=None):
       </div>
     </div>''' + LAYOUT_FOOT
     return page
+
+@app.route('/api/course/chat', methods=['POST'])
+@course_portal_required
+def api_course_chat():
+    """AI Course Tutor — answers student questions about the course content."""
+    data = request.get_json() or {}
+    question = data.get('question', '').strip()
+    product_id = data.get('product_id', '')
+    if not question:
+        return jsonify({'answer': 'Please ask a question!'})
+    
+    # Get course context
+    db = get_db()
+    c = db.cursor()
+    product = c.execute("SELECT title, description FROM products WHERE id=?", (product_id,)).fetchone()
+    modules = c.execute("SELECT title, substr(content,1,800) FROM course_modules WHERE product_id=? ORDER BY module_num", (product_id,)).fetchall()
+    db.close()
+    
+    course_title = product[0] if product else 'Unknown'
+    course_desc = product[1][:300] if product else ''
+    course_info = 'Course: ' + course_title + '. Description: ' + course_desc
+    module_info = ''
+    for m in modules:
+        module_info += '\nModule: ' + m[0] + '\nContent preview: ' + (m[1][:200] if m[1] else '') + '...'
+    
+    system_prompt = ('You are an AI tutor for the course "' + course_title + '" at ShopZario.\n\n' + 
+        'Course info: ' + course_info + '\nCourse modules: ' + module_info + '\n\n' +
+        'Rules:\n- Help students understand affiliate marketing concepts clearly\n' +
+        '- Give practical, actionable advice\n- Be encouraging and supportive\n' +
+        '- If asked something outside course scope, gently guide back\n' +
+        '- Keep answers under 250 words\n- Use simple, conversational language\n' +
+        '- Dont make up facts about specific products/prices')
+    
+    try:
+        cfg = get_chatbot_config()
+        api_key = cfg.get('chatbot_api_key', '') or os.environ.get('DEEPSEEK_API_KEY', '')
+        provider = CHATBOT_PROVIDERS.get(cfg.get('chatbot_provider', 'deepseek'), CHATBOT_PROVIDERS['deepseek'])
+        model = cfg.get('chatbot_model', provider['default_model'])
+        
+        payload = json.dumps({
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": question}
+            ],
+            "temperature": 0.7,
+            "max_tokens": 500
+        }).encode()
+        
+        req = urllib.request.Request(
+            provider['api_url'],
+            data=payload,
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': provider['auth_header'](api_key)
+            }
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read().decode())
+        answer = result['choices'][0]['message']['content']
+        return jsonify({'answer': answer})
+    except Exception as e:
+        return jsonify({'answer': f'I apologize, but I encountered an error. Please try rephrasing your question. (Error: {str(e)[:100]})'})
+
 
 @app.route('/course/<product_id>/<module_slug>/complete', methods=['POST'])
 @course_portal_required

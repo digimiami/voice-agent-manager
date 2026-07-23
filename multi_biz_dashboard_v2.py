@@ -25,7 +25,7 @@ from functools import wraps
 import secrets
 
 DB_PATH = "/root/voice-agent-businesses.db"
-VAPI_API_KEY = os.environ.get("VAPI_API_KEY", "")
+VAPI_API_KEY = os.environ.get("VAPI_API_KEY", "") or "d9486ec8-b862-460b-97ba-64bbb639f234"
 VAPI_BASE = "https://api.vapi.ai"
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
@@ -3851,44 +3851,13 @@ def api_campaign_status():
 def schedule_page():
     return redirect('/')
 
-def start_campaign():
-    bid = session['business_id']
-    from flask import flash, redirect
-    
-    if request.method == 'GET':
-        flash('Use the Start button on the overview tab.', 'info')
-        return redirect('/')
-    
-    db = get_db()
-    c = db.cursor()
-    c.execute("SELECT COUNT(*) FROM leads WHERE business_id = ? AND state = 'NEW'", (bid,))
-    count = c.fetchone()[0]
-    if count == 0:
-        flash('No leads to call! Upload leads first.', 'error')
-        return redirect('/')
-    
-    c.execute("UPDATE campaigns SET status = 'running', started_at = datetime('now') WHERE business_id = ?", (bid,))
-    db.commit()
-    
-    # Clear old campaign logs
-    c.execute("DELETE FROM campaign_log WHERE business_id = ?", (bid,))
-    db.commit()
-    
-    campaign_status_cache[bid] = 'starting'
-    t = threading.Thread(target=run_campaign_bg, args=(bid,), daemon=True)
-    campaign_threads[bid] = t
-    t.start()
-    
-    flash('🚀 Campaign started!', 'success')
-    return redirect('/')
-
 @app.route('/campaign/stop', methods=['GET', 'POST'])
 @login_required
 def stop_campaign():
     bid = session['business_id']
     if request.method == 'GET':
         flash('Use the Stop button on the overview tab.', 'info')
-        return redirect('/')
+        return redirect('/?tab=leads')
     db = get_db()
     c = db.cursor()
     c.execute("UPDATE campaigns SET status = 'stopped' WHERE business_id = ?", (bid,))
@@ -3897,17 +3866,96 @@ def stop_campaign():
     flash('⏹️ Campaign stopped.', 'info')
     return redirect('/')
 
-@app.route('/campaign/reset', methods=['POST'])
+@app.route('/campaign/reset', methods=['GET', 'POST'])
 @login_required
 def reset_campaign():
     bid = session['business_id']
+    if request.method == 'GET':
+        flash('Use the Reset button on the Leads tab.', 'info')
+        return redirect('/?tab=leads')
     db = get_db()
     c = db.cursor()
+    # Stop any running campaign thread
+    if bid in campaign_threads:
+        try: campaign_threads[bid] = None
+        except: pass
+    # Clear campaign logs so monitor starts fresh
+    c.execute("DELETE FROM campaign_log WHERE business_id = ?", (bid,))
     c.execute("UPDATE leads SET state = 'NEW', retry_count = 0 WHERE business_id = ?", (bid,))
     c.execute("UPDATE campaigns SET status = 'idle', calls_made = 0 WHERE business_id = ?", (bid,))
+    campaign_status_cache[bid] = 'idle'
     db.commit()
     flash('🔄 Campaign reset. All leads set to NEW.', 'success')
-    return redirect('/')
+    return redirect('/?tab=leads')
+
+# ── CAMPAIGN MONITOR API ──
+@app.route('/api/campaign/monitor')
+@login_required
+def campaign_monitor():
+    """Returns live campaign status + recent log entries for real-time monitoring."""
+    try:
+        bid = session.get('business_id')
+        if not bid:
+            return jsonify({'error': 'Not logged in'}), 401
+        db = get_db()
+        c = db.cursor()
+        
+        # Campaign status
+        c.execute("SELECT status, calls_made, last_run_at, schedule_enabled, schedule_time, schedule_days, started_at FROM campaigns WHERE business_id=?", (bid,))
+        camp = c.fetchone()
+        
+        # Lead counts by state
+        c.execute("SELECT state, COUNT(*) as cnt FROM leads WHERE business_id=? GROUP BY state", (bid,))
+        lead_states = {r[0]: r[1] for r in c.fetchall()}
+        
+        # Total leads
+        c.execute("SELECT COUNT(*) FROM leads WHERE business_id=?", (bid,))
+        total = c.fetchone()[0]
+        
+        # Leads with retry info
+        c.execute("SELECT COUNT(*) FROM leads WHERE business_id=? AND (retry_count IS NULL OR retry_count < 3)", (bid,))
+        retryable = c.fetchone()[0]
+        c.execute("SELECT COUNT(*) FROM leads WHERE business_id=? AND retry_count >= 3", (bid,))
+        exhausted = c.fetchone()[0]
+        
+        # Recent campaign log (last 30 entries)
+        c.execute("SELECT message, level, created_at FROM campaign_log WHERE business_id=? ORDER BY created_at DESC LIMIT 30", (bid,))
+        logs = [dict(r) for r in c.fetchall()]
+        
+        # Recent call log (last 10)
+        c.execute("""
+            SELECT cl.outcome, cl.duration, cl.cost, cl.created_at, l.phone, l.business_name, l.name as lead_name
+            FROM call_log cl LEFT JOIN leads l ON cl.lead_id = l.id
+            WHERE cl.business_id=? ORDER BY cl.created_at DESC LIMIT 10
+        """, (bid,))
+        recent_calls = [dict(r) for r in c.fetchall()]
+        
+        # Thread status
+        thread_alive = bid in campaign_threads and campaign_threads[bid].is_alive()
+        campaign_running = camp and camp[0] == 'running' if camp else False
+        
+        # Currently calling leads
+        c.execute("SELECT id, phone, name, business_name, last_called_at FROM leads WHERE business_id=? AND state='CALLING' ORDER BY last_called_at DESC LIMIT 10", (bid,))
+        calling_leads = [dict(r) for r in c.fetchall()]
+        
+        db.close()
+        
+        return jsonify({
+            'campaign': dict(camp) if camp else None,
+            'lead_states': lead_states,
+            'total_leads': total,
+            'retryable': retryable,
+            'exhausted': exhausted,
+            'logs': logs,
+            'recent_calls': recent_calls,
+            'calling_leads': calling_leads,
+            'thread_alive': thread_alive,
+            'campaign_running': campaign_running
+        })
+    except Exception as e:
+        import traceback, sys
+        traceback.print_exc(file=sys.stderr)
+        return jsonify({'error': str(e)[:300], 'line': str(getattr(e, '__traceback__', None))}), 500
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import random

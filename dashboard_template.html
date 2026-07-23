@@ -112,6 +112,20 @@ tr:last-child td{border-bottom:none}
     <div class="card text-center"><div class="stat-value">{{ stats.leads_total or 0 }}</div><div class="text-xs text-[#7a7a8e] mt-1">📋 Total Leads</div></div>
   </div>
 
+  <!-- Live Calling Status -->
+  <div class="card mb-6" id="liveCallingCard">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="font-bold text-sm"><i class="fas fa-phone-volume text-green-400 mr-1"></i> 📞 <span id="callingStatusLabel">Calling Status</span></h3>
+      <div class="flex items-center gap-2">
+        <span id="callingCountBadge" class="text-xs px-2 py-0.5 rounded-full bg-[#252533] text-[#7a7a8e]">0 calling</span>
+        <span id="callingLiveDot" class="hidden w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+      </div>
+    </div>
+    <div id="callingLeadsList" class="space-y-1 text-xs">
+      <div class="text-[#5c5c70] text-center py-3">Checking campaign status...</div>
+    </div>
+  </div>
+
   <div class="grid md:grid-cols-2 gap-6">
     <div class="card">
       <h3 class="font-bold mb-3">🚀 Campaign Status</h3>
@@ -161,7 +175,11 @@ tr:last-child td{border-bottom:none}
   <!-- ======== TAB: LEADS ======== -->
   {% elif tab == 'leads' %}
   <div class="flex gap-3 mb-6 flex-wrap items-center">
+    {% if campaign_status == 'running' %}
+    <form method="POST" action="/campaign/stop" onsubmit="return confirm('Stop campaign?')"><button type="submit" class="btn-danger text-xs" style="background:#ef4444;color:white;padding:8px 16px;border-radius:8px;font-weight:600;border:none;cursor:pointer;font-size:12px">⏹ Stop Campaign</button></form>
+    {% else %}
     <form method="POST" action="/campaign/start" onsubmit="return confirm('Start calling leads now?')"><button type="submit" class="btn-primary text-xs">▶ Start Campaign</button></form>
+    {% endif %}
     <button onclick="showAddLeadModal()" class="btn-secondary text-xs">+ Add Lead</button>
     <form method="POST" action="/upload-leads" enctype="multipart/form-data" id="csvUploadForm" class="inline" style="display:inline-flex;align-items:center;gap:6px">
       <label for="csvInput" class="btn-secondary text-xs" style="cursor:pointer;padding:8px 14px;margin:0">📤 Choose CSV</label>
@@ -199,6 +217,112 @@ tr:last-child td{border-bottom:none}
     <div id="noLeadsMsg" class="hidden text-center py-10 text-[#5c5c70]"><p>No leads match your search.</p></div>
     {% else %}<div class="text-center py-10 text-[#5c5c70]"><p>No leads yet. Upload a CSV or add leads manually.</p></div>{% endif %}
   </div>
+
+  <!-- ======== CAMPAIGN MONITOR ======== -->
+  <div class="card mt-4" id="campaignMonitor">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-bold text-sm"><i class="fas fa-tower-broadcast text-purple-400 mr-1"></i> 📡 Campaign Activity</h3>
+      <div class="flex items-center gap-2">
+        <span id="monitorStatus" class="text-xs px-2 py-0.5 rounded-full bg-[#252533] text-[#7a7a8e]">Loading...</span>
+        <span id="liveDot" class="hidden w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="grid grid-cols-4 gap-2 mb-3 text-center">
+      <div class="bg-[#1a1a26] rounded-lg p-2"><div class="text-lg font-bold text-white" id="monTotal">0</div><div class="text-[10px] text-[#7a7a8e]">Total</div></div>
+      <div class="bg-[#1a1a26] rounded-lg p-2"><div class="text-lg font-bold text-blue-400" id="monNew">0</div><div class="text-[10px] text-[#7a7a8e]">New</div></div>
+      <div class="bg-[#1a1a26] rounded-lg p-2"><div class="text-lg font-bold text-amber-400" id="monCalling">0</div><div class="text-[10px] text-[#7a7a8e]">Calling</div></div>
+      <div class="bg-[#1a1a26] rounded-lg p-2"><div class="text-lg font-bold text-green-400" id="monCalled">0</div><div class="text-[10px] text-[#7a7a8e]">Called</div></div>
+    </div>
+
+    <!-- Live log feed -->
+    <div id="monitorLog" class="space-y-1 max-h-48 overflow-y-auto text-xs font-mono" style="background:#0a0a12;border-radius:8px;padding:8px">
+      <div class="text-[#5c5c70] text-center py-4">Waiting for activity...</div>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.monitor-log-entry{padding:4px 8px;border-radius:4px;border-left:3px solid #252533;margin-bottom:2px;animation:fadeSlideIn 0.3s ease-out}
+@keyframes fadeSlideIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.monitor-log-entry.level-success{border-left-color:#4ade80;background:rgba(74,222,128,0.05)}
+.monitor-log-entry.level-error{border-left-color:#ef4444;background:rgba(239,68,68,0.05)}
+.monitor-log-entry.level-warning{border-left-color:#fbbf24;background:rgba(251,191,36,0.05)}
+.monitor-log-entry.level-info{border-left-color:#818cf8;background:rgba(129,140,248,0.05)}
+</style>
+
+<script>
+// Auto-refresh campaign monitor every 5 seconds
+var monitorInterval = setInterval(refreshMonitor, 5000);
+var firstLoad = true;
+
+async function refreshMonitor() {
+  try {
+    var r = await fetch('/api/campaign/monitor');
+    var d = await r.json();
+    updateMonitor(d);
+  } catch(e) {}
+}
+
+function updateMonitor(d) {
+  document.getElementById('monTotal').textContent = d.total_leads || 0;
+  document.getElementById('monNew').textContent = d.lead_states?.NEW || 0;
+  document.getElementById('monCalling').textContent = (d.lead_states?.CALLING||0) + (d.lead_states?.QUEUED||0);
+  document.getElementById('monCalled').textContent = (d.lead_states?.CALLED||0) + (d.lead_states?.INTERESTED||0) + (d.lead_states?.NO_ANSWER||0) + (d.lead_states?.NOT_INTERESTED||0);
+  
+  var statusEl = document.getElementById('monitorStatus');
+  var dotEl = document.getElementById('liveDot');
+  var camp = d.campaign;
+  
+  if (d.campaign_running && d.thread_alive) {
+    statusEl.textContent = '🔴 RUNNING';
+    statusEl.style.background = 'rgba(74,222,128,0.15)';
+    statusEl.style.color = '#4ade80';
+    dotEl.classList.remove('hidden');
+  } else if (camp && camp.status == 'completed') {
+    statusEl.textContent = '✅ COMPLETED';
+    statusEl.style.background = 'rgba(129,140,248,0.15)';
+    statusEl.style.color = '#818cf8';
+    dotEl.classList.add('hidden');
+  } else if (camp && camp.status == 'stopped') {
+    statusEl.textContent = '⏹️ STOPPED';
+    statusEl.style.background = 'rgba(239,68,68,0.15)';
+    statusEl.style.color = '#ef4444';
+    dotEl.classList.add('hidden');
+  } else {
+    statusEl.textContent = '⏸️ IDLE';
+    statusEl.style.background = 'rgba(37,37,51,0.5)';
+    statusEl.style.color = '#7a7a8e';
+    dotEl.classList.add('hidden');
+  }
+
+  // Build log feed
+  if (d.logs && d.logs.length > 0) {
+    var logHtml = '';
+    var maxLogs = 15;
+    for (var i = 0; i < Math.min(d.logs.length, maxLogs); i++) {
+      var entry = d.logs[i];
+      var time = (entry.created_at || '').slice(11, 19);
+      var emoji = entry.level == 'success' ? '✅' : entry.level == 'error' ? '❌' : entry.level == 'warning' ? '⚠️' : '📡';
+      logHtml += '<div class="monitor-log-entry level-' + entry.level + '">';
+      logHtml += '<span class="text-[#5c5c70] mr-2">' + time + '</span>';
+      logHtml += '<span>' + emoji + ' ' + (entry.message || '').slice(0, 120) + '</span></div>';
+    }
+    document.getElementById('monitorLog').innerHTML = logHtml;
+  }
+}
+
+// Stop refresh when leaving the page
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden) clearInterval(monitorInterval);
+  else monitorInterval = setInterval(refreshMonitor, 5000);
+});
+
+// Refresh immediately on page load
+setTimeout(refreshMonitor, 500);
+</script>
 
   <!-- ======== TAB: CALL HISTORY ======== -->
   {% elif tab == 'calls' %}
@@ -538,6 +662,78 @@ setTimeout(browseNumbers,500);
 function generateKB(type){var btn=document.getElementById(type==='inbound'?'genInboundBtn':'genKBBtn');var status=document.getElementById('kbGenStatus');var ta=document.getElementById('kbTextarea');var scriptTa=document.getElementById('scriptTextarea');btn.disabled=true;btn.textContent='⏳ Generating...';status.textContent='Generating '+type+' knowledge base via AI...';status.style.color='#c084fc';fetch('/api/generate-kb',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({method:'venice',type:type})}).then(function(r){return r.json()}).then(function(d){btn.disabled=false;btn.textContent=type==='inbound'?'📞 AI Generate Inbound KB':'🤖 AI Generate KB';if(d.success){ta.value=d.content;status.textContent='✅ '+d.message;status.style.color='#4ade80';if(scriptTa){var bizName=document.querySelector('h1')?.textContent?.trim()||'Your Business';var scriptContent='You are an AI voice assistant for '+bizName+'. You make '+(type==='inbound'?'incoming':'outbound')+' calls. Be professional, concise, and helpful. Use the knowledge base below to answer questions accurately.\n\nKnowledge Base:\n'+d.content;scriptTa.value=scriptContent}}else{status.textContent='❌ '+(d.message||'Generation failed');status.style.color='#ef4444'}}).catch(function(){btn.disabled=false;btn.textContent=type==='inbound'?'📞 AI Generate Inbound KB':'🤖 AI Generate KB';status.textContent='❌ Network error';status.style.color='#ef4444'})}
 // Play Voice
 function playVoice(voiceId){var text="Hi, this is your AI voice assistant.";var audio=new Audio('/api/test-voice?voice_id='+encodeURIComponent(voiceId)+'&text='+encodeURIComponent(text)+'&speed=1.0&t='+Date.now());audio.play().catch(function(e){console.log('Play failed:',e)});}
+
+// ── LIVE CALLING STATUS (overview tab) ──
+var callingInterval = setInterval(refreshCallingStatus, 4000);
+var callingFirst = true;
+
+async function refreshCallingStatus() {
+  try {
+    var r = await fetch('/api/campaign/monitor');
+    var d = await r.json();
+    updateCallingStatus(d);
+  } catch(e) {}
+}
+
+function updateCallingStatus(d) {
+  var list = document.getElementById('callingLeadsList');
+  var badge = document.getElementById('callingCountBadge');
+  var dot = document.getElementById('callingLiveDot');
+  var label = document.getElementById('callingStatusLabel');
+  
+  var calling = d.calling_leads || [];
+  var running = d.campaign_running && d.thread_alive;
+  
+  if (calling.length > 0) {
+    label.textContent = 'Now Calling';
+    badge.textContent = calling.length + ' calling';
+    badge.style.background = 'rgba(74,222,128,0.15)';
+    badge.style.color = '#4ade80';
+    dot.classList.remove('hidden');
+    
+    var html = '';
+    calling.forEach(function(l) {
+      var name = l.name || l.business_name || 'Lead';
+      var phone = (l.phone || '').slice(0, 14);
+      var time = (l.last_called_at || '').slice(11, 19);
+      html += '<div class="flex items-center gap-2 p-2 rounded-lg bg-[#1a1a26] border-l-2 border-green-400 animate-pulse">';
+      html += '<span class="w-2 h-2 bg-green-400 rounded-full"></span>';
+      html += '<span class="font-medium text-green-400">' + name.slice(0, 20) + '</span>';
+      html += '<span class="text-[#7a7a8e]">' + phone + '</span>';
+      if (time) html += '<span class="text-[#5c5c70] ml-auto text-[10px]">' + time + ' ago</span>';
+      html += '</div>';
+    });
+    list.innerHTML = html;
+  } else if (running) {
+    label.textContent = 'Waiting for next cycle';
+    badge.textContent = d.lead_states?.NEW || 0 + ' pending';
+    badge.style.background = 'rgba(251,191,36,0.15)';
+    badge.style.color = '#fbbf24';
+    dot.classList.add('hidden');
+    list.innerHTML = '<div class="text-[#5c5c70] text-center py-3">⏳ Campaign running — waiting for next call cycle</div>';
+  } else if (d.campaign && d.campaign.status == 'completed') {
+    label.textContent = 'Campaign Complete';
+    badge.textContent = '✅ Done';
+    badge.style.background = 'rgba(129,140,248,0.15)';
+    badge.style.color = '#818cf8';
+    dot.classList.add('hidden');
+    list.innerHTML = '<div class="text-[#5c5c70] text-center py-3">All leads have been called</div>';
+  } else {
+    label.textContent = 'Idle';
+    badge.textContent = '0 calling';
+    badge.style.background = 'rgba(37,37,51,0.5)';
+    badge.style.color = '#7a7a8e';
+    dot.classList.add('hidden');
+    list.innerHTML = '<div class="text-[#5c5c70] text-center py-3">No active campaign. Start one from the Leads tab.</div>';
+  }
+}
+
+// Stop calling poll when leaving page
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden) clearInterval(callingInterval);
+  else callingInterval = setInterval(refreshCallingStatus, 4000);
+});
+setTimeout(refreshCallingStatus, 300);
 </script>
 
 </body>
