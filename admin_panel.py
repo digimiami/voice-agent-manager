@@ -20,6 +20,10 @@ from pathlib import Path
 from flask import Flask, render_template_string, jsonify, request, redirect, session, url_for, flash
 from functools import wraps
 
+# Import Agent API module
+from agent_api import agent_api, init_api_keys_table, generate_api_key, validate_api_key
+from agent_api import api_key_required
+
 DB_PATH = "/root/voice-agent-businesses.db"
 VAPI_API_KEY = "49e91b8a-21d2-458c-a586-d6368289e5a6"
 VAPI_BASE = "https://api.vapi.ai"
@@ -27,6 +31,27 @@ VAPI_BASE = "https://api.vapi.ai"
 app = Flask(__name__)
 app.secret_key = "admin-secret-key-hermes-2026"
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
+
+# Register Agent API blueprint
+app.register_blueprint(agent_api)
+init_api_keys_table()
+
+# Ensure first API key exists for admin use
+try:
+    db = sqlite3.connect(DB_PATH)
+    c = db.cursor()
+    c.execute("SELECT COUNT(*) FROM api_keys")
+    if c.fetchone()[0] == 0:
+        key_id, raw_key, _ = generate_api_key(
+            name="Default Admin Key",
+            description="Auto-generated admin API key",
+            permissions="read,write,admin",
+            created_by="system"
+        )
+        print(f"🔑 Default API key generated: {raw_key}")
+    db.close()
+except Exception as e:
+    print(f"⚠️ Could not create default API key: {e}")
 
 # ── INDUSTRY PRESETS ──
 
@@ -121,7 +146,8 @@ ADMIN_HTML = """<!DOCTYPE html>
                 ('email', 'envelope', 'Email Config'),
                 ('sms', 'message', 'SMS/Calendar'),
                 ('stripe', 'credit-card', 'Stripe'),
-                ('agent-tars', 'robot', 'Agent TARS')
+                ('agent-tars', 'robot', 'Agent TARS'),
+                ('agent-api', 'key', 'Agent API')
             ] %}
             {% for key, icon, label in admin_tabs %}
             <a href="?tab={{ key }}" class="sidebar-item flex items-center gap-2 {% if tab == key %}active{% endif %}">
@@ -948,6 +974,331 @@ ADMIN_HTML = """<!DOCTYPE html>
                 </ul>
             </div>
         </div>
+        {% elif tab == 'agent-api' %}
+        <h2 class="text-xl font-bold mb-6">🔑 Agent API — Connect AI Agents</h2>
+        <p class="text-sm text-[#64748b] mb-6">Generate API keys so AI agents can connect to the Diazites system, manage accounts, run campaigns, and generate reports programmatically.</p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Generate Key -->
+            <div class="card">
+                <h3 class="font-bold mb-3">✨ Generate New API Key</h3>
+                <p class="text-xs text-[#64748b] mb-4">Create a key for an AI agent with specific permissions.</p>
+                <form id="apiKeyForm" class="space-y-3" onsubmit="return generateApiKey(event)">
+                    <div>
+                        <label class="text-xs text-[#64748b] block mb-1">Key Name *</label>
+                        <input type="text" id="keyName" placeholder="e.g. Auto-Agent TARS" required>
+                    </div>
+                    <div>
+                        <label class="text-xs text-[#64748b] block mb-1">Description</label>
+                        <input type="text" id="keyDesc" placeholder="For automated campaign management">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-xs text-[#64748b] block mb-1">Permissions</label>
+                            <select id="keyPerms" class="text-xs">
+                                <option value="read">Read Only</option>
+                                <option value="read,write" selected>Read + Write</option>
+                                <option value="read,write,admin">Full Admin</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-[#64748b] block mb-1">Expires In</label>
+                            <select id="keyExpiry" class="text-xs">
+                                <option value="30">30 days</option>
+                                <option value="90">90 days</option>
+                                <option value="365" selected>1 year</option>
+                                <option value="0">Never</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary text-sm w-full"><i class="fas fa-key mr-1"></i> Generate Key</button>
+                </form>
+                <!-- Generated key display -->
+                <div id="newKeyResult" class="mt-4 hidden">
+                    <div class="bg-[#0a0a12] border border-[#22c55e]/30 rounded-lg p-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-green-400">✅ Key generated!</span>
+                        </div>
+                        <div class="bg-[#1a1a28] rounded-lg p-3 font-mono text-xs text-[#fbbf24] break-all select-all" id="newKeyValue">loading...</div>
+                        <p class="text-xs text-red-400 mt-2">⚠️ Copy this key now — it won't be shown again!</p>
+                        <button onclick="copyKey()" class="btn-secondary text-xs mt-2"><i class="fas fa-copy mr-1"></i> Copy to Clipboard</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Keys -->
+            <div class="card">
+                <h3 class="font-bold mb-3">🔐 Active API Keys</h3>
+                <div id="apiKeysList">
+                    <p class="text-[#64748b] text-sm"><i class="fas fa-spinner fa-spin mr-2"></i>Loading keys...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Documentation -->
+        <div class="card mb-6">
+            <h3 class="font-bold mb-3">📖 API Documentation</h3>
+            <p class="text-xs text-[#64748b] mb-4">Base URL: <code class="bg-[#1a1a28] px-2 py-0.5 rounded text-[#818cf8]">https://diazites.online/api/v1</code></p>
+            <p class="text-xs text-[#64748b] mb-4">Authenticate with: <code class="bg-[#1a1a28] px-2 py-0.5 rounded text-[#fbbf24]">Authorization: Bearer &lt;your_api_key&gt;</code></p>
+            
+            <div class="overflow-x-auto">
+                <table>
+                    <tr><th class="w-20">Method</th><th>Endpoint</th><th>Description</th></tr>
+                    <tr><td><span class="badge badge-active text-xs">GET</span></td><td class="font-mono text-xs">/api/v1/health</td><td>Health check (no auth)</td></tr>
+                    <tr><td><span class="badge badge-active text-xs">GET</span></td><td class="font-mono text-xs">/api/v1/businesses</td><td>List all businesses</td></tr>
+                    <tr><td><span class="text-xs text-yellow-400">POST</span></td><td class="font-mono text-xs">/api/v1/businesses</td><td>Create a business</td></tr>
+                    <tr><td><span class="badge badge-active text-xs">GET</span></td><td class="font-mono text-xs">/api/v1/businesses/&lt;id&gt;</td><td>Get business details</td></tr>
+                    <tr><td><span class="text-xs text-blue-400">PUT</span></td><td class="font-mono text-xs">/api/v1/businesses/&lt;id&gt;</td><td>Update a business</td></tr>
+                    <tr><td><span class="text-xs text-red-400">DEL</span></td><td class="font-mono text-xs">/api/v1/businesses/&lt;id&gt;</td><td>Delete business (admin only)</td></tr>
+                    <tr><td><span class="badge badge-active text-xs">GET</span></td><td class="font-mono text-xs">/api/v1/leads?business_id=X</td><td>List leads (filterable)</td></tr>
+                    <tr><td><span class="text-xs text-yellow-400">POST</span></td><td class="font-mono text-xs">/api/v1/leads</td><td>Add leads to a business</td></tr>
+                    <tr><td><span class="badge badge-active text-xs">GET</span></td><td class="font-mono text-xs">/api/v1/reports/overview</td><td>System overview report</td></tr>
+                    <tr><td><span class="badge badge-active text-xs">GET</span></td><td class="font-mono text-xs">/api/v1/reports/billing</td><td>Billing report (per-client)</td></tr>
+                    <tr><td><span class="badge badge-active text-xs">GET</span></td><td class="font-mono text-xs">/api/v1/reports/calls</td><td>Call log report</td></tr>
+                    <tr><td><span class="text-xs text-yellow-400">POST</span></td><td class="font-mono text-xs">/api/v1/campaigns/&lt;bid&gt;/start</td><td>Start a campaign</td></tr>
+                    <tr><td><span class="text-xs text-yellow-400">POST</span></td><td class="font-mono text-xs">/api/v1/campaigns/&lt;bid&gt;/stop</td><td>Stop a campaign</td></tr>
+                    <tr><td><span class="badge badge-active text-xs">GET</span></td><td class="font-mono text-xs">/api/v1/campaigns/status</td><td>All campaign statuses</td></tr>
+                    <tr><td><span class="badge badge-active text-xs">GET</span></td><td class="font-mono text-xs">/api/v1/settings</td><td>System settings (industries, tiers)</td></tr>
+                    <tr><td><span class="badge badge-active text-xs">GET</span></td><td class="font-mono text-xs">/api/v1/export/businesses</td><td>Export businesses as CSV</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- API Test Console -->
+        <div class="card mb-6">
+            <h3 class="font-bold mb-3">🧪 API Test Console</h3>
+            <p class="text-xs text-[#64748b] mb-4">Paste an API key and test endpoints directly.</p>
+            <form id="apiTestForm" class="space-y-3" onsubmit="return testApiEndpoint(event)">
+                <div class="grid grid-cols-3 gap-3">
+                    <select id="testMethod" class="text-xs">
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PUT">PUT</option>
+                        <option value="DELETE">DELETE</option>
+                    </select>
+                    <input type="text" id="testEndpoint" class="text-xs font-mono col-span-2" placeholder="/api/v1/health" value="/api/v1/health">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="text" id="testKey" class="text-xs font-mono" placeholder="API Key (dz_...)">
+                    <input type="text" id="testBody" class="text-xs font-mono" placeholder="JSON body (for POST/PUT)">
+                </div>
+                <button type="submit" class="btn-primary text-sm"><i class="fas fa-play mr-1"></i> Send Request</button>
+            </form>
+            <div id="testResult" class="mt-4 hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold">Response</span>
+                    <span id="testStatus" class="text-xs px-2 py-0.5 rounded"></span>
+                </div>
+                <pre id="testResponse" class="bg-[#0a0a12] border border-[#1a1a28] rounded-lg p-3 text-xs font-mono text-[#cbd5e1] max-h-64 overflow-y-auto whitespace-pre-wrap"></pre>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 class="font-bold mb-3">🤖 Example: Auto-Agent Script</h3>
+            <p class="text-xs text-[#64748b] mb-3">Use this curl command to connect any AI agent to the Diazites API:</p>
+            <div class="bg-[#0a0a12] border border-[#1a1a28] rounded-lg p-4 font-mono text-xs text-[#cbd5e1] whitespace-pre-wrap">
+# 1. Check system health
+curl -s https://diazites.online/api/v1/health | jq .
+
+# 2. List all businesses
+curl -s -H "Authorization: Bearer YOUR_API_KEY" \
+  https://diazites.online/api/v1/businesses | jq .
+
+# 3. Get overview report
+curl -s -H "Authorization: Bearer YOUR_API_KEY" \
+  https://diazites.online/api/v1/reports/overview | jq .
+
+# 4. Create a new business
+curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Joe Plumbing","industry":"plumber","plan":"pro","email":"joe@example.com"}' \
+  https://diazites.online/api/v1/businesses | jq .
+
+# 5. Add leads
+curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"business_id":"BUSINESS_ID","leads":["+13055550100","+17865550101"]}' \
+  https://diazites.online/api/v1/leads | jq .
+
+# 6. Start campaign
+curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
+  https://diazites.online/api/v1/campaigns/BUSINESS_ID/start | jq .
+            </div>
+        </div>
+
+        <script>
+        // ── Load API Keys ──
+        function loadApiKeys() {
+            fetch('/api/v1/auth/keys', {
+                headers: {'Authorization': 'Bearer admin-api-check'}
+            })
+            .then(function(r) { 
+                if (!r.ok) throw new Error('Auth failed — use admin password login');
+                return r.json(); 
+            })
+            .then(function(d) {
+                var html = '';
+                if (!d.keys || d.keys.length === 0) {
+                    html = '<p class="text-[#64748b] text-sm">No API keys yet. Generate one above.</p>';
+                } else {
+                    html = '<div class="space-y-2">';
+                    d.keys.forEach(function(k) {
+                        var status = k.active ? '<span class="text-green-400">● Active</span>' : '<span class="text-red-400">● Revoked</span>';
+                        var perms = (k.permissions || '').replace(/,/g, ' / ').toUpperCase();
+                        var lastUsed = k.last_used_at ? k.last_used_at.slice(0, 10) : 'Never';
+                        html += '<div class="bg-[#1a1a28] rounded-lg p-3 text-xs flex items-center justify-between">' +
+                            '<div class="flex-1">' +
+                            '<div class="font-semibold text-[#e2e8f0]">' + k.name + ' <span class="text-[#64748b] font-normal">' + status + '</span></div>' +
+                            '<div class="text-[#64748b] mt-0.5">' + perms + ' · Last: ' + lastUsed + '</div>' +
+                            '<div class="text-[#5c5c70] font-mono text-[10px]">' + k.id + '</div>' +
+                            '</div>' +
+                            (k.active ? 
+                            '<button onclick="revokeKey(\'' + k.id + '\')" class="text-red-400 hover:text-red-300 text-xs py-1 px-2 border border-red-800 rounded"><i class="fas fa-ban mr-1"></i>Revoke</button>' :
+                            '<button onclick="reactivateKey(\'' + k.id + '\')" class="text-green-400 hover:text-green-300 text-xs py-1 px-2 border border-green-800 rounded"><i class="fas fa-undo mr-1"></i>Reactivate</button>'
+                            ) +
+                            '</div>';
+                    });
+                    html += '</div>';
+                }
+                document.getElementById('apiKeysList').innerHTML = html;
+            })
+            .catch(function(err) {
+                document.getElementById('apiKeysList').innerHTML = '<p class="text-red-400 text-xs">❌ ' + err.message + '</p>';
+            });
+        }
+
+        // ── Generate API Key ──
+        function generateApiKey(e) {
+            e.preventDefault();
+            var name = document.getElementById('keyName').value.trim();
+            if (!name) { alert('Key name is required'); return false; }
+            var btn = e.target.querySelector('button[type=submit]');
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Generating...';
+
+            fetch('/api/v1/auth/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer admin-api-check'
+                },
+                body: JSON.stringify({
+                    name: name,
+                    description: document.getElementById('keyDesc').value.trim(),
+                    permissions: document.getElementById('keyPerms').value,
+                    expires_in_days: parseInt(document.getElementById('keyExpiry').value)
+                })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                btn.disabled = false; btn.innerHTML = '<i class="fas fa-key mr-1"></i> Generate Key';
+                if (d.success) {
+                    document.getElementById('newKeyValue').textContent = d.api_key;
+                    document.getElementById('newKeyResult').classList.remove('hidden');
+                    document.getElementById('keyName').value = '';
+                    document.getElementById('keyDesc').value = '';
+                    loadApiKeys();
+                } else {
+                    alert('Error: ' + (d.error || 'Failed to generate key'));
+                }
+            })
+            .catch(function(err) {
+                btn.disabled = false; btn.innerHTML = '<i class="fas fa-key mr-1"></i> Generate Key';
+                alert('Error: ' + err.message);
+            });
+            return false;
+        }
+
+        // ── Revoke Key ──
+        function revokeKey(keyId) {
+            if (!confirm('Revoke this API key? Agents using it will lose access immediately.')) return;
+            fetch('/api/v1/auth/keys/' + keyId, {
+                method: 'DELETE',
+                headers: {'Authorization': 'Bearer admin-api-check'}
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.success) loadApiKeys();
+                else alert('Error: ' + (d.error || 'Failed to revoke'));
+            })
+            .catch(function(err) { alert('Error: ' + err.message); });
+        }
+
+        // ── Reactivate Key ──
+        function reactivateKey(keyId) {
+            if (!confirm('Reactivate this API key?')) return;
+            fetch('/api/v1/auth/keys/' + keyId + '?reactivate=true', {
+                method: 'POST',
+                headers: {'Authorization': 'Bearer admin-api-check'}
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.success) loadApiKeys();
+                else alert('Error: ' + (d.error || 'Failed to reactivate'));
+            })
+            .catch(function(err) { alert('Error: ' + err.message); });
+        }
+
+        // ── Copy Key ──
+        function copyKey() {
+            var key = document.getElementById('newKeyValue');
+            navigator.clipboard.writeText(key.textContent).then(function() {
+                var btn = event.target;
+                var orig = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check mr-1"></i> Copied!';
+                setTimeout(function() { btn.innerHTML = orig; }, 2000);
+            });
+        }
+
+        // ── Test Console ──
+        function testApiEndpoint(e) {
+            e.preventDefault();
+            var method = document.getElementById('testMethod').value;
+            var endpoint = document.getElementById('testEndpoint').value.trim();
+            var key = document.getElementById('testKey').value.trim();
+            var body = document.getElementById('testBody').value.trim();
+
+            if (!endpoint.startsWith('/')) endpoint = '/' + endpoint;
+            var url = window.location.origin + endpoint;
+            var headers = {'Content-Type': 'application/json'};
+            if (key) headers['Authorization'] = 'Bearer ' + key;
+
+            var opts = {method: method, headers: headers};
+            if ((method === 'POST' || method === 'PUT') && body) {
+                try { JSON.parse(body); opts.body = body; }
+                catch(e) { alert('Invalid JSON body'); return; }
+            }
+
+            document.getElementById('testResult').classList.remove('hidden');
+            document.getElementById('testResponse').textContent = '⏳ Sending request...';
+            document.getElementById('testStatus').textContent = '';
+
+            fetch(url, opts)
+                .then(function(r) {
+                    document.getElementById('testStatus').textContent = r.status + ' ' + r.statusText;
+                    document.getElementById('testStatus').className = 'text-xs px-2 py-0.5 rounded ' + (r.ok ? 'bg-green-800 text-green-300' : 'bg-red-800 text-red-300');
+                    return r.text();
+                })
+                .then(function(text) {
+                    try {
+                        var formatted = JSON.stringify(JSON.parse(text), null, 2);
+                        document.getElementById('testResponse').textContent = formatted;
+                    } catch(e) {
+                        document.getElementById('testResponse').textContent = text;
+                    }
+                })
+                .catch(function(err) {
+                    document.getElementById('testResponse').textContent = '❌ Error: ' + err.message;
+                    document.getElementById('testStatus').textContent = 'Failed';
+                    document.getElementById('testStatus').className = 'text-xs px-2 py-0.5 rounded bg-red-800 text-red-300';
+                });
+            return false;
+        }
+
+        // ── Init ──
+        document.addEventListener('DOMContentLoaded', function() {
+            loadApiKeys();
+        });
+        </script>
         {% endif %}
     </div>
 
