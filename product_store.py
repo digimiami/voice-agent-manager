@@ -883,7 +883,20 @@ const u=new SpeechSynthesisUtterance(txt);u.rate=0.9;u.pitch=1;u.volume=1;u.lang
           </div>
         </div>
       </div>
-    </div>''' + LAYOUT_FOOT
+    </div>''' + LAYOUT_FOOT.replace('</body></html>', '') + '''
+<div id="course-chat-config" data-pid="''' + product_id + '''" style="display:none"></div>
+<style>
+.wbtg{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#a855f7,#ec4899);color:white;border:none;font-size:24px;cursor:pointer;z-index:999;box-shadow:0 4px 20px rgba(168,85,247,0.4)}
+.wbtg:hover{transform:scale(1.1)}.wbpn{position:fixed;bottom:90px;right:24px;width:360px;height:500px;background:#0e0e16;border:1px solid #252533;border-radius:16px;z-index:998;display:none;flex-direction:column;box-shadow:0 10px 50px rgba(0,0,0,0.5);overflow:hidden}.wbpn.o{display:flex}.wbhd{padding:14px 16px;background:linear-gradient(135deg,#1a0a2e,#0e0e16);border-bottom:1px solid #252533;display:flex;align-items:center;gap:10px}.wbav{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#a855f7,#ec4899);display:flex;align-items:center;justify-content:center;font-size:14px}.wbtl{font-size:13px;font-weight:600;color:white}.wbsb{font-size:10px;color:#5c5c70}.wbcl{margin-left:auto;background:none;border:none;color:#5c5c70;cursor:pointer;font-size:18px}.wbms{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}.wbmg{max-width:85%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.5}.wbmg.b{background:#1a1a26;color:#d0d0e0;align-self:flex-start}.wbmg.u{background:linear-gradient(135deg,#a855f722,#ec489922);color:white;align-self:flex-end}.wbin{padding:12px;border-top:1px solid #252533;display:flex;gap:8px;background:#0a0a12}.wbin input{flex:1;background:#1a1a26;border:1px solid #252533;border-radius:10px;padding:10px 14px;color:white;font-size:13px;outline:none}.wbin input:focus{border-color:#a855f7}.wbin button{background:linear-gradient(135deg,#a855f7,#ec4899);color:white;border:none;border-radius:10px;padding:10px 14px;cursor:pointer}
+</style>
+<div class="wbtg" onclick="wtc()">💬</div>
+<div class="wbpn" id="wp"><div class="wbhd"><div class="wbav">🤖</div><div><div class="wbtl">AI Course Tutor</div><div class="wbsb">Ask about this module</div></div><button class="wbcl" onclick="wtc()">✕</button></div><div class="wbms" id="wm"><div class="wbmg b">Hi! I am your AI tutor. Ask me anything about affiliate marketing 🎓</div></div><div class="wbin"><input id="wi" placeholder="Ask a question..." onkeydown="if(event.key===\\'Enter\\')wsc()"><button onclick="wsc()">Send</button></div></div>
+<script>
+var _wpid=document.getElementById("course-chat-config").getAttribute("data-pid");
+function wtc(){var p=document.getElementById("wp");p.classList.toggle("o");if(p.classList.contains("o"))setTimeout(function(){document.getElementById("wi").focus()},300)}
+function wsc(){var i=document.getElementById("wi"),q=i.value.trim();if(!q)return;i.value="";var m=document.getElementById("wm");m.innerHTML+="<div class=\\u0022wbmg u\\u0022>"+q.replace(/</g,"&lt;")+"</div>";var d=document.createElement("div");d.className="wbmg b";d.textContent="Thinking...";m.appendChild(d);m.scrollTop=m.scrollHeight;fetch("/api/course/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q,product_id:_wpid})}).then(function(r){return r.json()}).then(function(d){d=d.answer||"Sorry, could not process that.";m.removeChild(m.lastChild);m.innerHTML+="<div class=\\u0022wbmg b\\u0022>"+d.replace(/\\\\n/g,"<br>")+"</div>";m.scrollTop=m.scrollHeight}).catch(function(){m.removeChild(m.lastChild);m.innerHTML+="<div class=\\u0022wbmg b\\u0022">Connection error. Try again.</div>"})}
+</script>
+</body></html>'''
     return page
 
 @app.route('/api/course/chat', methods=['POST'])
