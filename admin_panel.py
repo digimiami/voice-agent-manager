@@ -1604,7 +1604,7 @@ def buy_phone(bid):
     # Check if there's already an unassigned Vapi number first
     result = subprocess.run([
         "curl", "-s", f"{VAPI_BASE}/phone-number",
-        "-H", f"Authorization: Bearer ***"
+        "-H", f"Authorization: Bearer {VAPI_API_KEY}"
     ], capture_output=True, text=True)
     
     try:
@@ -1621,7 +1621,7 @@ def buy_phone(bid):
                     # Set inbound assistant
                     subprocess.run([
                         "curl", "-s", "-X", "PATCH", f"{VAPI_BASE}/phone-number/{pid}",
-                        "-H", f"Authorization: Bearer ***",
+                        "-H", f"Authorization: Bearer {VAPI_API_KEY}",
                         "-H", "Content-Type: application/json",
                         "-d", json.dumps({"assistantId": biz['vapi_assistant_id']})
                     ], capture_output=True, text=True)
