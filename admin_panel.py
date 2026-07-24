@@ -250,34 +250,131 @@ ADMIN_HTML = """<!DOCTYPE html>
         <!-- TAB: BUSINESSES -->
         {% elif tab == 'businesses' %}
         <div class="flex items-center justify-between mb-6">
-            <h2 class="text-xl font-bold">🏪 Businesses ({{ businesses|length }})</h2>
+            <h2 class="text-xl font-bold">🏪 Clients & Agents ({{ businesses|length }})</h2>
             <a href="?tab=create" class="btn-primary text-xs"><i class="fas fa-plus mr-1"></i> New Business</a>
         </div>
 
-        <div class="overflow-x-auto">
-        <table>
-            <tr><th>ID</th><th>Name</th><th>Industry</th><th>Plan</th><th>Status</th><th>Calls</th><th>Appts</th><th>MRR</th><th>Actions</th></tr>
+        <style>
+        .agent-card { background:#0d0d14; border:1px solid #1a1a28; border-radius:12px; padding:20px; transition:border-color .2s }
+        .agent-card:hover { border-color:#6366f1; }
+        .meter-bar { height:8px; border-radius:4px; background:#1a1a28; overflow:hidden; }
+        .meter-fill { height:100%; border-radius:4px; transition:width .5s; }
+        .kb-box { background:#0a0a12; border:1px solid #1a1a28; border-radius:8px; padding:10px; font-size:12px; color:#7a7a8e; max-height:60px; overflow:hidden; line-height:1.4; }
+        .feature-badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; padding:3px 8px; border-radius:6px; background:#1a1a28; color:#cbd5e1; margin:2px; }
+        .feature-badge.active { background:#22c55e15; border:1px solid #22c55e30; color:#4ade80; }
+        </style>
+
+        <div class="grid gap-4">
             {% for biz in businesses %}
-            <tr>
-                <td class="font-mono text-xs text-[#64748b]">{{ biz.id[:12] }}..</td>
-                <td class="font-semibold text-[#e2e8f0]">{{ biz.name }}</td>
-                <td><span class="badge badge-pro">{{ (biz.industry or '?')[:12] }}</span></td>
-                <td>{{ (biz.plan or 'starter')|title }}</td>
-                <td><span class="badge {% if biz.status == 'active' %}badge-active{% else %}badge-inactive{% endif %}">{{ biz.status or 'active' }}</span></td>
-                <td>{{ biz.calls_made or 0 }}</td>
-                <td>{{ biz.appointments_booked or 0 }}</td>
-                <td class="text-[#4ade80]">${{ "%.0f"|format(biz.monthly_price|int) if biz.monthly_price else "299" }}</td>
-                <td>
-                    <a href="/admin/business/{{ biz.id }}" class="text-[#818cf8] text-xs hover:underline mr-2"><i class="fas fa-eye"></i> View</a>
-                    <a href="/admin/business/{{ biz.id }}/resend-credentials" class="text-[#fbbf24] text-xs hover:underline mr-2" onclick="return confirm('Resend credentials to {{ biz.name }}?')"><i class="fas fa-envelope"></i></a>
-                    <form method="POST" action="/admin/business/delete/{{ biz.id }}" style="display:inline" onsubmit="return confirm('Delete business and all data?')">
-                        <button class="text-red-400 text-xs hover:underline"><i class="fas fa-trash"></i></button>
-                    </form>
-                </td>
-            </tr>
+            {% set plan_key = biz.plan or 'starter' %}
+            {% set tier = tiers.get(plan_key, tiers['starter']) %}
+            {% set used_min = (biz.total_duration or 0) // 60 %}
+            {% set limit_min = tier.minutes_limit or 250 %}
+            {% set pct = (used_min / limit_min * 100)|round|int if limit_min > 0 else 0 %}
+            {% set kb = biz.agent_prompt or biz.knowledge_base or '' %}
+            {% set features = tier.features.split(', ') %}
+            {% set agent_count = {'starter':'1','pro':'2','premium':'3','enterprise':'5','custom':'?'}.get(plan_key, '1') %}
+
+            <div class="agent-card">
+                <!-- Row 1: Header -->
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600/30 to-pink-600/30 flex items-center justify-center text-lg">{{ biz.name[:1]|upper }}</div>
+                        <div>
+                            <div class="font-semibold text-[#e2e8f0]">{{ biz.name }} <span class="text-xs text-[#64748b] font-normal">· {{ biz.industry or 'General' }}</span></div>
+                            <div class="text-xs text-[#64748b] mt-0.5 flex items-center gap-2">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold" style="background:#a855f722;color:#c084fc">{{ tier.name }}</span>
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px]" style="background:#22c55e15;color:#4ade80">🧠 {{ agent_count }} Agent{% if agent_count != '1' %}s{% endif %}</span>
+                                <span class="{% if biz.status == 'active' %}text-[#4ade80]{% else %}text-red-400{% endif %}">● {{ biz.status or 'active' }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <a href="/admin/business/{{ biz.id }}" class="btn-secondary text-xs py-1.5 px-3"><i class="fas fa-eye mr-1"></i>View</a>
+                        <a href="/admin/business/{{ biz.id }}/resend-credentials" class="btn-secondary text-xs py-1.5 px-3" onclick="return confirm('Resend credentials to {{ biz.name }}?')"><i class="fas fa-envelope"></i></a>
+                        <form method="POST" action="/admin/business/delete/{{ biz.id }}" style="display:inline" onsubmit="return confirm('Delete business and all data?')">
+                            <button class="text-red-400 text-xs py-1.5 px-3 border border-red-800 rounded-lg hover:bg-red-900/20"><i class="fas fa-trash"></i></button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Row 2: Knowledge Base / Agent Prompt -->
+                <div class="mb-3">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs text-[#64748b] font-semibold">📝 Knowledge Base / Agent Prompt</span>
+                        <a href="/admin/business/{{ biz.id }}" class="text-[10px] text-[#818cf8] hover:underline">Edit →</a>
+                    </div>
+                    <div class="kb-box">{% if kb %}{{ kb[:200] }}{% if kb|length > 200 %}...{% endif %}{% else %}<span class="text-[#5c5c70] italic">No custom knowledge base configured. Using default script.</span>{% endif %}</div>
+                </div>
+
+                <!-- Row 3: Minutes Meter + Buy More -->
+                <div class="grid grid-cols-3 gap-4 mb-3">
+                    <div class="col-span-2">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs text-[#64748b] font-semibold">⏱ Call Minutes Used</span>
+                            <span class="text-xs font-mono">{{ used_min }} / {{ limit_min }} min</span>
+                        </div>
+                        <div class="meter-bar">
+                            <div class="meter-fill {% if pct < 60 %}bg-gradient-to-r from-[#22c55e] to-[#4ade80]{% elif pct < 85 %}bg-gradient-to-r from-[#f59e0b] to-[#fbbf24]{% else %}bg-gradient-to-r from-[#ef4444] to-[#f87171]{% endif %}" style="width:{{ pct }}%"></div>
+                        </div>
+                        <div class="flex items-center justify-between mt-1">
+                            <span class="text-[10px] text-[#5c5c70]">{{ limit_min - used_min }} min remaining</span>
+                            <span class="text-[10px] text-[#5c5c70]">{{ pct }}% used</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col justify-center items-center border border-dashed border-[#1a1a28] rounded-lg p-3">
+                        <span class="text-xs text-[#818cf8] font-semibold mb-1">+ Buy Minutes</span>
+                        <div class="flex gap-1">
+                            <button onclick="buyMinutes('{{ biz.id }}','500')" class="text-[10px] px-2 py-1 rounded bg-[#1a1a28] hover:bg-[#252533] text-[#cbd5e1]">500</button>
+                            <button onclick="buyMinutes('{{ biz.id }}','1000')" class="text-[10px] px-2 py-1 rounded bg-[#1a1a28] hover:bg-[#252533] text-[#cbd5e1]">1K</button>
+                            <button onclick="buyMinutes('{{ biz.id }}','5000')" class="text-[10px] px-2 py-1 rounded bg-[#6366f1] text-white hover:bg-[#818cf8]">5K</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 4: Plan Features -->
+                <div class="flex flex-wrap gap-1">
+                    <span class="feature-badge active">🤖 {{ agent_count }} AI Agent{% if agent_count != '1' %}s{% endif %}</span>
+                    {% if plan_key == 'starter' or plan_key == 'pro' or plan_key == 'premium' or plan_key == 'enterprise' %}
+                    <span class="feature-badge active">📞 1 Number{% if plan_key != 'starter' %} +{% endif %}</span>
+                    {% endif %}
+                    {% if plan_key == 'pro' or plan_key == 'premium' or plan_key == 'enterprise' %}
+                    <span class="feature-badge active">📱 SMS Reminders</span>
+                    <span class="feature-badge active">📅 Calendar Booking</span>
+                    <span class="feature-badge active">📊 Campaigns</span>
+                    <span class="feature-badge active">⭐ Priority Support</span>
+                    {% endif %}
+                    {% if plan_key == 'premium' or plan_key == 'enterprise' %}
+                    <span class="feature-badge active">🔄 Call Forwarding</span>
+                    <span class="feature-badge active">🏢 3+ Numbers</span>
+                    {% endif %}
+                    {% if plan_key == 'enterprise' %}
+                    <span class="feature-badge active">🔌 API Access</span>
+                    <span class="feature-badge active">🏷️ White-Label</span>
+                    <span class="feature-badge active">👤 Dedicated Manager</span>
+                    {% endif %}
+                    {% if plan_key == 'custom' %}
+                    <span class="feature-badge active">⚙️ Custom Config</span>
+                    {% endif %}
+                </div>
+            </div>
             {% endfor %}
-        </table>
         </div>
+
+        <script>
+        function buyMinutes(bizId, amount) {
+            if (!confirm('Add ' + amount + ' extra minutes to ' + bizId + '?')) return;
+            fetch('/admin/api/add-minutes', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({business_id: bizId, minutes: parseInt(amount)})
+            }).then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.success) { alert('✅ ' + amount + ' minutes added!'); location.reload(); }
+                else { alert('❌ ' + (d.error || 'Failed')); }
+            }).catch(function(err) { alert('❌ ' + err.message); });
+        }
+        </script>
 
         <!-- TAB: CREATE BUSINESS -->
         {% elif tab == 'create' %}
@@ -2287,6 +2384,37 @@ def admin_api_change_plan():
     db.commit()
     db.close()
     return jsonify({'success': True, 'plan': plan, 'price': tier['price']})
+
+
+@app.route('/admin/api/add-minutes', methods=['POST'])
+@admin_required
+def admin_api_add_minutes():
+    """Add extra minutes to a business."""
+    data = request.get_json(silent=True) or {}
+    bid = data.get('business_id', '')
+    minutes = int(data.get('minutes', 0))
+    
+    if not bid or minutes <= 0:
+        return jsonify({'success': False, 'error': 'Missing business_id or invalid minutes'}), 400
+    
+    db = get_db()
+    c = db.cursor()
+    
+    # Ensure extra_minutes column exists
+    try:
+        c.execute("ALTER TABLE businesses ADD COLUMN extra_minutes INTEGER DEFAULT 0")
+    except:
+        pass
+    
+    c.execute("SELECT extra_minutes FROM businesses WHERE id=?", (bid,))
+    row = c.fetchone()
+    current = row[0] if row and row[0] else 0
+    new_total = current + minutes
+    c.execute("UPDATE businesses SET extra_minutes=? WHERE id=?", (new_total, bid))
+    db.commit()
+    db.close()
+    
+    return jsonify({'success': True, 'extra_minutes': new_total, 'added': minutes})
 
 
 @app.route('/admin/campaign/start', methods=['POST'])
