@@ -1330,7 +1330,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                 showGenerateError('Key name is required');
                 return false;
             }
-            var btn = e.target.querySelector('button[type=submit]');
+            var btn = document.querySelector('#apiKeyForm button');
             btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Generating...';
 
             fetch('/api/v1/auth/generate', {
