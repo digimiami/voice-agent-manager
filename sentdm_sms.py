@@ -11,7 +11,7 @@ def send_sms(to_phone, message):
         print("❌ send_sms: missing phone or message")
         return False
     
-    # Clean phone number — remove non-digits
+    # Clean phone number — ensure E.164 format
     cleaned = ''.join(c for c in to_phone if c.isdigit() or c == '+')
     if not cleaned.startswith('+'):
         cleaned = '+' + cleaned
@@ -19,10 +19,7 @@ def send_sms(to_phone, message):
     payload = {
         "to": [cleaned],
         "channel": ["sms"],
-        "template": {
-            "name": "generic_message",
-            "parameters": {"1": message}
-        }
+        "text": message
     }
     
     try:
@@ -32,13 +29,14 @@ def send_sms(to_phone, message):
             json=payload,
             timeout=15
         )
-        data = resp.json()
-        if resp.status_code in (200, 201):
-            print(f"✅ SMS sent to {cleaned}: {data}")
-            return True
-        else:
-            print(f"❌ SMS failed ({resp.status_code}): {data}")
-            return False
+        if resp.status_code == 202:
+            data = resp.json()
+            if data.get('success'):
+                msg_id = data['data']['recipients'][0]['message_id']
+                print(f"✅ SMS queued to {cleaned} — ID: {msg_id}")
+                return True
+        print(f"❌ SMS failed ({resp.status_code}): {resp.json()}")
+        return False
     except Exception as e:
         print(f"❌ SMS error: {e}")
         return False
@@ -46,5 +44,5 @@ def send_sms(to_phone, message):
 
 def send_welcome_sms(phone, name, bid, host_url):
     """Send welcome SMS with Business ID."""
-    msg = f"Welcome to Diazites, {name}! Your Business ID: {bid}. Login at {host_url}. 3-day free trial started!"
+    msg = f"🎉 Welcome to Diazites, {name}! ✅ Your Business ID: {bid}. Login at {host_url}. 3-day free trial started!"
     return send_sms(phone, msg)
