@@ -830,13 +830,53 @@ Never miss a lead again. Diazites deploys intelligent AI voice agents that answe
 </div>
 </section>
 
-<!-- CTA -->
+<!-- CTA / SIGNUP -->
 <section class="max-w-3xl mx-auto px-6 pb-20 text-center">
-<div class="card py-16 px-8 pulse-glow" style="border-color:#a855f744">
+<div class="grid md:grid-cols-2 gap-6">
+<div class="card py-12 px-6 pulse-glow" style="border-color:#a855f744">
 <div class="text-5xl mb-5">🚀</div>
-<h2 class="text-3xl font-bold gradient-text mb-3">Ready to Get Started?</h2>
-<p class="text-[#7a7a8e] mb-8 max-w-md mx-auto">Existing clients can log in with their Business ID to manage their dashboard, view analytics, and configure their voice agent.</p>
-<a href="/login" class="btn-primary text-lg px-12 py-4">Login to Your Dashboard</a>
+<h2 class="text-2xl font-bold gradient-text mb-3">Existing Client?</h2>
+<p class="text-[#7a7a8e] mb-6 max-w-sm mx-auto text-sm">Log in with your Business ID to manage your dashboard, view analytics, and configure your AI voice agent.</p>
+<a href="/login" class="btn-primary text-base px-10 py-3">Login to Dashboard</a>
+</div>
+
+<div class="card py-12 px-6" style="border-color:#252533">
+<div class="text-5xl mb-5">✨</div>
+<h2 class="text-2xl font-bold gradient-text mb-3">New Business?</h2>
+<p class="text-[#7a7a8e] mb-6 max-w-sm mx-auto text-sm">Sign up in seconds and get your AI voice agent running today. No credit card required to start.</p>
+<form id="signupFormLanding" class="space-y-3 text-left" onsubmit="return submitLandingSignup(event)">
+<div>
+<label class="text-xs text-[#7a7a8e] block mb-1">Business Name *</label>
+<input type="text" id="sBizName" required class="w-full bg-[#1a1a26] border border-[#252533] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#a855f7]">
+</div>
+<div>
+<label class="text-xs text-[#7a7a8e] block mb-1">Email *</label>
+<input type="email" id="sEmail" required class="w-full bg-[#1a1a26] border border-[#252533] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#a855f7]">
+</div>
+<div>
+<label class="text-xs text-[#7a7a8e] block mb-1">Phone</label>
+<input type="tel" id="sPhone" class="w-full bg-[#1a1a26] border border-[#252533] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#a855f7]">
+</div>
+<div>
+<label class="text-xs text-[#7a7a8e] block mb-1">Industry</label>
+<select id="sIndustry" class="w-full bg-[#1a1a26] border border-[#252533] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#a855f7]">
+<option value="plumber">Plumber</option>
+<option value="hvac">HVAC</option>
+<option value="electrician">Electrician</option>
+<option value="roofing">Roofing</option>
+<option value="painter">Painter</option>
+<option value="landscaper">Landscaper</option>
+<option value="cleaning">Cleaning</option>
+<option value="auto">Auto Mechanic</option>
+<option value="realestate">Real Estate</option>
+<option value="dentist">Dentist</option>
+<option value="general">General Business</option>
+</select>
+</div>
+<button type="submit" id="sBtn" class="btn-primary w-full text-sm py-3">🚀 Sign Up Free</button>
+<div id="sResult" class="hidden"></div>
+</form>
+</div>
 </div>
 </section>
 
@@ -924,6 +964,43 @@ function toggleAudio(card, src) {
     playBtn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
     statusEl.textContent = '▶ Playing...';
     card.classList.add('active');
+}
+
+// Landing page signup
+function submitLandingSignup(e) {
+    e.preventDefault();
+    var btn = document.getElementById('sBtn');
+    var result = document.getElementById('sResult');
+    btn.disabled = true; btn.textContent = '⏳ Creating...';
+    result.classList.add('hidden');
+    fetch('/api/signup', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            name: document.getElementById('sBizName').value.trim(),
+            email: document.getElementById('sEmail').value.trim(),
+            phone: document.getElementById('sPhone').value.trim(),
+            industry: document.getElementById('sIndustry').value
+        })
+    }).then(function(r) { return r.json(); })
+    .then(function(d) {
+        btn.disabled = false; btn.textContent = '🚀 Sign Up Free';
+        if (d.success) {
+            result.className = 'mt-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-xs text-green-400';
+            result.innerHTML = '<strong>✅ Business created!</strong><br>Your Business ID: <code class="font-mono bg-[#0a0a0f] px-2 py-0.5 rounded">' + d.business_id + '</code><br><br><a href="/login" class="btn-primary text-xs px-4 py-2 inline-block">🔑 Login Now</a>';
+            result.classList.remove('hidden');
+        } else {
+            result.className = 'mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-400';
+            result.innerHTML = '❌ ' + (d.error || 'Failed to create business');
+            result.classList.remove('hidden');
+        }
+    }).catch(function(err) {
+        btn.disabled = false; btn.textContent = '🚀 Sign Up Free';
+        result.className = 'mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-400';
+        result.innerHTML = '❌ Network error. Please try again.';
+        result.classList.remove('hidden');
+    });
+    return false;
 }
 
 // Smooth scroll for anchor links
