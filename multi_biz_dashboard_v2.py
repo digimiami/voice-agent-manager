@@ -656,6 +656,8 @@ html{scroll-behavior:smooth}
 <a href="#demos" class="text-sm text-[#7a7a8e] hover:text-[#c084fc]">Live Demos</a>
 <a href="#features" class="text-sm text-[#7a7a8e] hover:text-[#c084fc]">Features</a>
 <a href="#industries" class="text-sm text-[#7a7a8e] hover:text-[#c084fc]">Industries</a>
+<a href="#signup-form" class="text-sm text-[#7a7a8e] hover:text-[#c084fc]">Pricing</a>
+<a href="/signup" class="btn-outline text-sm px-4 py-2">Sign Up</a>
 <a href="/login" class="btn-primary text-sm px-5 py-2">Login</a>
 </div>
 </nav>
@@ -831,7 +833,7 @@ Never miss a lead again. Diazites deploys intelligent AI voice agents that answe
 </section>
 
 <!-- CTA / SIGNUP -->
-<section class="max-w-3xl mx-auto px-6 pb-20 text-center">
+<section id="signup-form" class="max-w-3xl mx-auto px-6 pb-20 text-center">
 <div class="grid md:grid-cols-2 gap-6">
 <div class="card py-12 px-6 pulse-glow" style="border-color:#a855f744">
 <div class="text-5xl mb-5">🚀</div>
@@ -883,6 +885,12 @@ Never miss a lead again. Diazites deploys intelligent AI voice agents that answe
 <!-- FOOTER -->
 <footer class="border-t border-[#252533] py-8 text-center text-xs text-[#5c5c70]">
 <div class="flex items-center justify-center gap-2 mb-3"><div class="text-lg">🎙️</div><span class="text-sm gradient-text font-bold">Diazites</span></div>
+<div class="flex justify-center gap-4 mb-3 text-xs">
+<a href="/signup" class="text-[#818cf8] hover:text-[#a855f7] font-medium">Start Free Trial</a>
+<a href="/privacy" class="hover:text-[#c084fc]">Privacy Policy</a>
+<a href="/terms" class="hover:text-[#c084fc]">Terms of Service</a>
+<a href="/refund" class="hover:text-[#c084fc]">Refund Policy</a>
+</div>
 <p>© 2026 Diazites. AI-powered voice agents for local businesses.</p>
 </footer>
 
@@ -1096,6 +1104,111 @@ def index():
     if 'business_id' in session:
         return dashboard()
     return render_template_string(LANDING_PAGE)
+
+
+LEGAL_PAGES = {
+    'privacy': {
+        'title': 'Privacy Policy',
+        'content': """
+<h2 class="text-2xl font-bold gradient-text mb-4">Privacy Policy</h2>
+<p class="mb-3">Last updated: July 2026</p>
+<p class="mb-3">Diazites ("we", "our", "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our AI voice agent services.</p>
+<h3 class="text-lg font-bold mt-6 mb-2">1. Information We Collect</h3>
+<p class="mb-3">We collect business information (name, email, phone, industry) when you sign up, call data and transcripts from your AI voice agent interactions, and usage analytics to improve our service.</p>
+<h3 class="text-lg font-bold mt-6 mb-2">2. How We Use Your Information</h3>
+<p class="mb-3">We use your information to provide and improve our AI voice agent services, process payments, send service updates, and comply with legal obligations.</p>
+<h3 class="text-lg font-bold mt-6 mb-2">3. Data Storage & Security</h3>
+<p class="mb-3">Your data is stored securely with encryption at rest and in transit. We retain call transcripts for up to 90 days unless you request deletion.</p>
+<h3 class="text-lg font-bold mt-6 mb-2">4. Third-Party Services</h3>
+<p class="mb-3">We use Stripe for payment processing, VAPI for voice agent infrastructure, and Eleven Labs for text-to-speech. Each service has its own privacy policy governing data handling.</p>
+<h3 class="text-lg font-bold mt-6 mb-2">5. Your Rights</h3>
+<p class="mb-3">You can request access, correction, or deletion of your data at any time by contacting support.</p>
+<p class="mt-6"><a href="/" class="text-[#818cf8] hover:text-[#a855f7]">← Back to Home</a></p>
+"""
+    },
+    'terms': {
+        'title': 'Terms of Service',
+        'content': """
+<h2 class="text-2xl font-bold gradient-text mb-4">Terms of Service</h2>
+<p class="mb-3">Last updated: July 2026</p>
+<p class="mb-3">By using Diazites AI voice agent services, you agree to these terms.</p>
+<h3 class="text-lg font-bold mt-6 mb-2">1. Service Description</h3>
+<p class="mb-3">Diazites provides AI-powered voice agents that answer calls, book appointments, and qualify leads for local businesses.</p>
+<h3 class="text-lg font-bold mt-6 mb-2">2. Billing & Subscription</h3>
+<p class="mb-3">Plans are billed monthly. You will be charged after your 3-day free trial ends. You may cancel anytime before the trial ends to avoid charges. Refunds follow our Refund Policy.</p>
+<h3 class="text-lg font-bold mt-6 mb-2">3. Acceptable Use</h3>
+<p class="mb-3">You agree not to use our service for illegal activities, spam, harassment, or any purpose that violates applicable laws.</p>
+<h3 class="text-lg font-bold mt-6 mb-2">4. Limitation of Liability</h3>
+<p class="mb-3">Diazites is not liable for any indirect damages arising from use of our service. Our total liability is limited to the amount you paid in the last 30 days.</p>
+<p class="mt-6"><a href="/" class="text-[#818cf8] hover:text-[#a855f7]">← Back to Home</a></p>
+"""
+    },
+    'refund': {
+        'title': 'Refund Policy',
+        'content': """
+<h2 class="text-2xl font-bold gradient-text mb-4">Refund Policy</h2>
+<p class="mb-3">Last updated: July 2026</p>
+<h3 class="text-lg font-bold mt-6 mb-2">3-Day Free Trial</h3>
+<p class="mb-3">All new accounts receive a 3-day free trial. You will not be charged during this period. Cancel before the trial ends and you owe nothing.</p>
+<h3 class="text-lg font-bold mt-6 mb-2">Monthly Subscriptions</h3>
+<p class="mb-3">If you cancel within 7 days of being charged, you may request a full refund. After 7 days, the month is non-refundable but your service continues until the end of the billing period.</p>
+<h3 class="text-lg font-bold mt-6 mb-2">How to Request a Refund</h3>
+<p class="mb-3">Contact support with your business ID and reason for cancellation. Refunds are processed within 5-10 business days.</p>
+<p class="mt-6"><a href="/" class="text-[#818cf8] hover:text-[#a855f7]">← Back to Home</a></p>
+"""
+    }
+}
+
+LEGAL_PAGE_TEMPLATE = """<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diazites — {title}</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>@import url('https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap');
+*{{font-family:'Inter',sans-serif;margin:0;padding:0;box-sizing:border-box}}
+body{{background:#0a0a0f;color:#f1f1f5;overflow-x:hidden}}
+.gradient-text{{background:linear-gradient(135deg,#c084fc,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}}
+.glass{{background:rgba(18,18,26,.7);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}}
+.card{{background:#12121a;border:1px solid #252533;border-radius:16px;padding:24px}}
+</style></head><body>
+<nav class="glass flex items-center justify-between max-w-4xl mx-auto px-6 py-4 sticky top-0 z-50" style="border-bottom:1px solid #252533">
+<div class="flex items-center gap-2"><div class="text-2xl">🎙️</div><span class="text-lg font-bold gradient-text">Diazites</span></div>
+<div class="flex items-center gap-4">
+<a href="/signup" class="btn-outline text-sm px-4 py-2" style="border:1px solid #3b3b50;color:#f1f1f5;padding:8px 20px;border-radius:10px;text-decoration:none">Sign Up</a>
+<a href="/login" class="btn-primary text-sm px-5 py-2" style="background:linear-gradient(135deg,#a855f7,#ec4899);color:white;padding:8px 20px;border-radius:10px;font-weight:600;text-decoration:none">Login</a>
+</div>
+</nav>
+<div class="max-w-3xl mx-auto px-6 py-12">
+<div class="card">
+{content}
+</div>
+</div>
+<footer class="border-t border-[#252533] py-8 text-center text-xs text-[#5c5c70]">
+<div class="flex justify-center gap-4 mb-3 text-xs">
+<a href="/signup" class="text-[#818cf8] hover:text-[#a855f7] font-medium">Start Free Trial</a>
+<a href="/privacy" class="hover:text-[#c084fc]">Privacy Policy</a>
+<a href="/terms" class="hover:text-[#c084fc]">Terms of Service</a>
+<a href="/refund" class="hover:text-[#c084fc]">Refund Policy</a>
+</div>
+<p>© 2026 Diazites. AI-powered voice agents for local businesses.</p>
+</footer>
+</body></html>"""
+
+
+@app.route('/privacy')
+def privacy_page():
+    return render_template_string(LEGAL_PAGE_TEMPLATE.format(title=LEGAL_PAGES['privacy']['title'], content=LEGAL_PAGES['privacy']['content']))
+
+@app.route('/terms')
+def terms_page():
+    return render_template_string(LEGAL_PAGE_TEMPLATE.format(title=LEGAL_PAGES['terms']['title'], content=LEGAL_PAGES['terms']['content']))
+
+@app.route('/refund')
+def refund_page():
+    return render_template_string(LEGAL_PAGE_TEMPLATE.format(title=LEGAL_PAGES['refund']['title'], content=LEGAL_PAGES['refund']['content']))
+
+@app.route('/signup')
+def signup_redirect():
+    return redirect('/#signup-form')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
