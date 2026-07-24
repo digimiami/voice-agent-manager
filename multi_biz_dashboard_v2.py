@@ -1625,20 +1625,11 @@ Need help? Reply to this email.
                 except Exception as e:
                     print(f"Email send error: {e}")
             
-            # Send SMS via Twilio
+            # Send SMS via Sent.dm (replaces Twilio)
             if phone:
                 try:
-                    from twilio_helper import load_twilio_config
-                    twilio_cfg = load_twilio_config()
-                    if twilio_cfg.get('account_sid') and twilio_cfg.get('auth_token'):
-                        from twilio.rest import Client
-                        client = Client(twilio_cfg['account_sid'], twilio_cfg['auth_token'])
-                        msg_body = f"🎉 Welcome to Diazites, {name}! Your Business ID: {bid}. Login at {request.host_url}. 3-day free trial started!"
-                        client.messages.create(
-                            body=msg_body,
-                            from_=twilio_cfg.get('from_number', ''),
-                            to=phone
-                        )
+                    from sentdm_sms import send_welcome_sms
+                    if send_welcome_sms(phone, name, bid, request.host_url):
                         print(f"📱 Welcome SMS sent to {phone}")
                 except Exception as e:
                     print(f"SMS send error: {e}")
