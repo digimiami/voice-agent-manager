@@ -971,9 +971,9 @@ function submitLandingSignup(e) {
     e.preventDefault();
     var btn = document.getElementById('sBtn');
     var result = document.getElementById('sResult');
-    btn.disabled = true; btn.textContent = '⏳ Creating...';
+    btn.disabled = true; btn.textContent = '⏳ Creating your account...';
     result.classList.add('hidden');
-    fetch('/api/signup', {
+    fetch('/api/signup-stripe', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
@@ -986,9 +986,15 @@ function submitLandingSignup(e) {
     .then(function(d) {
         btn.disabled = false; btn.textContent = '🚀 Sign Up Free';
         if (d.success) {
-            result.className = 'mt-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-xs text-green-400';
-            result.innerHTML = '<strong>✅ Business created!</strong><br>Your Business ID: <code class="font-mono bg-[#0a0a0f] px-2 py-0.5 rounded">' + d.business_id + '</code><br><br><a href="/login" class="btn-primary text-xs px-4 py-2 inline-block">🔑 Login Now</a>';
-            result.classList.remove('hidden');
+            if (d.checkout_url) {
+                // Redirect to Stripe checkout to set up payment (3-day trial, no charge yet)
+                window.location.href = d.checkout_url;
+            } else {
+                // Show business ID and trial info
+                result.className = 'mt-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-xs text-green-400';
+                result.innerHTML = '<strong>✅ Business created!</strong><br>🎁 3-day free trial active!<br>Your Business ID: <code class="font-mono bg-[#0a0a0f] px-2 py-0.5 rounded">' + d.business_id + '</code><br><br><div class="text-yellow-400 text-xs mb-2">⚠️ ' + (d.message || 'Set up billing to continue after trial.') + '</div><a href="/login" class="btn-primary text-xs px-4 py-2 inline-block">🔑 Login Now</a>';
+                result.classList.remove('hidden');
+            }
         } else {
             result.className = 'mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-400';
             result.innerHTML = '❌ ' + (d.error || 'Failed to create business');
@@ -1141,8 +1147,8 @@ def api_signup():
     
     c.execute("""INSERT INTO businesses 
         (id, name, industry, phone_number, script_template, knowledge_base,
-         plan, monthly_price, email, status, voice_id, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'burt', datetime('now'))""",
+         plan, monthly_price, email, status, voice_id, created_at, subscription_status, trial_end)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'trial', 'burt', datetime('now'), 'trial', datetime('now', '+3 days'))""",
         (bid, name, industry, phone,
          f"You are an AI assistant for {name}. Help them book more clients. Keep responses under 30 seconds.",
          f"Industry: {industry}. Business: {name}.",
@@ -1204,11 +1210,98 @@ Diazites Team
         'business_id': bid,
         'name': name,
         'email': email,
-        'plan': plan
+        'plan': plan,
+        'trial_end': (datetime.now() + timedelta(days=3)).isoformat(),
+        'message': '🎉 Business created! You have a 3-day free trial. Set up payment to continue after trial.'
     })
 
-# ── SIGNUP → CHECKOUT FLOW ──
 
+@app.route('/api/signup-stripe', methods=['POST'])
+def api_signup_stripe():
+    """Create business + Stripe checkout with 3-day free trial."""
+    data = request.get_json(silent=True) or {}
+    name = data.get('name', '').strip()
+    email = data.get('email', '').strip()
+    industry = data.get('industry', 'general')
+    phone = data.get('phone', '').strip()
+    plan = data.get('plan', 'pro')
+    
+    if not name:
+        return jsonify({'success': False, 'error': 'Business name is required'}), 400
+    if not email:
+        return jsonify({'success': False, 'error': 'Email is required'}), 400
+    
+    import uuid, hashlib
+    bid = str(uuid.uuid4())[:12]
+    cid = 'camp-' + bid
+    
+    db = get_db()
+    c = db.cursor()
+    
+    price_map = {'starter': 97, 'pro': 197, 'premium': 497}
+    price = price_map.get(plan, 197)
+    
+    # Create business with trial
+    c.execute("""INSERT INTO businesses 
+        (id, name, industry, phone_number, script_template, knowledge_base,
+         plan, monthly_price, email, status, voice_id, created_at, subscription_status, trial_end)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'trial', 'burt', datetime('now'), 'trial', datetime('now', '+3 days'))""",
+        (bid, name, industry, phone,
+         f"You are an AI assistant for {name}. Help them book more clients. Keep responses under 30 seconds.",
+         f"Industry: {industry}. Business: {name}.",
+         plan, price, email))
+    
+    c.execute("""INSERT INTO campaigns (id, business_id, status) VALUES (?, ?, 'idle')""", (cid, bid))
+    db.commit()
+    
+    # Create Stripe checkout with 3-day trial
+    try:
+        from premium_features import create_stripe_checkout, load_stripe_config
+        cfg = load_stripe_config()
+        if not cfg.get('enabled') or not cfg.get('secret_key'):
+            return jsonify({
+                'success': True,
+                'business_id': bid,
+                'checkout_url': None,
+                'message': '🎉 Business created! You have a 3-day free trial. Payments unavailable — contact support to set up billing.',
+                'trial_end': (datetime.now() + timedelta(days=3)).isoformat()
+            })
+        
+        base = request.host_url.rstrip('/')
+        price_cents = price * 100
+        success_url = f"{base}/login?trial={bid}"
+        cancel_url = f"{base}/?signup=cancelled"
+        
+        url = create_stripe_checkout(bid, plan, price_cents, email, success_url, cancel_url, trial_days=3)
+        
+        if url:
+            return jsonify({
+                'success': True,
+                'business_id': bid,
+                'checkout_url': url,
+                'message': '🎉 Business created! Set up payment to start your 3-day free trial.',
+                'trial_end': (datetime.now() + timedelta(days=3)).isoformat()
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'business_id': bid,
+                'checkout_url': None,
+                'message': '🎉 Business created! You have a 3-day free trial. Contact support to complete billing setup.',
+                'trial_end': (datetime.now() + timedelta(days=3)).isoformat()
+            })
+    except Exception as e:
+        print(f"Stripe checkout error: {e}")
+        return jsonify({
+            'success': True,
+            'business_id': bid,
+            'checkout_url': None,
+            'message': '🎉 Business created! You have a 3-day free trial. Billing setup unavailable — contact support.',
+            'trial_end': (datetime.now() + timedelta(days=3)).isoformat()
+        })
+
+
+# ── SIGNUP → CHECKOUT FLOW ──
 @app.route('/api/signup-checkout', methods=['POST'])
 def api_signup_checkout():
     """Create Stripe checkout for new signup. Business created after payment."""

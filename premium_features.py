@@ -99,8 +99,8 @@ def save_stripe_config(config):
     with open(STRIPE_CONFIG_PATH, 'w') as f:
         json.dump(config, f)
 
-def create_stripe_checkout(business_id, plan_name, price_cents, email, success_url, cancel_url):
-    """Create a Stripe checkout session."""
+def create_stripe_checkout(business_id, plan_name, price_cents, email, success_url, cancel_url, trial_days=0):
+    """Create a Stripe checkout session with optional trial period."""
     cfg = load_stripe_config()
     if not cfg.get('enabled') or not cfg.get('secret_key'):
         return None
@@ -109,14 +109,14 @@ def create_stripe_checkout(business_id, plan_name, price_cents, email, success_u
     stripe.api_key = cfg['secret_key']
     
     try:
-        session = stripe.checkout.Session.create(
-            customer_email=email,
-            payment_method_types=['card'],
-            line_items=[{
+        session_params = {
+            'customer_email': email,
+            'payment_method_types': ['card'],
+            'line_items': [{
                 'price_data': {
                     'currency': 'usd',
                     'product_data': {
-                        'name': f'Voice Agent - {plan_name} Plan',
+                        'name': f'Diazites Voice Agent - {plan_name} Plan',
                         'description': f'AI voice agent for outbound and inbound calls',
                     },
                     'unit_amount': price_cents,
@@ -124,11 +124,17 @@ def create_stripe_checkout(business_id, plan_name, price_cents, email, success_u
                 },
                 'quantity': 1,
             }],
-            mode='subscription',
-            success_url=success_url,
-            cancel_url=cancel_url,
-            metadata={'business_id': business_id, 'plan': plan_name}
-        )
+            'mode': 'subscription',
+            'success_url': success_url,
+            'cancel_url': cancel_url,
+            'metadata': {'business_id': business_id, 'plan': plan_name},
+        }
+        if trial_days > 0:
+            session_params['subscription_data'] = {
+                'trial_period_days': trial_days,
+                'metadata': {'business_id': business_id, 'plan': plan_name}
+            }
+        session = stripe.checkout.Session.create(**session_params)
         return session.url
     except Exception as e:
         print(f"❌ Stripe error: {e}")
