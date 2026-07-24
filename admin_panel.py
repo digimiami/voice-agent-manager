@@ -1132,7 +1132,7 @@ ADMIN_HTML = """<!DOCTYPE html>
             <div class="card">
                 <h3 class="font-bold mb-3">✨ Generate New API Key</h3>
                 <p class="text-xs text-[#64748b] mb-4">Create a key for an AI agent with specific permissions.</p>
-                <form id="apiKeyForm" class="space-y-3" onsubmit="return generateApiKey(event)">
+                <form id="apiKeyForm" class="space-y-3" onsubmit="return false;">
                     <div>
                         <label class="text-xs text-[#64748b] block mb-1">Key Name *</label>
                         <input type="text" id="keyName" placeholder="e.g. Auto-Agent TARS" required>
@@ -1160,7 +1160,7 @@ ADMIN_HTML = """<!DOCTYPE html>
                             </select>
                         </div>
                     </div>
-                    <button type="submit" class="btn-primary text-sm w-full"><i class="fas fa-key mr-1"></i> Generate Key</button>
+                    <button type="button" onclick="generateApiKey()" class="btn-primary text-sm w-full"><i class="fas fa-key mr-1"></i> Generate Key</button>
                 </form>
                 <!-- Error display -->
                 <div id="generateKeyError" class="mt-3 hidden">
@@ -1321,8 +1321,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
         }
 
         // ── Generate API Key ──
-        function generateApiKey(e) {
-            e.preventDefault();
+        function generateApiKey() {
             // Hide previous error and result
             document.getElementById('generateKeyError').classList.add('hidden');
             document.getElementById('newKeyResult').classList.add('hidden');
