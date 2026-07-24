@@ -1047,11 +1047,24 @@ def get_db():
 def get_available_voices():
     """Return available voice options for the dropdown."""
     return [
+        # Current Eleven Labs voices (kept for backward compatibility)
         {"id": "burt", "name": "Burt (Male, Professional)", "provider": "11labs"},
         {"id": "indy", "name": "Indy (Female, Warm)", "provider": "11labs"},
         {"id": "michael", "name": "Michael (Male, Deep)", "provider": "11labs"},
         {"id": "emma", "name": "Emma (Female, Friendly)", "provider": "11labs"},
         {"id": "antoni", "name": "Antoni (Male, Calm)", "provider": "11labs"},
+        # Latest Eleven Labs premium voices
+        {"id": "rachel", "name": "Rachel (Female, Warm — Most Popular)", "provider": "11labs"},
+        {"id": "domi", "name": "Domi (Female, Friendly)", "provider": "11labs"},
+        {"id": "bella", "name": "Bella (Female, Melodic)", "provider": "11labs"},
+        {"id": "elli", "name": "Elli (Female, Youthful)", "provider": "11labs"},
+        {"id": "josh", "name": "Josh (Male, Deep)", "provider": "11labs"},
+        {"id": "arnold", "name": "Arnold (Male, Authoritative)", "provider": "11labs"},
+        {"id": "adam", "name": "Adam (Male, Confident)", "provider": "11labs"},
+        {"id": "sam", "name": "Sam (Male, Warm)", "provider": "11labs"},
+        {"id": "patrick", "name": "Patrick (Male, Professional)", "provider": "11labs"},
+        {"id": "clyde", "name": "Clyde (Male, Storytelling)", "provider": "11labs"},
+        {"id": "alice", "name": "Alice (Female, Friendly)", "provider": "11labs"},
     ]
 
 def login_required(f):
