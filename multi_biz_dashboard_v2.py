@@ -387,14 +387,16 @@ body{background:#08080f;color:#f1f1f5;overflow-x:hidden}
     <div class="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
       <div class="glass rounded-2xl p-8 text-center glow-border">
         <h3 class="font-bold text-xl mb-2">Starter</h3>
+        <p class="text-xs text-[#64748b] mb-3">Perfect for small businesses & solopreneurs</p>
         <div class="text-4xl font-black my-4 gradient-text">$97</div>
         <p class="text-sm text-[#7a7a8e] mb-6">per month</p>
         <ul class="text-left space-y-3 text-sm mb-8">
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> 1 AI Voice Agent</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> 1 Phone Number</li>
-          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> 500 Call Minutes</li>
-          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Basic Analytics</li>
+          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> <strong>500</strong> Call Minutes</li>
+          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Basic Analytics Dashboard</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Email Support</li>
+          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Appointment Booking</li>
         </ul>
         <a href="#" onclick="openSignup('starter')" class="block w-full py-3 rounded-xl font-semibold text-sm glass hover:bg-white/5 transition-all text-center">Get Started</a>
       </div>
@@ -402,29 +404,35 @@ body{background:#08080f;color:#f1f1f5;overflow-x:hidden}
       <div class="rounded-2xl p-8 text-center relative" style="background:linear-gradient(135deg,rgba(168,85,247,0.1),rgba(236,72,153,0.1));border:1px solid rgba(168,85,247,0.3);transform:scale(1.05)">
         <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#a855f7] to-[#ec4899] text-white text-xs font-bold px-4 py-1 rounded-full">Most Popular</div>
         <h3 class="font-bold text-xl mb-2 mt-2">Professional</h3>
+        <p class="text-xs text-[#64748b] mb-3">Best for growing businesses & busy practices</p>
         <div class="text-4xl font-black my-4 gradient-text">$197</div>
         <p class="text-sm text-[#7a7a8e] mb-6">per month</p>
         <ul class="text-left space-y-3 text-sm mb-8">
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> 2 AI Voice Agents</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> 2 Phone Numbers</li>
-          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> 2,000 Call Minutes</li>
-          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Advanced Analytics</li>
+          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> <strong>2,000</strong> Call Minutes</li>
+          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Advanced Analytics & Reports</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Priority Support</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Outbound Campaigns</li>
+          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> SMS Follow-Ups</li>
+          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Calendar Integration</li>
         </ul>
         <a href="#" onclick="openSignup('pro')" class="block w-full py-3 rounded-xl font-semibold text-sm bg-gradient-to-r from-[#a855f7] to-[#ec4899] text-white hover:shadow-lg hover:shadow-purple-500/20 transition-all text-center">Start Free Trial</a>
       </div>
       
       <div class="glass rounded-2xl p-8 text-center glow-border">
         <h3 class="font-bold text-xl mb-2">Enterprise</h3>
+        <p class="text-xs text-[#64748b] mb-3">For agencies, multi-location & high-volume</p>
         <div class="text-4xl font-black my-4 gradient-text">Custom</div>
         <p class="text-sm text-[#7a7a8e] mb-6">tailored pricing</p>
         <ul class="text-left space-y-3 text-sm mb-8">
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Up to 5 AI Agents</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Up to 5 Phone Numbers</li>
+          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Unlimited Call Minutes</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Custom Integrations</li>
-          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Dedicated Support</li>
-          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> API Access</li>
+          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Dedicated Account Manager</li>
+          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> API Access & Webhooks</li>
+          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> White-Label Option</li>
         </ul>
         <a href="/login" class="block w-full py-3 rounded-xl font-semibold text-sm glass hover:bg-white/5 transition-all text-center">Contact Us</a>
       </div>
