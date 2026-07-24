@@ -1306,8 +1306,8 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                             '<div class="text-[#5c5c70] font-mono text-[10px]">' + k.id + '</div>' +
                             '</div>' +
                             (k.active ? 
-                            '<button onclick="revokeKey(\'' + k.id + '\')" class="text-red-400 hover:text-red-300 text-xs py-1 px-2 border border-red-800 rounded"><i class="fas fa-ban mr-1"></i>Revoke</button>' :
-                            '<button onclick="reactivateKey(\'' + k.id + '\')" class="text-green-400 hover:text-green-300 text-xs py-1 px-2 border border-green-800 rounded"><i class="fas fa-undo mr-1"></i>Reactivate</button>'
+                            '<button data-key-id="' + k.id + '" onclick="revokeKey(this.dataset.keyId)" class="text-red-400 hover:text-red-300 text-xs py-1 px-2 border border-red-800 rounded"><i class="fas fa-ban mr-1"></i>Revoke</button>' :
+                            '<button data-key-id="' + k.id + '" onclick="reactivateKey(this.dataset.keyId)" class="text-green-400 hover:text-green-300 text-xs py-1 px-2 border border-green-800 rounded"><i class="fas fa-undo mr-1"></i>Reactivate</button>'
                             ) +
                             '</div>';
                     });

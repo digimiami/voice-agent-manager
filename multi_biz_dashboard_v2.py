@@ -271,6 +271,81 @@ body{background:#08080f;color:#f1f1f5;overflow-x:hidden}
   </div>
 </section>
 
+<!-- TRUSTED BY -->
+<section class="max-w-5xl mx-auto px-6 pb-8 text-center">
+<p class="text-sm text-[#5c5c70] mb-6 tracking-wider uppercase font-semibold">Trusted By Local Businesses</p>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<div class="card py-5 text-center"><div class="text-lg mb-1">🔧</div><div class="text-sm font-medium">Plumbing Companies</div></div>
+<div class="card py-5 text-center"><div class="text-lg mb-1">🦷</div><div class="text-sm font-medium">Dental Offices</div></div>
+<div class="card py-5 text-center"><div class="text-lg mb-1">🏡</div><div class="text-sm font-medium">Real Estate Teams</div></div>
+<div class="card py-5 text-center"><div class="text-lg mb-1">❄️</div><div class="text-sm font-medium">HVAC Companies</div></div>
+</div>
+<p class="text-xs text-[#5c5c70] mt-5">Built for: Home Services ✓  Healthcare ✓  Real Estate ✓  Professional Services ✓</p>
+</section>
+
+<!-- LIVE VOICE DEMOS -->
+<section id="demos" class="max-w-5xl mx-auto px-6 pb-16">
+<h2 class="text-3xl font-bold text-center mb-3">🎧 Hear It In <span class="gradient-text">Action</span></h2>
+<p class="text-[#7a7a8e] text-center mb-2 max-w-xl mx-auto">Listen to a real customer call handled by Diazites AI — hear how natural, professional, and instant it sounds.</p>
+<p class="text-sm text-[#a855f7] text-center mb-10 font-semibold">Click any demo to play</p>
+
+<div class="grid md:grid-cols-3 gap-5">
+<!-- Plumber Demo -->
+<div class="audio-card" data-demo="plumber" onclick="toggleAudio(this,'/static/audio/demo-plumber.mp3')">
+<div class="flex items-start gap-4 mb-3">
+<button class="play-btn" id="play-plumber"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1"><span class="text-lg">🔧</span><span class="font-semibold">Plumber</span><span class="text-[10px] px-2 py-0.5 rounded-full" style="background:#a855f722;color:#c084fc">Emergency</span></div>
+<p class="text-xs text-[#7a7a8e]">Burst pipe call — AI triages urgency, captures address, dispatches plumber</p>
+</div>
+</div>
+<div class="flex items-center gap-1" id="waveform-plumber">
+<div class="waveform-bar" style="height:12px"></div><div class="waveform-bar" style="height:18px"></div><div class="waveform-bar" style="height:24px"></div><div class="waveform-bar" style="height:32px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:48px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:32px"></div><div class="waveform-bar" style="height:24px"></div><div class="waveform-bar" style="height:18px"></div><div class="waveform-bar" style="height:12px"></div>
+</div>
+<div class="flex items-center justify-between mt-2">
+<span class="text-[10px] text-[#5c5c70]" id="time-plumber">0:00 / 0:20</span>
+<span class="text-[10px] text-[#c084fc]" id="status-plumber">▶ Click to play</span>
+</div>
+</div>
+
+<!-- Dentist Demo -->
+<div class="audio-card" data-demo="dentist" onclick="toggleAudio(this,'/static/audio/demo-dentist.mp3')">
+<div class="flex items-start gap-4 mb-3">
+<button class="play-btn" id="play-dentist"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1"><span class="text-lg">🦷</span><span class="font-semibold">Dentist</span><span class="text-[10px] px-2 py-0.5 rounded-full" style="background:#22c55e22;color:#4ade80">Booking</span></div>
+<p class="text-xs text-[#7a7a8e]">Patient calls — AI checks availability, schedules appointment, sets reminder</p>
+</div>
+</div>
+<div class="flex items-center gap-1" id="waveform-dentist">
+<div class="waveform-bar" style="height:14px"></div><div class="waveform-bar" style="height:20px"></div><div class="waveform-bar" style="height:28px"></div><div class="waveform-bar" style="height:36px"></div><div class="waveform-bar" style="height:42px"></div><div class="waveform-bar" style="height:46px"></div><div class="waveform-bar" style="height:48px"></div><div class="waveform-bar" style="height:42px"></div><div class="waveform-bar" style="height:36px"></div><div class="waveform-bar" style="height:28px"></div><div class="waveform-bar" style="height:20px"></div><div class="waveform-bar" style="height:14px"></div>
+</div>
+<div class="flex items-center justify-between mt-2">
+<span class="text-[10px] text-[#5c5c70]" id="time-dentist">0:00 / 0:23</span>
+<span class="text-[10px] text-[#c084fc]" id="status-dentist">▶ Click to play</span>
+</div>
+</div>
+
+<!-- Real Estate Demo -->
+<div class="audio-card" data-demo="realestate" onclick="toggleAudio(this,'/static/audio/demo-realestate.mp3')">
+<div class="flex items-start gap-4 mb-3">
+<button class="play-btn" id="play-realestate"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1"><span class="text-lg">🏡</span><span class="font-semibold">Real Estate</span><span class="text-[10px] px-2 py-0.5 rounded-full" style="background:#f59e0b22;color:#fbbf24">Qualification</span></div>
+<p class="text-xs text-[#7a7a8e]">Property inquiry — AI qualifies buyer, schedules showing, confirms by text</p>
+</div>
+</div>
+<div class="flex items-center gap-1" id="waveform-realestate">
+<div class="waveform-bar" style="height:10px"></div><div class="waveform-bar" style="height:16px"></div><div class="waveform-bar" style="height:22px"></div><div class="waveform-bar" style="height:30px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:48px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:30px"></div><div class="waveform-bar" style="height:22px"></div><div class="waveform-bar" style="height:16px"></div><div class="waveform-bar" style="height:10px"></div>
+</div>
+<div class="flex items-center justify-between mt-2">
+<span class="text-[10px] text-[#5c5c70]" id="time-realestate">0:00 / 0:21</span>
+<span class="text-[10px] text-[#c084fc]" id="status-realestate">▶ Click to play</span>
+</div>
+</div>
+</div>
+</section>
+
 <!-- HOW IT WORKS -->
 <section id="how-it-works" class="py-24 px-4 bg-[#0c0c18]">
   <div class="max-w-7xl mx-auto">
@@ -652,6 +727,9 @@ html{scroll-behavior:smooth}
 /* Step connector line */
 .step-line{position:absolute;top:40px;left:50%;width:100%;height:2px;background:linear-gradient(90deg,#a855f744,#ec489944);transform:translateX(0)}
 @media(max-width:768px){.step-line{display:none}}
+/* Mobile sticky CTA */
+.mobile-cta-bar{position:fixed;bottom:0;left:0;right:0;z-index:999;background:rgba(10,10,15,.95);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-top:1px solid #252533;padding:10px 16px;display:none;gap:8px}
+@media(max-width:768px){.mobile-cta-bar{display:flex}.mobile-cta-bar a{flex:1;text-align:center;font-size:13px;padding:10px 8px;border-radius:10px;font-weight:600;text-decoration:none}}
 </style></head><body>
 
 <!-- NAV -->
@@ -677,63 +755,39 @@ html{scroll-behavior:smooth}
 <div class="absolute top-40 right-1/4 w-80 h-80 rounded-full opacity-[0.03]" style="background:radial-gradient(circle,#ec4899,transparent);transform:translateX(50%)"></div>
 </div>
 <div class="relative">
-<img src="/static/images/hero-banner.png" alt="Diazites AI Voice Agents" class="w-full max-w-4xl mx-auto rounded-2xl mb-8 pulse-glow" style="max-height:360px;object-fit:cover">
-<h1 class="text-5xl md:text-6xl font-bold mb-4">AI Voice Agents <span class="gradient-text">for Your Business</span></h1>
+<h1 class="text-5xl md:text-6xl font-bold mb-4">Never Miss Another<br><span class="gradient-text">Customer Call</span> Again</h1>
 <p class="text-lg text-[#7a7a8e] max-w-2xl mx-auto mb-8 leading-relaxed">
-Never miss a lead again. Diazites deploys intelligent AI voice agents that answer calls, book appointments, and qualify leads — <strong class="text-[#f1f1f5]">24/7, in multiple languages</strong>, at a fraction of the cost of a human receptionist.
+Diazites AI voice agents answer calls <strong class="text-[#f1f1f5]">24/7</strong>, qualify customers, schedule appointments, and help local businesses grow <strong class="text-[#f1f1f5]">without adding staff</strong>.
 </p>
-<div class="flex items-center justify-center gap-4 flex-wrap mb-10">
-<a href="/login" class="btn-primary text-base px-8 py-3">Access Your Dashboard →</a>
-<a href="#demos" class="btn-outline text-base px-8 py-3">▶ Hear Live Demos</a>
+<div class="flex items-center justify-center gap-4 flex-wrap mb-6">
+<a href="#demos" class="btn-primary text-base px-8 py-3 flex items-center gap-2">🎧 Hear My AI Agent</a>
+<a href="/login" class="btn-outline text-base px-8 py-3">📅 Book a Demo</a>
+</div>
+<div class="flex items-center justify-center gap-6 text-sm text-[#5c5c70]">
+  <span class="flex items-center gap-1.5"><span class="text-green-400">✓</span> No setup fees</span>
+  <span class="flex items-center gap-1.5"><span class="text-green-400">✓</span> Cancel anytime</span>
+  <span class="flex items-center gap-1.5"><span class="text-green-400">✓</span> 14-day free trial</span>
 </div>
 </div>
 </section>
 
-<!-- HOW IT WORKS -->
-<section class="max-w-5xl mx-auto px-6 pb-16">
-<h2 class="text-3xl font-bold text-center mb-12">How It <span class="gradient-text">Works</span></h2>
-<div class="grid md:grid-cols-4 gap-6 relative">
-<div class="card text-center py-8 relative z-10">
-<div class="text-4xl mb-3 ring-anim">📞</div>
-<div class="text-xs text-[#a855f7] font-bold mb-1">STEP 1</div>
-<h3 class="font-semibold mb-1">Customer Calls</h3>
-<p class="text-xs text-[#7a7a8e]">Your AI agent answers instantly, 24/7</p>
+<!-- TRUSTED BY -->
+<section class="max-w-5xl mx-auto px-6 pb-8 text-center">
+<p class="text-sm text-[#5c5c70] mb-6 tracking-wider uppercase font-semibold">Trusted By Local Businesses</p>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<div class="card py-5 text-center"><div class="text-lg mb-1">🔧</div><div class="text-sm font-medium">Plumbing Companies</div></div>
+<div class="card py-5 text-center"><div class="text-lg mb-1">🦷</div><div class="text-sm font-medium">Dental Offices</div></div>
+<div class="card py-5 text-center"><div class="text-lg mb-1">🏡</div><div class="text-sm font-medium">Real Estate Teams</div></div>
+<div class="card py-5 text-center"><div class="text-lg mb-1">❄️</div><div class="text-sm font-medium">HVAC Companies</div></div>
 </div>
-<div class="card text-center py-8 relative z-10">
-<div class="text-4xl mb-3 float-anim">🤖</div>
-<div class="text-xs text-[#a855f7] font-bold mb-1">STEP 2</div>
-<h3 class="font-semibold mb-1">AI Qualifies Lead</h3>
-<p class="text-xs text-[#7a7a8e]">Natural conversation captures details & intent</p>
-</div>
-<div class="card text-center py-8 relative z-10">
-<div class="text-4xl mb-3 float-anim" style="animation-delay:1s">📅</div>
-<div class="text-xs text-[#a855f7] font-bold mb-1">STEP 3</div>
-<h3 class="font-semibold mb-1">Books Appointment</h3>
-<p class="text-xs text-[#7a7a8e]">Auto-schedules and sends confirmation</p>
-</div>
-<div class="card text-center py-8 relative z-10">
-<div class="text-4xl mb-3 float-anim" style="animation-delay:2s">📊</div>
-<div class="text-xs text-[#a855f7] font-bold mb-1">STEP 4</div>
-<h3 class="font-semibold mb-1">Dashboard Review</h3>
-<p class="text-xs text-[#7a7a8e]">View calls, leads, and analytics in real-time</p>
-</div>
-</div>
-</section>
-
-<!-- STATS -->
-<section class="max-w-5xl mx-auto px-6 pb-16">
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-<div class="card py-8" style="border-color:#a855f744"><div class="text-4xl font-bold gradient-text">24/7</div><div class="text-sm text-[#7a7a8e] mt-1">Always-On Availability</div></div>
-<div class="card py-8" style="border-color:#a855f744"><div class="text-4xl font-bold gradient-text">60%</div><div class="text-sm text-[#7a7a8e] mt-1">More Leads Captured</div></div>
-<div class="card py-8" style="border-color:#a855f744"><div class="text-4xl font-bold gradient-text">10+</div><div class="text-sm text-[#7a7a8e] mt-1">Industries Served</div></div>
-<div class="card py-8" style="border-color:#a855f744"><div class="text-4xl font-bold gradient-text">99%</div><div class="text-sm text-[#7a7a8e] mt-1">Call Answer Rate</div></div>
-</div>
+<p class="text-xs text-[#5c5c70] mt-5">Built for: Home Services ✓  Healthcare ✓  Real Estate ✓  Professional Services ✓</p>
 </section>
 
 <!-- LIVE VOICE DEMOS -->
 <section id="demos" class="max-w-5xl mx-auto px-6 pb-16">
 <h2 class="text-3xl font-bold text-center mb-3">🎧 Hear It In <span class="gradient-text">Action</span></h2>
-<p class="text-[#7a7a8e] text-center mb-10 max-w-xl mx-auto">Click any demo to hear how Diazites voice agents handle real business calls — naturally, professionally, instantly.</p>
+<p class="text-[#7a7a8e] text-center mb-2 max-w-xl mx-auto">Listen to a real customer call handled by Diazites AI — hear how natural, professional, and instant it sounds.</p>
+<p class="text-sm text-[#a855f7] text-center mb-10 font-semibold">Click any demo to play</p>
 
 <div class="grid md:grid-cols-3 gap-5">
 <!-- Plumber Demo -->
@@ -792,51 +846,175 @@ Never miss a lead again. Diazites deploys intelligent AI voice agents that answe
 </div>
 </section>
 
+<!-- HOW IT WORKS -->
+<section class="max-w-5xl mx-auto px-6 pb-16">
+<h2 class="text-3xl font-bold text-center mb-12">How It <span class="gradient-text">Works</span></h2>
+<div class="grid md:grid-cols-4 gap-6 relative">
+<div class="card text-center py-8 relative z-10">
+<div class="text-4xl mb-3 ring-anim">📞</div>
+<div class="text-xs text-[#a855f7] font-bold mb-1">STEP 1</div>
+<h3 class="font-semibold mb-1">Customer Calls</h3>
+<p class="text-xs text-[#7a7a8e]">Your AI agent answers instantly, 24/7</p>
+</div>
+<div class="card text-center py-8 relative z-10">
+<div class="text-4xl mb-3 float-anim">🤖</div>
+<div class="text-xs text-[#a855f7] font-bold mb-1">STEP 2</div>
+<h3 class="font-semibold mb-1">AI Qualifies Lead</h3>
+<p class="text-xs text-[#7a7a8e]">Natural conversation captures details & intent</p>
+</div>
+<div class="card text-center py-8 relative z-10">
+<div class="text-4xl mb-3 float-anim" style="animation-delay:1s">📅</div>
+<div class="text-xs text-[#a855f7] font-bold mb-1">STEP 3</div>
+<h3 class="font-semibold mb-1">Books Appointment</h3>
+<p class="text-xs text-[#7a7a8e]">Auto-schedules and sends confirmation</p>
+</div>
+<div class="card text-center py-8 relative z-10">
+<div class="text-4xl mb-3 float-anim" style="animation-delay:2s">📊</div>
+<div class="text-xs text-[#a855f7] font-bold mb-1">STEP 4</div>
+<h3 class="font-semibold mb-1">Dashboard Review</h3>
+<p class="text-xs text-[#7a7a8e]">View calls, leads, and analytics in real-time</p>
+</div>
+</div>
+</section>
+
+<!-- STATS -->
+<section class="max-w-5xl mx-auto px-6 pb-16">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+<div class="card py-8" style="border-color:#a855f744"><div class="text-4xl font-bold gradient-text">24/7</div><div class="text-sm text-[#7a7a8e] mt-1">Always-On Availability</div></div>
+<div class="card py-8" style="border-color:#a855f744"><div class="text-4xl font-bold gradient-text">60%</div><div class="text-sm text-[#7a7a8e] mt-1">More Leads Captured</div></div>
+<div class="card py-8" style="border-color:#a855f744"><div class="text-4xl font-bold gradient-text">10+</div><div class="text-sm text-[#7a7a8e] mt-1">Industries Served</div></div>
+<div class="card py-8" style="border-color:#a855f744"><div class="text-4xl font-bold gradient-text">99%</div><div class="text-sm text-[#7a7a8e] mt-1">Call Answer Rate</div></div>
+</div>
+</section>
+
 <!-- FEATURES -->
 <section id="features" class="max-w-5xl mx-auto px-6 pb-16">
 <h2 class="text-3xl font-bold text-center mb-10">Everything You <span class="gradient-text">Need</span></h2>
 <div class="grid md:grid-cols-3 gap-5">
-<div class="card p-0 overflow-hidden">
-<img src="/static/images/feature-smart-receptionist.png" alt="Smart AI Receptionist" class="w-full" style="height:180px;object-fit:cover">
-<div class="p-5"><h3 class="font-semibold mb-1">🤖 Smart AI Receptionist</h3><p class="text-sm text-[#7a7a8e]">Natural conversations that qualify leads and book calls automatically. Never miss a business opportunity.</p></div>
+<div class="card p-5 text-center">
+<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/20 to-purple-500/5 flex items-center justify-center mx-auto mb-4 text-2xl">🤖</div>
+<h3 class="font-semibold mb-1">Smart AI Receptionist</h3><p class="text-sm text-[#7a7a8e]">Natural conversations that qualify leads and book calls automatically. Never miss a business opportunity.</p>
 </div>
-<div class="card p-0 overflow-hidden">
-<img src="/static/images/feature-call-forwarding.png" alt="Call Forwarding" class="w-full" style="height:180px;object-fit:cover">
-<div class="p-5"><h3 class="font-semibold mb-1">📞 Call Forwarding</h3><p class="text-sm text-[#7a7a8e]">Route calls to your personal line during business hours. AI handles after-hours and overflow automatically.</p></div>
+<div class="card p-5 text-center">
+<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-500/20 to-pink-500/5 flex items-center justify-center mx-auto mb-4 text-2xl">📞</div>
+<h3 class="font-semibold mb-1">Call Forwarding</h3><p class="text-sm text-[#7a7a8e]">Route calls to your personal line during business hours. AI handles after-hours and overflow automatically.</p>
 </div>
-<div class="card p-0 overflow-hidden">
-<img src="/static/images/feature-campaign-dashboard.png" alt="Campaign Dashboard" class="w-full" style="height:180px;object-fit:cover">
-<div class="p-5"><h3 class="font-semibold mb-1">📊 Campaign Dashboard</h3><p class="text-sm text-[#7a7a8e]">Start, pause, and monitor outbound campaigns with real-time analytics and performance metrics.</p></div>
+<div class="card p-5 text-center">
+<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-500/5 flex items-center justify-center mx-auto mb-4 text-2xl">📊</div>
+<h3 class="font-semibold mb-1">Campaign Dashboard</h3><p class="text-sm text-[#7a7a8e]">Start, pause, and monitor outbound campaigns with real-time analytics and performance metrics.</p>
 </div>
-<div class="card p-0 overflow-hidden">
-<img src="/static/images/feature-custom-scripts.png" alt="Custom Scripts" class="w-full" style="height:180px;object-fit:cover">
-<div class="p-5"><h3 class="font-semibold mb-1">📝 Custom Scripts</h3><p class="text-sm text-[#7a7a8e]">Tailor your AI agent's script and knowledge base to your exact business needs and brand voice.</p></div>
+<div class="card p-5 text-center">
+<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 flex items-center justify-center mx-auto mb-4 text-2xl">📝</div>
+<h3 class="font-semibold mb-1">Custom Scripts</h3><p class="text-sm text-[#7a7a8e]">Tailor your AI agent's script and knowledge base to your exact business needs and brand voice.</p>
 </div>
-<div class="card p-0 overflow-hidden">
-<img src="/static/images/feature-multi-language.png" alt="Multi-Language" class="w-full" style="height:180px;object-fit:cover">
-<div class="p-5"><h3 class="font-semibold mb-1">🌎 Multi-Language</h3><p class="text-sm text-[#7a7a8e]">Speak with customers in English, Spanish, and more — naturally, with full context switching.</p></div>
+<div class="card p-5 text-center">
+<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500/20 to-green-500/5 flex items-center justify-center mx-auto mb-4 text-2xl">🌎</div>
+<h3 class="font-semibold mb-1">Multi-Language</h3><p class="text-sm text-[#7a7a8e]">Speak with customers in English, Spanish, and more — naturally, with full context switching.</p>
 </div>
-<div class="card p-0 overflow-hidden">
-<img src="/static/images/feature-sms-followups.png" alt="SMS Follow-Ups" class="w-full" style="height:180px;object-fit:cover">
-<div class="p-5"><h3 class="font-semibold mb-1">📱 SMS Follow-Ups</h3><p class="text-sm text-[#7a7a8e]">Auto-send appointment reminders, missed-call texts, and follow-up messages to warm leads.</p></div>
+<div class="card p-5 text-center">
+<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500/20 to-red-500/5 flex items-center justify-center mx-auto mb-4 text-2xl">📱</div>
+<h3 class="font-semibold mb-1">SMS Follow-Ups</h3><p class="text-sm text-[#7a7a8e]">Auto-send appointment reminders, missed-call texts, and follow-up messages to warm leads.</p>
+</div>
+</div>
+</section>
+
+<!-- WHY DIAZITES -->
+<section class="max-w-5xl mx-auto px-6 pb-16">
+<div class="glass rounded-2xl p-10 text-center relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-transparent to-cyan-500/5"></div>
+<div class="relative z-10">
+<span class="text-sm font-semibold text-purple-400 tracking-widest uppercase">About</span>
+<h2 class="text-3xl font-bold mt-3 mb-5">Why <span class="gradient-text">Diazites</span>?</h2>
+<p class="text-[#7a7a8e] max-w-2xl mx-auto leading-relaxed mb-6">Diazites helps small businesses compete with enterprise-level customer service through affordable AI-powered communication tools. We don't just build AI agents — we help local businesses <strong class="text-[#f1f1f5]">stop losing customers from missed calls</strong>.</p>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+<div><div class="text-2xl mb-1">🎯</div><div class="text-sm font-semibold">Enterprise AI</div><div class="text-xs text-[#5c5c70]">Small business prices</div></div>
+<div><div class="text-2xl mb-1">⚡</div><div class="text-sm font-semibold">5-Min Setup</div><div class="text-xs text-[#5c5c70]">No technical skills needed</div></div>
+<div><div class="text-2xl mb-1">🔒</div><div class="text-sm font-semibold">Bank-Grade</div><div class="text-xs text-[#5c5c70]">Encrypted &amp; compliant</div></div>
+<div><div class="text-2xl mb-1">💎</div><div class="text-sm font-semibold">White-Label</div><div class="text-xs text-[#5c5c70]">Your brand, our tech</div></div>
+</div>
 </div>
 </div>
 </section>
 
 <!-- INDUSTRIES -->
 <section id="industries" class="max-w-5xl mx-auto px-6 pb-16">
-<h2 class="text-3xl font-bold text-center mb-10">Built for <span class="gradient-text">Local Businesses</span></h2>
-<div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-plumber.png" alt="Plumber" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">🔧 Plumber</div></div>
-<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-dentist.png" alt="Dentist" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">🦷 Dentist</div></div>
-<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-roofer.png" alt="Roofer" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">🏠 Roofer</div></div>
-<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-hvac.png" alt="HVAC" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">❄️ HVAC</div></div>
-<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-lawyer.png" alt="Lawyer" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">⚖️ Lawyer</div></div>
-<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-realestate.png" alt="Real Estate" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">🏡 Real Estate</div></div>
-<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-auto.png" alt="Auto Mechanic" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">🚗 Auto Mechanic</div></div>
-<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-cleaning.png" alt="Cleaning" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">🧹 Cleaning</div></div>
-<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-pest.png" alt="Pest Control" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">🐜 Pest Control</div></div>
-<div class="card text-center py-4 p-0 overflow-hidden"><img src="/static/images/industry-landscaper.png" alt="Landscaper" class="w-full" style="height:100px;object-fit:cover"><div class="py-3 text-sm font-medium">🌿 Landscaper</div></div>
+<h2 class="text-3xl font-bold text-center mb-3">Built for <span class="gradient-text">Local Businesses</span></h2>
+<p class="text-[#7a7a8e] text-center text-sm mb-10 max-w-xl mx-auto">Industry-specific AI voice agents tailored to how your business works</p>
+<div class="grid md:grid-cols-2 gap-4">
+<div class="card p-5 flex items-start gap-4 glow-border">
+<div class="text-3xl flex-shrink-0">🔧</div>
+<div><h4 class="font-bold text-base">AI Receptionist For Plumbers</h4>
+<p class="text-xs text-[#7a7a8e] mt-0.5">Never lose emergency calls after hours. AI triages burst pipes, captures addresses, dispatches your team instantly.</p></div>
+</div>
+<div class="card p-5 flex items-start gap-4 glow-border">
+<div class="text-3xl flex-shrink-0">🦷</div>
+<div><h4 class="font-bold text-base">AI Receptionist For Dentists</h4>
+<p class="text-xs text-[#7a7a8e] mt-0.5">Schedule appointments while your team treats patients. Reduce no-shows with automated reminders.</p></div>
+</div>
+<div class="card p-5 flex items-start gap-4 glow-border">
+<div class="text-3xl flex-shrink-0">🏡</div>
+<div><h4 class="font-bold text-base">AI Receptionist For Real Estate</h4>
+<p class="text-xs text-[#7a7a8e] mt-0.5">Capture every buyer inquiry instantly. Qualify leads, schedule showings, follow up automatically.</p></div>
+</div>
+<div class="card p-5 flex items-start gap-4 glow-border">
+<div class="text-3xl flex-shrink-0">❄️</div>
+<div><h4 class="font-bold text-base">AI Receptionist For HVAC</h4>
+<p class="text-xs text-[#7a7a8e] mt-0.5">Handle after-hours emergencies. Dispatch calls when temperatures spike, book maintenance visits automatically.</p></div>
+</div>
+<div class="card p-5 flex items-start gap-4 glow-border">
+<div class="text-3xl flex-shrink-0">⚖️</div>
+<div><h4 class="font-bold text-base">AI Receptionist For Lawyers</h4>
+<p class="text-xs text-[#7a7a8e] mt-0.5">Qualify leads automatically. Book consultations, collect case details, never miss a potential client call.</p></div>
+</div>
+<div class="card p-5 flex items-start gap-4 glow-border">
+<div class="text-3xl flex-shrink-0">🚗</div>
+<div><h4 class="font-bold text-base">AI Receptionist For Auto Shops</h4>
+<p class="text-xs text-[#7a7a8e] mt-0.5">Book service appointments overnight. Answer customer questions about pricing, availability, and estimated times.</p></div>
+</div>
+</div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="max-w-5xl mx-auto px-6 pb-16">
+<h2 class="text-3xl font-bold text-center mb-3">Trusted by <span class="gradient-text">Business Owners</span></h2>
+<p class="text-[#7a7a8e] text-center text-sm mb-10">Real results from real businesses using Diazites AI</p>
+<div class="grid md:grid-cols-3 gap-5">
+<div class="card p-6 relative">
+<div class="text-4xl text-purple-500/20 absolute top-4 right-4">"</div>
+<p class="text-sm text-[#7a7a8e] mb-4 italic relative z-10">"Diazites helped us stop losing after-hours calls and increased booked appointments by 40% in the first month."</p>
+<div class="flex items-center gap-3 border-t border-[#252533] pt-4">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-sm font-bold">M</div>
+<div><div class="text-sm font-semibold">Mike R.</div><div class="text-xs text-[#5c5c70]">Plumbing Contractor, Miami</div></div>
+</div>
+</div>
+<div class="card p-6 relative">
+<div class="text-4xl text-purple-500/20 absolute top-4 right-4">"</div>
+<p class="text-sm text-[#7a7a8e] mb-4 italic relative z-10">"Our patients love that someone answers immediately. Appointments booked through the AI have cut our admin workload by hours each day."</p>
+<div class="flex items-center gap-3 border-t border-[#252533] pt-4">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center text-sm font-bold">S</div>
+<div><div class="text-sm font-semibold">Dr. Sarah L.</div><div class="text-xs text-[#5c5c70]">Dental Practice, Dallas</div></div>
+</div>
+</div>
+<div class="card p-6 relative">
+<div class="text-4xl text-purple-500/20 absolute top-4 right-4">"</div>
+<p class="text-sm text-[#7a7a8e] mb-4 italic relative z-10">"I was skeptical about AI taking calls, but it sounds just like a real person. We haven't missed a single buyer inquiry since going live."</p>
+<div class="flex items-center gap-3 border-t border-[#252533] pt-4">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-amber-500 flex items-center justify-center text-sm font-bold">J</div>
+<div><div class="text-sm font-semibold">James K.</div><div class="text-xs text-[#5c5c70]">Real Estate Agent, Phoenix</div></div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- PRICING STARTING POINT -->
+<section class="max-w-3xl mx-auto px-6 pb-8 text-center">
+<div class="inline-flex items-center gap-2 glass rounded-full px-6 py-3 text-sm">
+<span class="text-purple-400">💰</span>
+<span class="text-[#f1f1f5] font-semibold">Plans Starting At</span>
+<span class="gradient-text text-lg font-bold">$97</span>
+<span class="text-[#5c5c70]">/month</span>
+<span class="text-[#5c5c70]">—</span>
+<a href="#signup-form" class="text-purple-400 hover:text-purple-300 font-semibold">See Plans →</a>
 </div>
 </section>
 
@@ -1034,6 +1212,12 @@ document.querySelectorAll('a[href^="#"]').forEach(a => {
     });
 });
 </script>
+
+<!-- Mobile Sticky CTA -->
+<div class="mobile-cta-bar">
+<a href="#demos" class="btn-primary text-sm" style="background:linear-gradient(135deg,#a855f7,#ec4899);color:white">🎧 Hear AI Agent</a>
+<a href="/login" class="btn-outline text-sm" style="border:1px solid #3b3b50;color:#f1f1f5">📅 Book Demo</a>
+</div>
 
 </body></html>"""
 
@@ -2553,6 +2737,81 @@ html{scroll-behavior:smooth}
   </div>
 </section>
 
+<!-- TRUSTED BY -->
+<section class="max-w-5xl mx-auto px-6 pb-8 text-center">
+<p class="text-sm text-[#5c5c70] mb-6 tracking-wider uppercase font-semibold">Trusted By Local Businesses</p>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<div class="card py-5 text-center"><div class="text-lg mb-1">🔧</div><div class="text-sm font-medium">Plumbing Companies</div></div>
+<div class="card py-5 text-center"><div class="text-lg mb-1">🦷</div><div class="text-sm font-medium">Dental Offices</div></div>
+<div class="card py-5 text-center"><div class="text-lg mb-1">🏡</div><div class="text-sm font-medium">Real Estate Teams</div></div>
+<div class="card py-5 text-center"><div class="text-lg mb-1">❄️</div><div class="text-sm font-medium">HVAC Companies</div></div>
+</div>
+<p class="text-xs text-[#5c5c70] mt-5">Built for: Home Services ✓  Healthcare ✓  Real Estate ✓  Professional Services ✓</p>
+</section>
+
+<!-- LIVE VOICE DEMOS -->
+<section id="demos" class="max-w-5xl mx-auto px-6 pb-16">
+<h2 class="text-3xl font-bold text-center mb-3">🎧 Hear It In <span class="gradient-text">Action</span></h2>
+<p class="text-[#7a7a8e] text-center mb-2 max-w-xl mx-auto">Listen to a real customer call handled by Diazites AI — hear how natural, professional, and instant it sounds.</p>
+<p class="text-sm text-[#a855f7] text-center mb-10 font-semibold">Click any demo to play</p>
+
+<div class="grid md:grid-cols-3 gap-5">
+<!-- Plumber Demo -->
+<div class="audio-card" data-demo="plumber" onclick="toggleAudio(this,'/static/audio/demo-plumber.mp3')">
+<div class="flex items-start gap-4 mb-3">
+<button class="play-btn" id="play-plumber"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1"><span class="text-lg">🔧</span><span class="font-semibold">Plumber</span><span class="text-[10px] px-2 py-0.5 rounded-full" style="background:#a855f722;color:#c084fc">Emergency</span></div>
+<p class="text-xs text-[#7a7a8e]">Burst pipe call — AI triages urgency, captures address, dispatches plumber</p>
+</div>
+</div>
+<div class="flex items-center gap-1" id="waveform-plumber">
+<div class="waveform-bar" style="height:12px"></div><div class="waveform-bar" style="height:18px"></div><div class="waveform-bar" style="height:24px"></div><div class="waveform-bar" style="height:32px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:48px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:32px"></div><div class="waveform-bar" style="height:24px"></div><div class="waveform-bar" style="height:18px"></div><div class="waveform-bar" style="height:12px"></div>
+</div>
+<div class="flex items-center justify-between mt-2">
+<span class="text-[10px] text-[#5c5c70]" id="time-plumber">0:00 / 0:20</span>
+<span class="text-[10px] text-[#c084fc]" id="status-plumber">▶ Click to play</span>
+</div>
+</div>
+
+<!-- Dentist Demo -->
+<div class="audio-card" data-demo="dentist" onclick="toggleAudio(this,'/static/audio/demo-dentist.mp3')">
+<div class="flex items-start gap-4 mb-3">
+<button class="play-btn" id="play-dentist"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1"><span class="text-lg">🦷</span><span class="font-semibold">Dentist</span><span class="text-[10px] px-2 py-0.5 rounded-full" style="background:#22c55e22;color:#4ade80">Booking</span></div>
+<p class="text-xs text-[#7a7a8e]">Patient calls — AI checks availability, schedules appointment, sets reminder</p>
+</div>
+</div>
+<div class="flex items-center gap-1" id="waveform-dentist">
+<div class="waveform-bar" style="height:14px"></div><div class="waveform-bar" style="height:20px"></div><div class="waveform-bar" style="height:28px"></div><div class="waveform-bar" style="height:36px"></div><div class="waveform-bar" style="height:42px"></div><div class="waveform-bar" style="height:46px"></div><div class="waveform-bar" style="height:48px"></div><div class="waveform-bar" style="height:42px"></div><div class="waveform-bar" style="height:36px"></div><div class="waveform-bar" style="height:28px"></div><div class="waveform-bar" style="height:20px"></div><div class="waveform-bar" style="height:14px"></div>
+</div>
+<div class="flex items-center justify-between mt-2">
+<span class="text-[10px] text-[#5c5c70]" id="time-dentist">0:00 / 0:23</span>
+<span class="text-[10px] text-[#c084fc]" id="status-dentist">▶ Click to play</span>
+</div>
+</div>
+
+<!-- Real Estate Demo -->
+<div class="audio-card" data-demo="realestate" onclick="toggleAudio(this,'/static/audio/demo-realestate.mp3')">
+<div class="flex items-start gap-4 mb-3">
+<button class="play-btn" id="play-realestate"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1"><span class="text-lg">🏡</span><span class="font-semibold">Real Estate</span><span class="text-[10px] px-2 py-0.5 rounded-full" style="background:#f59e0b22;color:#fbbf24">Qualification</span></div>
+<p class="text-xs text-[#7a7a8e]">Property inquiry — AI qualifies buyer, schedules showing, confirms by text</p>
+</div>
+</div>
+<div class="flex items-center gap-1" id="waveform-realestate">
+<div class="waveform-bar" style="height:10px"></div><div class="waveform-bar" style="height:16px"></div><div class="waveform-bar" style="height:22px"></div><div class="waveform-bar" style="height:30px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:48px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:30px"></div><div class="waveform-bar" style="height:22px"></div><div class="waveform-bar" style="height:16px"></div><div class="waveform-bar" style="height:10px"></div>
+</div>
+<div class="flex items-center justify-between mt-2">
+<span class="text-[10px] text-[#5c5c70]" id="time-realestate">0:00 / 0:21</span>
+<span class="text-[10px] text-[#c084fc]" id="status-realestate">▶ Click to play</span>
+</div>
+</div>
+</div>
+</section>
+
 <!-- HOW IT WORKS -->
 <section id="how" class="py-24 px-6 bg-white">
   <div class="max-w-3xl mx-auto">
@@ -3170,6 +3429,81 @@ body{{background:#08080f;color:#f1f1f5;overflow-x:hidden}}
       </div>''' for i, feature in enumerate(features[:6]))}
     </div>
   </div>
+</section>
+
+<!-- TRUSTED BY -->
+<section class="max-w-5xl mx-auto px-6 pb-8 text-center">
+<p class="text-sm text-[#5c5c70] mb-6 tracking-wider uppercase font-semibold">Trusted By Local Businesses</p>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<div class="card py-5 text-center"><div class="text-lg mb-1">🔧</div><div class="text-sm font-medium">Plumbing Companies</div></div>
+<div class="card py-5 text-center"><div class="text-lg mb-1">🦷</div><div class="text-sm font-medium">Dental Offices</div></div>
+<div class="card py-5 text-center"><div class="text-lg mb-1">🏡</div><div class="text-sm font-medium">Real Estate Teams</div></div>
+<div class="card py-5 text-center"><div class="text-lg mb-1">❄️</div><div class="text-sm font-medium">HVAC Companies</div></div>
+</div>
+<p class="text-xs text-[#5c5c70] mt-5">Built for: Home Services ✓  Healthcare ✓  Real Estate ✓  Professional Services ✓</p>
+</section>
+
+<!-- LIVE VOICE DEMOS -->
+<section id="demos" class="max-w-5xl mx-auto px-6 pb-16">
+<h2 class="text-3xl font-bold text-center mb-3">🎧 Hear It In <span class="gradient-text">Action</span></h2>
+<p class="text-[#7a7a8e] text-center mb-2 max-w-xl mx-auto">Listen to a real customer call handled by Diazites AI — hear how natural, professional, and instant it sounds.</p>
+<p class="text-sm text-[#a855f7] text-center mb-10 font-semibold">Click any demo to play</p>
+
+<div class="grid md:grid-cols-3 gap-5">
+<!-- Plumber Demo -->
+<div class="audio-card" data-demo="plumber" onclick="toggleAudio(this,'/static/audio/demo-plumber.mp3')">
+<div class="flex items-start gap-4 mb-3">
+<button class="play-btn" id="play-plumber"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1"><span class="text-lg">🔧</span><span class="font-semibold">Plumber</span><span class="text-[10px] px-2 py-0.5 rounded-full" style="background:#a855f722;color:#c084fc">Emergency</span></div>
+<p class="text-xs text-[#7a7a8e]">Burst pipe call — AI triages urgency, captures address, dispatches plumber</p>
+</div>
+</div>
+<div class="flex items-center gap-1" id="waveform-plumber">
+<div class="waveform-bar" style="height:12px"></div><div class="waveform-bar" style="height:18px"></div><div class="waveform-bar" style="height:24px"></div><div class="waveform-bar" style="height:32px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:48px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:32px"></div><div class="waveform-bar" style="height:24px"></div><div class="waveform-bar" style="height:18px"></div><div class="waveform-bar" style="height:12px"></div>
+</div>
+<div class="flex items-center justify-between mt-2">
+<span class="text-[10px] text-[#5c5c70]" id="time-plumber">0:00 / 0:20</span>
+<span class="text-[10px] text-[#c084fc]" id="status-plumber">▶ Click to play</span>
+</div>
+</div>
+
+<!-- Dentist Demo -->
+<div class="audio-card" data-demo="dentist" onclick="toggleAudio(this,'/static/audio/demo-dentist.mp3')">
+<div class="flex items-start gap-4 mb-3">
+<button class="play-btn" id="play-dentist"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1"><span class="text-lg">🦷</span><span class="font-semibold">Dentist</span><span class="text-[10px] px-2 py-0.5 rounded-full" style="background:#22c55e22;color:#4ade80">Booking</span></div>
+<p class="text-xs text-[#7a7a8e]">Patient calls — AI checks availability, schedules appointment, sets reminder</p>
+</div>
+</div>
+<div class="flex items-center gap-1" id="waveform-dentist">
+<div class="waveform-bar" style="height:14px"></div><div class="waveform-bar" style="height:20px"></div><div class="waveform-bar" style="height:28px"></div><div class="waveform-bar" style="height:36px"></div><div class="waveform-bar" style="height:42px"></div><div class="waveform-bar" style="height:46px"></div><div class="waveform-bar" style="height:48px"></div><div class="waveform-bar" style="height:42px"></div><div class="waveform-bar" style="height:36px"></div><div class="waveform-bar" style="height:28px"></div><div class="waveform-bar" style="height:20px"></div><div class="waveform-bar" style="height:14px"></div>
+</div>
+<div class="flex items-center justify-between mt-2">
+<span class="text-[10px] text-[#5c5c70]" id="time-dentist">0:00 / 0:23</span>
+<span class="text-[10px] text-[#c084fc]" id="status-dentist">▶ Click to play</span>
+</div>
+</div>
+
+<!-- Real Estate Demo -->
+<div class="audio-card" data-demo="realestate" onclick="toggleAudio(this,'/static/audio/demo-realestate.mp3')">
+<div class="flex items-start gap-4 mb-3">
+<button class="play-btn" id="play-realestate"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1"><span class="text-lg">🏡</span><span class="font-semibold">Real Estate</span><span class="text-[10px] px-2 py-0.5 rounded-full" style="background:#f59e0b22;color:#fbbf24">Qualification</span></div>
+<p class="text-xs text-[#7a7a8e]">Property inquiry — AI qualifies buyer, schedules showing, confirms by text</p>
+</div>
+</div>
+<div class="flex items-center gap-1" id="waveform-realestate">
+<div class="waveform-bar" style="height:10px"></div><div class="waveform-bar" style="height:16px"></div><div class="waveform-bar" style="height:22px"></div><div class="waveform-bar" style="height:30px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:48px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:30px"></div><div class="waveform-bar" style="height:22px"></div><div class="waveform-bar" style="height:16px"></div><div class="waveform-bar" style="height:10px"></div>
+</div>
+<div class="flex items-center justify-between mt-2">
+<span class="text-[10px] text-[#5c5c70]" id="time-realestate">0:00 / 0:21</span>
+<span class="text-[10px] text-[#c084fc]" id="status-realestate">▶ Click to play</span>
+</div>
+</div>
+</div>
 </section>
 
 <!-- HOW IT WORKS -->
