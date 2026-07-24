@@ -59,6 +59,19 @@ try:
 except Exception as e:
     print(f"⚠️ Could not create default API key: {e}")
 
+# Load persisted pricing tiers from file (if any)
+try:
+    cfg_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pricing_tiers.json')
+    if os.path.exists(cfg_path):
+        import json as _j
+        with open(cfg_path) as _f:
+            saved = _j.load(_f)
+        if saved:
+            PRICING_TIERS.update(saved)
+            print(f"✅ Loaded {len(saved)} pricing tiers from file")
+except Exception as e:
+    print(f"⚠️ Could not load pricing tiers: {e}")
+
 # ── INDUSTRY PRESETS ──
 
 INDUSTRY_PRESETS = {
@@ -76,11 +89,11 @@ INDUSTRY_PRESETS = {
 }
 
 PRICING_TIERS = {
-    "starter": {"name": "Starter", "price": 299, "calls_included": 500, "features": "AI agent, 1 number, 500 calls/mo"},
-    "pro": {"name": "Pro", "price": 599, "calls_included": 2000, "features": "AI agent, 1 number, 2K calls/mo, lead mgmt"},
-    "premium": {"name": "Premium", "price": 999, "calls_included": 5000, "features": "AI agent, 2 numbers, 5K calls/mo, forwarding"},
-    "enterprise": {"name": "Enterprise", "price": 1999, "calls_included": 15000, "features": "AI agent, 5 numbers, 15K calls/mo, white-label"},
-    "custom": {"name": "Custom", "price": 0, "calls_included": 0, "features": "Fully customizable package"}
+    "starter": {"name": "Starter", "price": 299, "calls_included": 500, "minutes_limit": 250, "features": "AI agent, 1 number, 500 calls/mo, 250 min"},
+    "pro": {"name": "Pro", "price": 599, "calls_included": 2000, "minutes_limit": 1000, "features": "AI agent, 1 number, 2K calls/mo, 1000 min, lead mgmt"},
+    "premium": {"name": "Premium", "price": 999, "calls_included": 5000, "minutes_limit": 2500, "features": "AI agent, 2 numbers, 5K calls/mo, 2500 min, forwarding"},
+    "enterprise": {"name": "Enterprise", "price": 1999, "calls_included": 15000, "minutes_limit": 7500, "features": "AI agent, 5 numbers, 15K calls/mo, 7500 min, white-label"},
+    "custom": {"name": "Custom", "price": 0, "calls_included": 0, "minutes_limit": 0, "features": "Fully customizable package"}
 }
 
 ADMIN_HTML = """<!DOCTYPE html>
@@ -364,49 +377,178 @@ ADMIN_HTML = """<!DOCTYPE html>
 
         <!-- TAB: SUBSCRIPTIONS -->
         {% elif tab == 'subscriptions' %}
-        <h2 class="text-xl font-bold mb-6">📋 Subscriptions</h2>
+        <h2 class="text-xl font-bold mb-6">📋 Subscriptions & Plan Manager</h2>
 
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
+        <!-- Plan Cards with Edit -->
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-3 mb-6">
             {% for key, tier in tiers.items() %}
-            <div class="card text-center card-hover {% if key == 'pro' %}border-[#6366f1]! border-opacity-50{% endif %}">
-                <div class="text-xs text-[#64748b] uppercase tracking-wider">{{ tier.name }}</div>
-                <div class="text-2xl font-bold mt-2 text-[#e2e8f0]">${{ tier.price }}<span class="text-sm text-[#64748b]">/mo</span></div>
+            <div class="card card-hover p-4 {% if key == 'pro' %}border-[#6366f1]/50{% endif %}">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-xs text-[#64748b] uppercase tracking-wider font-semibold">{{ tier.name }}</div>
+                    <button onclick="editTier('{{ key }}')" class="text-[#818cf8] hover:text-[#a855f7] text-xs"><i class="fas fa-edit"></i></button>
+                </div>
+                <div class="text-2xl font-bold text-[#e2e8f0]">${{ tier.price }}<span class="text-sm text-[#64748b]">/mo</span></div>
                 <div class="text-xs text-[#64748b] mt-1">{{ tier.features }}</div>
-                <div class="text-xs text-[#4ade80] mt-3">{{ tier.calls_included }} calls included</div>
-                <div class="mt-3"><span class="text-sm font-semibold">{{ sub_counts[key] or 0 }}</span> <span class="text-xs text-[#64748b]">clients</span></div>
+                <div class="mt-2 space-y-1 text-xs">
+                    <div class="text-[#4ade80]">{{ tier.calls_included }} calls</div>
+                    <div class="text-[#fbbf24]">{{ tier.minutes_limit }} min limit</div>
+                </div>
+                <div class="mt-2 text-[#7a7a8e] text-xs"><span class="font-semibold text-[#e2e8f0]">{{ sub_counts[key] or 0 }}</span> clients</div>
             </div>
             {% endfor %}
         </div>
 
+        <!-- Edit Tier Modal -->
+        <div id="tierModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm" onclick="if(event.target===this)closeTierModal()">
+        <div class="card max-w-md w-full mx-4" onclick="event.stopPropagation()">
+            <h3 class="font-bold mb-4">✏️ Edit Plan</h3>
+            <form id="tierForm" class="space-y-3">
+                <input type="hidden" id="tierKey">
+                <div>
+                    <label class="text-xs text-[#64748b] block mb-1">Plan Name</label>
+                    <input type="text" id="tierName" class="w-full bg-[#12121a] border border-[#252533] rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs text-[#64748b] block mb-1">Price ($/mo)</label>
+                        <input type="number" id="tierPrice" class="w-full bg-[#12121a] border border-[#252533] rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs text-[#64748b] block mb-1">Calls Included</label>
+                        <input type="number" id="tierCalls" class="w-full bg-[#12121a] border border-[#252533] rounded-lg px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs text-[#64748b] block mb-1">Minutes Limit</label>
+                    <input type="number" id="tierMinutes" class="w-full bg-[#12121a] border border-[#252533] rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-[#64748b] block mb-1">Features (comma separated)</label>
+                    <input type="text" id="tierFeatures" class="w-full bg-[#12121a] border border-[#252533] rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="saveTier()" class="btn-primary flex-1">💾 Save Plan</button>
+                    <button type="button" onclick="closeTierModal()" class="btn-primary flex-1 !bg-[#1a1a28] !bg-none" style="background:#1a1a28">Cancel</button>
+                </div>
+            </form>
+        </div>
+        </div>
+
+        <!-- Clients by Plan with minutes & upgrade -->
         <div class="card">
-            <h3 class="font-bold mb-3">Clients by Plan</h3>
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold">👥 Clients by Plan</h3>
+                <span class="text-xs text-[#64748b]">{{ businesses|length }} clients</span>
+            </div>
+            <div class="overflow-x-auto">
             <table>
-                <tr><th>Business</th><th>Plan</th><th>Price</th><th>Calls Used</th><th>% of Limit</th><th>Billing</th><th>Status</th></tr>
+                <tr><th>Business</th><th>Plan</th><th>Price</th><th>Calls</th><th>Minutes</th><th>% Calls</th><th>% Minutes</th><th>Action</th></tr>
                 {% for biz in businesses %}
                 {% set plan = biz.plan or 'starter' %}
                 {% set tier = tiers[plan] if plan in tiers else tiers['starter'] %}
-                {% set pct = ((biz.calls_made|int or 0) / tier.calls_included * 100)|round if tier.calls_included > 0 else 0 %}
-                <tr>
-                    <td>{{ biz.name }}</td>
-                    <td><span class="badge badge-pro">{{ tier.name }}</span></td>
+                {% set calls_made = biz.calls_made|int or 0 %}
+                {% set total_seconds = biz.total_duration|int or 0 %}
+                {% set total_minutes = (total_seconds / 60)|round(1) %}
+                {% set call_pct = ((calls_made / tier.calls_included) * 100)|round if tier.calls_included > 0 else 0 %}
+                {% set min_pct = ((total_minutes / tier.minutes_limit) * 100)|round if tier.minutes_limit > 0 else 0 %}
+                {% set over_limit = call_pct > 100 or min_pct > 100 %}
+                <tr class="{% if over_limit %}bg-red-500/5{% endif %}">
+                    <td class="font-semibold text-sm">{{ biz.name }}</td>
+                    <td>
+                        <select onchange="changePlan('{{ biz.id }}', this.value)" class="text-xs bg-[#12121a] border border-[#252533] rounded px-2 py-1">
+                            {% for k, t in tiers.items() %}
+                            <option value="{{ k }}" {% if k == plan %}selected{% endif %}>{{ t.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
                     <td>${{ "%.0f"|format(biz.monthly_price|int or tier.price) }}</td>
-                    <td>{{ biz.calls_made or 0 }}</td>
+                    <td class="text-xs">{{ calls_made }}/{{ tier.calls_included }}</td>
+                    <td class="text-xs">{{ total_minutes }}/{{ tier.minutes_limit }}m</td>
                     <td>
                         <div class="flex items-center gap-2">
-                            <div class="h-1.5 w-20 bg-[#1a1a28] rounded-full overflow-hidden">
-                                <div class="h-full bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] rounded-full" style="width:{{ pct|float }}%"></div>
+                            <div class="h-1.5 w-16 bg-[#1a1a28] rounded-full overflow-hidden">
+                                <div class="h-full rounded-full {% if call_pct > 100 %}bg-red-500{% else %}bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]{% endif %}" style="width:{{ [call_pct, 100]|min|float }}%"></div>
                             </div>
-                            <span class="text-xs">{{ "%.0f"|format(pct) }}%</span>
+                            <span class="text-xs {% if call_pct > 100 %}text-red-400{% else %}text-[#94a3b8]{% endif %}">{{ "%.0f"|format(call_pct) }}%</span>
                         </div>
                     </td>
-                    <td><span class="badge badge-active">Monthly</span></td>
-                    <td><span class="badge badge-active">Active</span></td>
+                    <td>
+                        <div class="flex items-center gap-2">
+                            <div class="h-1.5 w-16 bg-[#1a1a28] rounded-full overflow-hidden">
+                                <div class="h-full rounded-full {% if min_pct > 100 %}bg-red-500{% else %}bg-gradient-to-r from-[#fbbf24] to-[#f59e0b]{% endif %}" style="width:{{ [min_pct, 100]|min|float }}%"></div>
+                            </div>
+                            <span class="text-xs {% if min_pct > 100 %}text-red-400{% else %}text-[#94a3b8]{% endif %}">{{ "%.0f"|format(min_pct) }}%</span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if over_limit %}
+                        <span class="badge badge-error text-xs">⚠️ Over limit</span>
+                        {% else %}
+                        <span class="badge badge-active text-xs">OK</span>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </table>
+            </div>
         </div>
 
-        <!-- TAB: BILLING -->
+        <!-- Tier Editor JS -->
+        <script>
+        function editTier(key) {
+            var tiers = {{ tiers|tojson|safe }};
+            var t = tiers[key];
+            document.getElementById('tierKey').value = key;
+            document.getElementById('tierName').value = t.name;
+            document.getElementById('tierPrice').value = t.price;
+            document.getElementById('tierCalls').value = t.calls_included;
+            document.getElementById('tierMinutes').value = t.minutes_limit || 0;
+            document.getElementById('tierFeatures').value = t.features;
+            document.getElementById('tierModal').classList.remove('hidden');
+        }
+        function closeTierModal() {
+            document.getElementById('tierModal').classList.add('hidden');
+        }
+        function saveTier() {
+            var key = document.getElementById('tierKey').value;
+            var data = {
+                name: document.getElementById('tierName').value,
+                price: parseInt(document.getElementById('tierPrice').value) || 0,
+                calls_included: parseInt(document.getElementById('tierCalls').value) || 0,
+                minutes_limit: parseInt(document.getElementById('tierMinutes').value) || 0,
+                features: document.getElementById('tierFeatures').value
+            };
+            fetch('/admin/api/update-tier', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({key: key, tier: data})
+            }).then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.success) {
+                    closeTierModal();
+                    location.reload();
+                } else {
+                    alert('Error: ' + (d.error || 'Failed to save'));
+                }
+            });
+        }
+        function changePlan(bizId, plan) {
+            if (!confirm('Change this business to ' + plan + ' plan?')) return;
+            fetch('/admin/api/change-plan', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({business_id: bizId, plan: plan})
+            }).then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + (d.error || 'Failed'));
+                }
+            });
+        }
+        </script>
+
         {% elif tab == 'billing' %}
         <h2 class="text-xl font-bold mb-6">💰 Billing Overview</h2>
         
@@ -2089,6 +2231,65 @@ def admin_api_search_leads():
                         'note': 'Search from database. Paste new leads manually below.'})
 
 
+@app.route('/admin/api/update-tier', methods=['POST'])
+@admin_required
+def admin_api_update_tier():
+    """Update a pricing tier configuration."""
+    data = request.get_json(silent=True) or {}
+    key = data.get('key', '')
+    tier = data.get('tier', {})
+    
+    if not key or not tier:
+        return jsonify({'success': False, 'error': 'Missing key or tier data'}), 400
+    if key not in PRICING_TIERS:
+        return jsonify({'success': False, 'error': f'Unknown tier: {key}'}), 400
+    
+    # Validate fields
+    try:
+        PRICING_TIERS[key] = {
+            'name': str(tier.get('name', PRICING_TIERS[key]['name'])),
+            'price': int(tier.get('price', PRICING_TIERS[key]['price'])),
+            'calls_included': int(tier.get('calls_included', PRICING_TIERS[key]['calls_included'])),
+            'minutes_limit': int(tier.get('minutes_limit', PRICING_TIERS[key].get('minutes_limit', 0))),
+            'features': str(tier.get('features', PRICING_TIERS[key]['features'])),
+        }
+        # Save to file so it persists across restarts
+        try:
+            cfg_dir = '/root/voice-agent-manager'
+            with open(os.path.join(cfg_dir, 'pricing_tiers.json'), 'w') as f:
+                import json as j2
+                j2.dump(PRICING_TIERS, f, indent=2)
+        except Exception as e:
+            print(f"Could not save tiers to file: {e}")
+        
+        return jsonify({'success': True, 'tier': PRICING_TIERS[key]})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/admin/api/change-plan', methods=['POST'])
+@admin_required
+def admin_api_change_plan():
+    """Change a client's plan."""
+    data = request.get_json(silent=True) or {}
+    bid = data.get('business_id', '')
+    plan = data.get('plan', '')
+    
+    if not bid or not plan:
+        return jsonify({'success': False, 'error': 'Missing business_id or plan'}), 400
+    if plan not in PRICING_TIERS:
+        return jsonify({'success': False, 'error': f'Unknown plan: {plan}'}), 400
+    
+    db = get_db()
+    c = db.cursor()
+    tier = PRICING_TIERS[plan]
+    c.execute("UPDATE businesses SET plan=?, monthly_price=? WHERE id=?",
+              (plan, tier['price'], bid))
+    db.commit()
+    db.close()
+    return jsonify({'success': True, 'plan': plan, 'price': tier['price']})
+
+
 @app.route('/admin/campaign/start', methods=['POST'])
 @admin_required
 def admin_campaign_start():
@@ -2287,7 +2488,8 @@ def admin_dashboard():
                COALESCE(c.total_cost,0) as total_cost,
                COALESCE(c.leads_imported,0) as leads_imported,
                c.status as campaign_status,
-               (SELECT COUNT(*) FROM leads WHERE business_id = b.id AND state = 'NEW') as leads_count
+               (SELECT COUNT(*) FROM leads WHERE business_id = b.id AND state = 'NEW') as leads_count,
+               (SELECT COALESCE(SUM(duration),0) FROM call_log WHERE business_id = b.id) as total_duration
         FROM businesses b
         LEFT JOIN campaigns c ON b.id = c.business_id
         ORDER BY b.created_at DESC
