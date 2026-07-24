@@ -393,7 +393,7 @@ body{background:#08080f;color:#f1f1f5;overflow-x:hidden}
         <ul class="text-left space-y-3 text-sm mb-8">
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> 1 AI Voice Agent</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> 1 Phone Number</li>
-          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> <strong>500</strong> Call Minutes</li>
+          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> <strong>250</strong> Call Minutes</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Basic Analytics Dashboard</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Email Support</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Appointment Booking</li>
@@ -410,7 +410,7 @@ body{background:#08080f;color:#f1f1f5;overflow-x:hidden}
         <ul class="text-left space-y-3 text-sm mb-8">
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> 2 AI Voice Agents</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> 2 Phone Numbers</li>
-          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> <strong>2,000</strong> Call Minutes</li>
+          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> <strong>1,000</strong> Call Minutes</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Advanced Analytics & Reports</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Priority Support</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Outbound Campaigns</li>

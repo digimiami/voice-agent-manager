@@ -89,11 +89,11 @@ INDUSTRY_PRESETS = {
 }
 
 PRICING_TIERS = {
-    "starter": {"name": "Starter", "price": 299, "calls_included": 500, "minutes_limit": 250, "features": "AI agent, 1 number, 500 calls/mo, 250 min"},
-    "pro": {"name": "Pro", "price": 599, "calls_included": 2000, "minutes_limit": 1000, "features": "AI agent, 1 number, 2K calls/mo, 1000 min, lead mgmt"},
-    "premium": {"name": "Premium", "price": 999, "calls_included": 5000, "minutes_limit": 2500, "features": "AI agent, 2 numbers, 5K calls/mo, 2500 min, forwarding"},
-    "enterprise": {"name": "Enterprise", "price": 1999, "calls_included": 15000, "minutes_limit": 7500, "features": "AI agent, 5 numbers, 15K calls/mo, 7500 min, white-label"},
-    "custom": {"name": "Custom", "price": 0, "calls_included": 0, "minutes_limit": 0, "features": "Fully customizable package"}
+    "starter": {"name": "Starter", "price": 97, "calls_included": 500, "minutes_limit": 250, "features": "1 AI agent, 1 number, 500 calls/mo, 250 min, booking, email support"},
+    "pro": {"name": "Professional", "price": 197, "calls_included": 2000, "minutes_limit": 1000, "features": "2 AI agents, 2 numbers, 2K calls/mo, 1000 min, campaigns, SMS, calendar"},
+    "premium": {"name": "Premium", "price": 297, "calls_included": 5000, "minutes_limit": 2500, "features": "3 AI agents, 3 numbers, 5K calls/mo, 2500 min, forwarding, priority support"},
+    "enterprise": {"name": "Enterprise", "price": 497, "calls_included": 15000, "minutes_limit": 7500, "features": "5 AI agents, 5 numbers, 15K calls/mo, 7500 min, white-label, API"},
+    "custom": {"name": "Custom", "price": 997, "calls_included": 0, "minutes_limit": 0, "features": "Fully customizable package"}
 }
 
 ADMIN_HTML = """<!DOCTYPE html>
