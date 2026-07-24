@@ -1382,7 +1382,7 @@ def api_signup_stripe():
         
         base = request.host_url.rstrip('/')
         price_cents = price * 100
-        success_url = f"{base}/login?trial={bid}"
+        success_url = f"{base}/onboard?bid={bid}"
         cancel_url = f"{base}/?signup=cancelled"
         
         url = create_stripe_checkout(bid, plan, price_cents, email, success_url, cancel_url, trial_days=3)
@@ -1412,6 +1412,253 @@ def api_signup_stripe():
             'message': '🎉 Business created! You have a 3-day free trial. Billing setup unavailable — contact support.',
             'trial_end': (datetime.now() + timedelta(days=3)).isoformat()
         })
+
+
+ONBOARD_HTML = """<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diazites — Welcome!</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>@import url('https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap');
+*{font-family:'Inter',sans-serif;margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#f1f1f5;overflow-x:hidden}
+.gradient-text{background:linear-gradient(135deg,#c084fc,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.glass{background:rgba(18,18,26,.7);backdrop-filter:blur(12px)}
+.card{background:#12121a;border:1px solid #252533;border-radius:16px;padding:24px;transition:border-color .3s}
+.btn-primary{background:linear-gradient(135deg,#a855f7,#ec4899);color:white;padding:12px 28px;border-radius:10px;font-weight:600;border:none;cursor:pointer;display:inline-block;text-decoration:none}
+.btn-primary:hover{opacity:.9}
+.step{display:none}
+.step.active{display:block}
+.step-indicator{display:flex;gap:8px;justify-content:center;margin-bottom:24px}
+.step-dot{width:10px;height:10px;border-radius:50%;background:#252533;transition:all .3s}
+.step-dot.active{background:#a855f7;box-shadow:0 0 10px rgba(168,85,247,.5)}
+</style></head><body>
+<nav class="glass flex items-center justify-between max-w-4xl mx-auto px-6 py-4 sticky top-0 z-50" style="border-bottom:1px solid #252533">
+<div class="flex items-center gap-2"><div class="text-2xl">🎙️</div><span class="text-lg font-bold gradient-text">Diazites</span></div>
+<div class="text-sm text-[#7a7a8e]">{{ biz_name }}</div>
+</nav>
+<div class="max-w-2xl mx-auto px-6 py-12">
+
+<!-- Step dots -->
+<div class="step-indicator">
+<div class="step-dot active" data-step="1"></div>
+<div class="step-dot" data-step="2"></div>
+<div class="step-dot" data-step="3"></div>
+</div>
+
+<!-- Step 1: Welcome -->
+<div class="step active" id="step1">
+<div class="card text-center py-12">
+<div class="text-6xl mb-4">🎉</div>
+<h1 class="text-3xl font-bold gradient-text mb-3">Welcome to Diazites, {{ biz_name }}!</h1>
+<p class="text-[#7a7a8e] mb-6">Your AI voice agent is ready. Let's get you set up in 3 quick steps.</p>
+<div class="bg-[#1a1a26] rounded-xl p-4 mb-6 text-left text-sm">
+<div class="text-green-400 font-semibold mb-2">✅ Business Created</div>
+<div class="text-[#7a7a8e] mb-1">Your Business ID: <code class="font-mono bg-[#0a0a0f] px-2 py-0.5 rounded text-[#c084fc]">{{ bid }}</code></div>
+<div class="text-[#7a7a8e] mb-1">📧 We've sent your credentials to <strong>{{ email }}</strong></div>
+<div class="text-[#7a7a8e]">📱 We've also sent them via SMS to <strong>{{ phone }}</strong></div>
+</div>
+<div class="text-xs text-yellow-400 mb-4">🎁 Your 3-day free trial has started. You will be charged ${{ price }}/month after the trial ends.</div>
+<button onclick="nextStep(2)" class="btn-primary">Let's Go! →</button>
+</div>
+</div>
+
+<!-- Step 2: Dashboard Tour -->
+<div class="step" id="step2">
+<div class="card text-center py-12">
+<div class="text-6xl mb-4">🔑</div>
+<h2 class="text-2xl font-bold gradient-text mb-3">Login & Dashboard</h2>
+<p class="text-[#7a7a8e] mb-6">You can always log back in with your Business ID.</p>
+<div class="bg-[#1a1a26] rounded-xl p-4 mb-6 text-left text-sm space-y-3">
+<div class="flex items-start gap-3">
+<div class="text-lg">1️⃣</div>
+<div><span class="text-white font-semibold">Go to diazites.online</span><br><span class="text-[#7a7a8e]">Click "Login" in the top right</span></div>
+</div>
+<div class="flex items-start gap-3">
+<div class="text-lg">2️⃣</div>
+<div><span class="text-white font-semibold">Enter your Business ID</span><br><span class="text-[#7a7a8e] font-mono text-[#c084fc]">{{ bid }}</span></div>
+</div>
+<div class="flex items-start gap-3">
+<div class="text-lg">3️⃣</div>
+<div><span class="text-white font-semibold">Start your campaign</span><br><span class="text-[#7a7a8e]">Upload leads and start calling</span></div>
+</div>
+</div>
+<button onclick="nextStep(3)" class="btn-primary">Next: Setup Tips →</button>
+</div>
+</div>
+
+<!-- Step 3: Next Steps -->
+<div class="step" id="step3">
+<div class="card py-12">
+<div class="text-center"><div class="text-6xl mb-4">🚀</div></div>
+<h2 class="text-2xl font-bold gradient-text text-center mb-6">You're All Set!</h2>
+<div class="space-y-4 text-sm">
+<div class="bg-[#1a1a26] rounded-xl p-4">
+<div class="flex items-center gap-3">
+<div class="text-2xl">📤</div>
+<div><div class="font-semibold">Upload Leads</div><div class="text-[#7a7a8e]">Import your prospect list or add manually</div></div>
+</div>
+</div>
+<div class="bg-[#1a1a26] rounded-xl p-4">
+<div class="flex items-center gap-3">
+<div class="text-2xl">🎙️</div>
+<div><div class="font-semibold">Choose a Voice</div><div class="text-[#7a7a8e]">Pick from 16+ Eleven Labs voices in Settings</div></div>
+</div>
+</div>
+<div class="bg-[#1a1a26] rounded-xl p-4">
+<div class="flex items-center gap-3">
+<div class="text-2xl">▶️</div>
+<div><div class="font-semibold">Start Campaign</div><div class="text-[#7a7a8e]">Click "Start Campaign" and we call your leads</div></div>
+</div>
+</div>
+</div>
+<div class="text-center mt-8">
+<a href="/" class="btn-primary text-base px-10">🚀 Go to Dashboard</a>
+</div>
+</div>
+</div>
+
+</div>
+
+<script>
+function nextStep(n) {
+document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+document.getElementById('step' + n).classList.add('active');
+document.querySelectorAll('.step-dot').forEach(d => d.classList.remove('active'));
+document.querySelector('.step-dot[data-step="' + n + '"]').classList.add('active');
+window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body></html>"""
+
+
+@app.route('/onboard')
+def onboard():
+    """Auto-login and show onboarding wizard after Stripe checkout."""
+    bid = request.args.get('bid', '')
+    if not bid:
+        return redirect('/login')
+    
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT * FROM businesses WHERE id = ?", (bid,))
+    biz = c.fetchone()
+    if not biz:
+        return redirect('/login')
+    
+    # Auto-login
+    session['business_id'] = bid
+    session['biz_name'] = biz['name']
+    
+    # Send credentials via email and SMS (only once)
+    c.execute("SELECT onboard_email_sent FROM businesses WHERE id = ?", (bid,))
+    row = c.fetchone()
+    # Check if column exists and credentials haven't been sent
+    try:
+        already_sent = row and row[0]
+    except:
+        already_sent = False
+    
+    if not already_sent:
+        try:
+            # Add column if it doesn't exist
+            try:
+                c.execute("ALTER TABLE businesses ADD COLUMN onboard_email_sent INTEGER DEFAULT 0")
+                db.commit()
+            except:
+                pass
+            
+            name = biz['name']
+            email = biz['email'] or ''
+            phone = biz['phone_number'] or ''
+            price = biz['monthly_price'] or 197
+            
+            # Send email
+            if email:
+                try:
+                    from smtplib import SMTP
+                    from email.mime.text import MIMEText
+                    cfg_path = '/root/voice-agent-manager/smtp_config.json'
+                    if os.path.exists(cfg_path):
+                        import json as j2
+                        with open(cfg_path) as f:
+                            cfg = j2.load(f)
+                        if cfg.get('host') and cfg.get('email'):
+                            msg = MIMEText(f"""
+Welcome to Diazites, {name}!
+
+Your AI voice agent is ready to go.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+YOUR LOGIN CREDENTIALS
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+🌐 Website: {request.host_url}
+🔑 Business ID: {bid}
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+Save your Business ID — you'll need it to log in.
+
+What's next:
+1. Go to {request.host_url}
+2. Click "Login"
+3. Enter your Business ID: {bid}
+4. Upload leads and start your campaign
+
+Your 3-day free trial has started! You'll be charged ${price}/month after.
+
+Need help? Reply to this email.
+
+— The Diazites Team
+""")
+                            msg['Subject'] = f'🎉 Welcome to Diazites, {name}! Your Business ID Inside'
+                            msg['From'] = cfg['email']
+                            msg['To'] = email
+                            with SMTP(cfg['host'], int(cfg.get('port', 587))) as server:
+                                if cfg.get('tls') != '0':
+                                    server.starttls()
+                                if cfg.get('password'):
+                                    smtp_user = 'resend' if 'resend' in cfg.get('host','') else cfg['email']
+                                    server.login(smtp_user, cfg['password'])
+                                server.send_message(msg)
+                            print(f"📧 Welcome email sent to {email}")
+                except Exception as e:
+                    print(f"Email send error: {e}")
+            
+            # Send SMS via Twilio
+            if phone:
+                try:
+                    from twilio_helper import load_twilio_config
+                    twilio_cfg = load_twilio_config()
+                    if twilio_cfg.get('account_sid') and twilio_cfg.get('auth_token'):
+                        from twilio.rest import Client
+                        client = Client(twilio_cfg['account_sid'], twilio_cfg['auth_token'])
+                        msg_body = f"🎉 Welcome to Diazites, {name}! Your Business ID: {bid}. Login at {request.host_url}. 3-day free trial started!"
+                        client.messages.create(
+                            body=msg_body,
+                            from_=twilio_cfg.get('from_number', ''),
+                            to=phone
+                        )
+                        print(f"📱 Welcome SMS sent to {phone}")
+                except Exception as e:
+                    print(f"SMS send error: {e}")
+            
+            # Mark as sent
+            c.execute("UPDATE businesses SET onboard_email_sent=1 WHERE id=?", (bid,))
+            db.commit()
+        except Exception as e:
+            print(f"Credentials send error: {e}")
+    
+    db.close()
+    
+    return render_template_string(ONBOARD_HTML,
+        bid=bid,
+        biz_name=biz['name'],
+        email=biz['email'] or 'your email',
+        phone=biz['phone_number'] or 'your phone',
+        price=biz['monthly_price'] or 197
+    )
+
 
 
 # ── SIGNUP → CHECKOUT FLOW ──
