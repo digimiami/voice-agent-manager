@@ -1536,7 +1536,8 @@ def dashboard():
             'enabled': bool(camp['schedule_enabled']),
             'time': camp['schedule_time'] or '09:00',
             'days': camp['schedule_days'] or 'mon,tue,wed,thu,fri',
-            'timezone': camp['timezone'] or 'America/New_York'
+            'start_date': camp['schedule_start_date'] or '',
+            'timezone': camp['timezone'] or 'America/New_York',
         }
     
     # THREAD HEALTH CHECK: if campaign says running but thread is dead, restart it
@@ -3262,10 +3263,11 @@ def schedule_campaign():
     time_val = request.form.get('schedule_time', '09:00')
     days = ','.join(request.form.getlist('days')) or 'mon,tue,wed,thu,fri'
     tz = request.form.get('timezone', 'America/New_York')
+    start_date = request.form.get('schedule_start_date', '')
     db = get_db()
     c = db.cursor()
-    c.execute("""UPDATE campaigns SET schedule_enabled=?, schedule_time=?, schedule_days=?, timezone=? WHERE business_id=?""",
-              (enabled, time_val, days, tz, bid))
+    c.execute("""UPDATE campaigns SET schedule_enabled=?, schedule_time=?, schedule_days=?, timezone=?, schedule_start_date=? WHERE business_id=?""",
+              (enabled, time_val, days, tz, start_date, bid))
     db.commit()
     flash('✅ Schedule saved!' if enabled else 'Schedule disabled.', 'success')
     return redirect('/')
@@ -4260,6 +4262,39 @@ def run_campaign_bg(bid):
                 log_campaign(bid, '⏹️ Campaign stopped by user.', 'info')
                 db.close()
                 return
+        
+        # ── Schedule Check ──
+        # If campaign has scheduling enabled, check if we're within the allowed window
+            c.execute("SELECT schedule_enabled, schedule_time, schedule_days, schedule_start_date, timezone FROM campaigns WHERE business_id = ?", (bid,))
+            sched = c.fetchone()
+            if sched and sched['schedule_enabled']:
+                now = datetime.now()
+                day_names = ['mon','tue','wed','thu','fri','sat','sun']
+                today_name = day_names[now.weekday()]
+                allowed_days = [d.strip().lower() for d in (sched['schedule_days'] or '').split(',') if d.strip()]
+                current_time_str = now.strftime('%H:%M')
+                sched_time = (sched['schedule_time'] or '09:00').strip()
+                
+                # Check day of week
+                day_ok = today_name in allowed_days
+                # Check time of day
+                time_ok = current_time_str >= sched_time
+                # Check start date (if set)
+                sched_date_str = (sched['schedule_start_date'] or '').strip()
+                date_ok = True
+                if sched_date_str:
+                    try:
+                        sched_date = datetime.strptime(sched_date_str[:10], '%Y-%m-%d').date()
+                        date_ok = now.date() >= sched_date
+                    except:
+                        date_ok = True  # if date is invalid, ignore
+                
+                if not (day_ok and time_ok and date_ok):
+                    date_str = now.strftime('%Y-%m-%d')
+                    log_campaign(bid, f'⏰ Outside schedule window (day={today_name}, time={current_time_str}, date={date_str}). Waiting...', 'info')
+                    db.close()
+                    time.sleep(60)
+                    continue
         
             c.execute("SELECT * FROM businesses WHERE id = ?", (bid,))
             biz = c.fetchone()
