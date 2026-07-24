@@ -1018,6 +1018,64 @@ Diazites AI voice agents answer calls <strong class="text-[#f1f1f5]">24/7</stron
 </div>
 </section>
 
+<!-- PRICING TABLES -->
+<section class="max-w-5xl mx-auto px-6 pb-8">
+<div class="grid md:grid-cols-3 gap-5">
+
+<!-- Starter -->
+<div class="card p-6 text-center glow-border">
+<h3 class="font-bold text-xl mb-1">Starter</h3>
+<p class="text-xs text-[#64748b] mb-3">Perfect for small businesses</p>
+<div class="text-4xl font-black mb-1 gradient-text">$97</div>
+<p class="text-sm text-[#5c5c70] mb-4">per month</p>
+<ul class="text-left space-y-2 text-sm mb-6">
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> 1 AI Voice Agent</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> 1 Phone Number</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> <strong>250</strong> Call Minutes</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Booking & Analytics</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Email Support</li>
+</ul>
+<a href="#signup-form" class="btn-outline text-sm w-full block text-center py-2.5 rounded-xl">Get Started</a>
+</div>
+
+<!-- Professional (Featured) -->
+<div class="card p-6 text-center relative" style="border-color:#a855f744;background:linear-gradient(135deg,rgba(168,85,247,0.06),rgba(236,72,153,0.06))">
+<div class="absolute -top-3 left-1/2 -translate-x-1/2 gradient-bg text-white text-xs font-bold px-4 py-1 rounded-full">🔥 Most Popular</div>
+<h3 class="font-bold text-xl mb-1 mt-1">Professional</h3>
+<p class="text-xs text-[#64748b] mb-3">Best for growing businesses</p>
+<div class="text-4xl font-black mb-1 gradient-text">$197</div>
+<p class="text-sm text-[#5c5c70] mb-4">per month</p>
+<ul class="text-left space-y-2 text-sm mb-6">
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> 2 AI Voice Agents</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> 2 Phone Numbers</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> <strong>1,000</strong> Call Minutes</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Outbound Campaigns</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> SMS & Calendar</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Priority Support</li>
+</ul>
+<a href="#signup-form" class="btn-primary text-sm w-full block text-center py-2.5 rounded-xl">🎯 Start Free Trial</a>
+</div>
+
+<!-- Enterprise -->
+<div class="card p-6 text-center glow-border">
+<h3 class="font-bold text-xl mb-1">Enterprise</h3>
+<p class="text-xs text-[#64748b] mb-3">For agencies & high-volume</p>
+<div class="text-4xl font-black mb-1 gradient-text">Custom</div>
+<p class="text-sm text-[#5c5c70] mb-4">tailored pricing</p>
+<ul class="text-left space-y-2 text-sm mb-6">
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Up to 5 AI Agents</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Up to 5 Phone Numbers</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Unlimited Minutes</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Custom Integrations</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> API & White-Label</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Dedicated Manager</li>
+</ul>
+<a href="/login" class="btn-outline text-sm w-full block text-center py-2.5 rounded-xl">Contact Us</a>
+</div>
+
+</div>
+</section>
+
 <!-- CTA / SIGNUP -->
 <section id="signup-form" class="max-w-3xl mx-auto px-6 pb-20 text-center">
 <div class="grid md:grid-cols-2 gap-6">
