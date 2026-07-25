@@ -411,11 +411,18 @@ def api_me_get_settings(api_key):
     db = sqlite3.connect(DB_PATH)
     db.row_factory = sqlite3.Row
     c = db.cursor()
-    c.execute("SELECT plan, monthly_price, extra_minutes, vapi_assistant_id, vapi_phone_id, phone_number, name, email FROM businesses WHERE id = ?", (bid,))
+    c.execute("SELECT plan, monthly_price, vapi_assistant_id, vapi_phone_id, phone_number, name, email FROM businesses WHERE id = ?", (bid,))
     biz = c.fetchone()
     if not biz:
         db.close()
         return jsonify({'error': 'Business not found'}), 404
+
+    # extra_minutes column may not exist on older DBs
+    try:
+        c.execute("SELECT extra_minutes FROM businesses WHERE id = ?", (bid,))
+        extra = (c.fetchone() or [0])[0] or 0
+    except:
+        extra = 0
 
     c.execute("SELECT COALESCE(SUM(duration),0) FROM call_log WHERE business_id = ?", (bid,))
     total_duration = c.fetchone()[0]
