@@ -1048,6 +1048,116 @@ def api_outbound_call(api_key, bid):
     })
 
 
+# ── GET CALL DETAILS / TRANSCRIPT ──
+
+@agent_api.route('/calls/<call_id>', methods=['GET'])
+@require_api_key
+def api_get_call(api_key, call_id):
+    """Get call details, transcript, and status from call_log."""
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    c = db.cursor()
+
+    # Try by vapi_call_id first, then by call_log id
+    c.execute("""
+        SELECT cl.*, l.name as lead_name, l.phone as lead_phone,
+               l.business_name as lead_business, l.notes as lead_notes,
+               l.state as lead_state
+        FROM call_log cl
+        LEFT JOIN leads l ON cl.lead_id = l.id
+        WHERE cl.vapi_call_id = ? OR cl.id = ?
+        LIMIT 1
+    """, (call_id, call_id))
+    row = c.fetchone()
+    db.close()
+
+    if not row:
+        return jsonify({'error': 'Call not found'}), 404
+
+    dur = row['duration'] or 0
+    row = dict(row)
+    started = row.get('created_at', '')
+    ended = ''
+    if dur > 0 and started:
+        from datetime import datetime as dt
+        try:
+            start_dt = dt.fromisoformat(started)
+            end_dt = start_dt.replace(second=start_dt.second + (dur % 60),
+                                       minute=start_dt.minute + (dur // 60))
+            ended = end_dt.isoformat()
+        except:
+            pass
+
+    return jsonify({
+        'success': True,
+        'call': {
+            'id': row.get('vapi_call_id') or row.get('id'),
+            'business_id': row.get('business_id', ''),
+            'phone': row.get('lead_phone') or '',
+            'status': row.get('status', 'unknown'),
+            'duration_seconds': dur,
+            'transcript': row.get('transcript', '') or '',
+            'appointment_booked': row.get('outcome') == 'appointment_booked',
+            'appointment_time': row.get('appointment_time', '') or '',
+            'lead_notes': row.get('lead_notes', '') or row.get('notes', '') or '',
+            'started_at': started,
+            'ended_at': ended,
+            'recording_url': row.get('recording_url', '') or '',
+            'cost': row.get('cost', 0) or 0
+        }
+    })
+
+
+# ── VAPI WEBHOOK (receive call-end events) ──
+
+@agent_api.route('/vapi-webhook', methods=['POST'])
+def vapi_webhook():
+    """Receive call-end webhook from Vapi and store transcript/details."""
+    data = request.get_json(silent=True) or {}
+    if not data:
+        return jsonify({'error': 'No data'}), 400
+
+    vapi_call_id = data.get('call', {}).get('id') or data.get('callId') or ''
+    if not vapi_call_id:
+        return jsonify({'error': 'Missing call ID'}), 400
+
+    status = data.get('status') or data.get('call', {}).get('status', 'completed')
+    duration = data.get('durationSeconds') or data.get('call', {}).get('durationSeconds', 0) or 0
+    transcript = data.get('transcript') or data.get('call', {}).get('transcript', '') or ''
+    cost = data.get('cost') or data.get('call', {}).get('cost', 0) or 0
+    recording_url = data.get('recordingUrl') or data.get('call', {}).get('recordingUrl', '') or ''
+    outcome = data.get('endedReason') or data.get('call', {}).get('endedReason', 'unknown')
+    appointment_time = data.get('artifact', {}).get('appointmentTime') or ''
+
+    db = sqlite3.connect(DB_PATH)
+    c = db.cursor()
+
+    # Check if it exists
+    c.execute("SELECT id FROM call_log WHERE vapi_call_id = ?", (vapi_call_id,))
+    existing = c.fetchone()
+
+    if existing:
+        c.execute("""UPDATE call_log SET
+            status=?, duration=?, transcript=?, cost=?,
+            recording_url=?, outcome=?, appointment_time=?
+            WHERE vapi_call_id=?""",
+            (status, duration, transcript, cost,
+             recording_url, outcome, appointment_time, vapi_call_id))
+    else:
+        c.execute("""INSERT OR IGNORE INTO call_log
+            (id, vapi_call_id, status, duration, transcript, cost,
+             recording_url, outcome, appointment_time, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))""",
+            (vapi_call_id, vapi_call_id, status, duration, transcript, cost,
+             recording_url, outcome, appointment_time))
+
+    db.commit()
+    db.close()
+
+    git_auto_commit(f'vapi webhook: call {vapi_call_id} {status}')
+    return jsonify({'success': True, 'call_id': vapi_call_id})
+
+
 # ── Helpers for auth middleware ──
 
 def api_key_required(permission='read'):
