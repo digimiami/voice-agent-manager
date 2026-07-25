@@ -54,13 +54,20 @@ def init_api_keys_table():
             last_used_at TEXT,
             expires_at TEXT,
             active INTEGER DEFAULT 1,
-            created_by TEXT DEFAULT 'admin'
+            created_by TEXT DEFAULT 'admin',
+            business_id TEXT DEFAULT ''
         )
     """)
     db.commit()
+    # Add business_id column if missing (migration)
+    try:
+        c.execute("ALTER TABLE agent_api_keys ADD COLUMN business_id TEXT DEFAULT ''")
+        db.commit()
+    except:
+        pass
     db.close()
 
-def generate_api_key(name, description="", permissions="read,write", created_by="admin", expires_at=None):
+def generate_api_key(name, description="", permissions="read,write", created_by="admin", expires_at=None, business_id=""):
     """Generate a new API key. Returns (key_id, raw_key, key_data)."""
     raw_key = f"dz_{uuid.uuid4().hex}_{uuid.uuid4().hex[:16]}"
     key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
@@ -69,9 +76,9 @@ def generate_api_key(name, description="", permissions="read,write", created_by=
     db = sqlite3.connect(DB_PATH)
     c = db.cursor()
     c.execute("""
-        INSERT INTO agent_api_keys (id, key_hash, name, description, permissions, created_by, expires_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (key_id, key_hash, name, description, permissions, created_by, expires_at))
+        INSERT INTO agent_api_keys (id, key_hash, name, description, permissions, created_by, expires_at, business_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (key_id, key_hash, name, description, permissions, created_by, expires_at, business_id))
     db.commit()
     db.close()
 
@@ -242,6 +249,210 @@ def api_delete_key(api_key, key_id):
         return jsonify({'error': 'Key not found'}), 404
     git_auto_commit(f'deleted API key {key_id}')
     return jsonify({'success': True, 'message': 'Key permanently deleted', 'key_id': key_id})
+
+
+# ── Generate USER-level API key (scoped to a business) ──
+
+@agent_api.route('/auth/generate-user-key', methods=['POST'])
+@require_api_key
+def api_generate_user_key(api_key):
+    """Generate an API key scoped to a specific business (admin creates it for the user)."""
+    if 'admin' not in api_key.get('permissions', '').split(','):
+        return jsonify({'error': 'Admin permission required'}), 403
+
+    data = request.get_json(silent=True) or {}
+    name = data.get('name', 'User API Key').strip()
+    business_id = data.get('business_id', '').strip()
+
+    if not business_id:
+        return jsonify({'error': 'business_id is required'}), 400
+
+    # Verify business exists
+    db = sqlite3.connect(DB_PATH)
+    c = db.cursor()
+    c.execute("SELECT name FROM businesses WHERE id = ?", (business_id,))
+    biz = c.fetchone()
+    db.close()
+    if not biz:
+        return jsonify({'error': 'Business not found'}), 404
+
+    key_id, raw_key, key_data = generate_api_key(
+        name=name, description=f"User key for {biz[0]}",
+        permissions='read,write', created_by=api_key.get('name', 'admin'),
+        expires_at=None, business_id=business_id
+    )
+
+    git_auto_commit(f'generated user API key for {biz[0]}')
+    return jsonify({
+        'success': True, 'key_id': key_id, 'api_key': raw_key,
+        'name': name, 'business_id': business_id,
+        'permissions': 'read,write',
+        'warning': 'Save this key now — it will not be shown again!'
+    })
+
+
+# ── USER / ME ENDPOINTS (scoped to the key's business) ──
+
+@agent_api.route('/me/business', methods=['GET'])
+@require_api_key
+def api_me_get_business(api_key):
+    """Get the user's own business info (scoped by API key's business_id)."""
+    bid = api_key.get('business_id', '')
+    if not bid:
+        return jsonify({'error': 'This API key is not scoped to a business'}), 403
+
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    c = db.cursor()
+    c.execute("SELECT * FROM businesses WHERE id = ?", (bid,))
+    biz = c.fetchone()
+    db.close()
+    if not biz:
+        return jsonify({'error': 'Business not found'}), 404
+
+    return jsonify({'success': True, 'business': dict(biz)})
+
+
+@agent_api.route('/me/business', methods=['PUT'])
+@require_api_key
+def api_me_update_business(api_key):
+    """Update the user's own business settings."""
+    bid = api_key.get('business_id', '')
+    if not bid:
+        return jsonify({'error': 'This API key is not scoped to a business'}), 403
+
+    data = request.get_json(silent=True) or {}
+    if not data:
+        return jsonify({'error': 'No fields to update'}), 400
+
+    allowed = ['name', 'industry', 'phone_number', 'email', 'script_template',
+               'knowledge_base', 'agent_prompt', 'voice_id', 'voice_speed',
+               'temperature', 'max_tokens', 'timezone', 'call_window_start', 'call_window_end']
+    updates = []
+    values = []
+    for field in allowed:
+        if field in data:
+            updates.append(f"{field} = ?")
+            values.append(data[field])
+    if not updates:
+        return jsonify({'error': 'No valid fields to update'}), 400
+
+    values.append(bid)
+    db = sqlite3.connect(DB_PATH)
+    c = db.cursor()
+    c.execute(f"UPDATE businesses SET {', '.join(updates)} WHERE id = ?", values)
+    db.commit()
+    db.close()
+
+    git_auto_commit(f'user updated business {bid}')
+    return jsonify({'success': True, 'message': 'Business updated', 'updated_fields': [u.split(' =')[0] for u in updates]})
+
+
+@agent_api.route('/me/leads', methods=['GET'])
+@require_api_key
+def api_me_list_leads(api_key):
+    """Get the user's own leads."""
+    bid = api_key.get('business_id', '')
+    if not bid:
+        return jsonify({'error': 'This API key is not scoped to a business'}), 403
+
+    limit = min(int(request.args.get('limit', 50)), 500)
+    state = request.args.get('state', '')
+
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    c = db.cursor()
+    query = "SELECT * FROM leads WHERE business_id = ?"
+    params = [bid]
+    if state:
+        query += " AND state = ?"
+        params.append(state)
+    query += " ORDER BY created_at DESC LIMIT ?"
+    params.append(limit)
+    c.execute(query, params)
+    leads = [dict(r) for r in c.fetchall()]
+    db.close()
+    return jsonify({'success': True, 'leads': leads, 'total': len(leads)})
+
+
+@agent_api.route('/me/calls', methods=['GET'])
+@require_api_key
+def api_me_list_calls(api_key):
+    """Get the user's own call history."""
+    bid = api_key.get('business_id', '')
+    if not bid:
+        return jsonify({'error': 'This API key is not scoped to a business'}), 403
+
+    limit = min(int(request.args.get('limit', 20)), 100)
+
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    c = db.cursor()
+    c.execute("""
+        SELECT cl.*, l.phone as lead_phone, l.name as lead_name
+        FROM call_log cl
+        LEFT JOIN leads l ON cl.lead_id = l.id
+        WHERE cl.business_id = ?
+        ORDER BY cl.created_at DESC LIMIT ?
+    """, (bid, limit))
+    calls = [dict(r) for r in c.fetchall()]
+    db.close()
+    return jsonify({'success': True, 'calls': calls, 'total': len(calls)})
+
+
+@agent_api.route('/me/settings', methods=['GET'])
+@require_api_key
+def api_me_get_settings(api_key):
+    """Get the user's own settings (plan, minutes, usage)."""
+    bid = api_key.get('business_id', '')
+    if not bid:
+        return jsonify({'error': 'This API key is not scoped to a business'}), 403
+
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    c = db.cursor()
+    c.execute("SELECT plan, monthly_price, extra_minutes, vapi_assistant_id, vapi_phone_id, phone_number, name, email FROM businesses WHERE id = ?", (bid,))
+    biz = c.fetchone()
+    if not biz:
+        db.close()
+        return jsonify({'error': 'Business not found'}), 404
+
+    c.execute("SELECT COALESCE(SUM(duration),0) FROM call_log WHERE business_id = ?", (bid,))
+    total_duration = c.fetchone()[0]
+    c.execute("SELECT COALESCE(SUM(cost),0) FROM call_log WHERE business_id = ?", (bid,))
+    total_cost = c.fetchone()[0]
+    c.execute("SELECT COUNT(*) FROM leads WHERE business_id = ?", (bid,))
+    leads_count = c.fetchone()[0]
+    db.close()
+
+    pricing_tiers = {
+        "starter": {"name": "Starter", "minutes": 250, "price": 97},
+        "pro": {"name": "Professional", "minutes": 1000, "price": 197},
+        "premium": {"name": "Premium", "minutes": 2500, "price": 297},
+        "enterprise": {"name": "Enterprise", "minutes": 7500, "price": 497},
+    }
+    plan_key = (biz['plan'] or 'starter').lower()
+    tier = pricing_tiers.get(plan_key, pricing_tiers['starter'])
+    extra = biz['extra_minutes'] or 0
+    limit_min = tier['minutes'] + extra
+    used_min = total_duration // 60
+
+    return jsonify({
+        'success': True,
+        'settings': {
+            'plan': tier['name'], 'plan_key': plan_key,
+            'price_monthly': tier['price'],
+            'phone': biz['phone_number'] or '',
+            'email': biz['email'] or '',
+            'minutes_used': used_min,
+            'minutes_limit': limit_min,
+            'minutes_remaining': max(0, limit_min - used_min),
+            'total_spent': round(total_cost, 2),
+            'total_leads': leads_count,
+            'has_assistant': bool(biz['vapi_assistant_id']),
+            'has_phone': bool(biz['vapi_phone_id'])
+        }
+    })
 
 
 # ── BUSINESS ENDPOINTS ──
