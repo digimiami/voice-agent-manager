@@ -14,7 +14,12 @@ Full-featured dashboard for business clients:
 
 Run: python3 multi_biz_dashboard_v2.py
 Port: 8085
+
+
 """
+
+# Extra minutes pricing (cents)
+PRICES = {500: 15000, 1000: 29000, 5000: 49000}
 
 import os, sys, json, sqlite3, csv, io, hashlib, time, threading, subprocess, hmac, uuid
 import requests
@@ -2308,6 +2313,7 @@ def dashboard():
     if not biz:
         session.clear()
         return redirect('/?error=Business not found')
+    biz = dict(biz)
     
     # Campaign status
     c.execute("SELECT * FROM campaigns WHERE business_id = ?", (bid,))
@@ -6753,32 +6759,42 @@ def api_stripe_checkout():
 @app.route('/api/buy-minutes', methods=['POST'])
 @login_required
 def api_buy_minutes():
-    """Buy extra minutes (added to plan limit)."""
+    """Buy extra minutes — creates a Stripe one-time checkout for payment."""
     data = request.get_json(silent=True) or {}
     minutes = int(data.get('minutes', 0))
     
     if minutes <= 0:
         return jsonify({'success': False, 'error': 'Invalid minutes'}), 400
     
+    # Price maps
+    price_cents = PRICES.get(minutes)
+    if not price_cents:
+        return jsonify({'success': False, 'error': 'Invalid minute package'}), 400
+    
     bid = session['business_id']
     db = get_db()
     c = db.cursor()
-    
-    # Ensure column exists
-    try:
-        c.execute("ALTER TABLE businesses ADD COLUMN extra_minutes INTEGER DEFAULT 0")
-    except:
-        pass
-    
-    c.execute("SELECT extra_minutes FROM businesses WHERE id=?", (bid,))
-    row = c.fetchone()
-    current = row[0] if row and row[0] else 0
-    new_total = current + minutes
-    c.execute("UPDATE businesses SET extra_minutes=? WHERE id=?", (new_total, bid))
-    db.commit()
+    c.execute("SELECT email, name FROM businesses WHERE id=?", (bid,))
+    biz = c.fetchone()
     db.close()
     
-    return jsonify({'success': True, 'extra_minutes': new_total, 'added': minutes})
+    if not biz:
+        return jsonify({'success': False, 'error': 'Business not found'}), 404
+    
+    email = biz['email'] or ''
+    base = request.host_url.rstrip('/')
+    success_url = f"{base}/?tab=billing&stripe=success&minutes={minutes}"
+    cancel_url = f"{base}/?tab=billing&stripe=cancel"
+    
+    from premium_features import create_extra_minutes_checkout
+    checkout_url = create_extra_minutes_checkout(
+        bid, minutes, price_cents, email, success_url, cancel_url
+    )
+    
+    if checkout_url:
+        return jsonify({'success': True, 'checkout_url': checkout_url})
+    
+    return jsonify({'success': False, 'error': 'Failed to create payment checkout. Try again later.'}), 500
 
 @app.route('/clone-voice', methods=['POST'])
 @login_required

@@ -746,9 +746,9 @@ setTimeout(refreshMonitor, 500);
       <h3 class="font-bold mb-3">+ Buy Extra Minutes</h3>
       <p class="text-xs text-[#7a7a8e] mb-4">Need more call time? Purchase additional minutes that never expire. They're added to your monthly limit.</p>
       <div class="flex gap-3 flex-wrap">
-        <button onclick="buyMinutes(500)" class="px-6 py-3 rounded-xl font-semibold text-sm" style="background:#1a1a28;border:1px solid #252533;color:#cbd5e1">500 min — $15</button>
-        <button onclick="buyMinutes(1000)" class="px-6 py-3 rounded-xl font-semibold text-sm" style="background:#1a1a28;border:1px solid #252533;color:#cbd5e1">1,000 min — $25</button>
-        <button onclick="buyMinutes(5000)" class="px-6 py-3 rounded-xl font-semibold text-sm" style="background:linear-gradient(135deg,#a855f7,#ec4899);color:white">5,000 min — $99 <span style="font-size:10px;opacity:0.8">🔥 Best value</span></button>
+        <button onclick="buyMinutes(500)" class="px-6 py-3 rounded-xl font-semibold text-sm" style="background:#1a1a28;border:1px solid #252533;color:#cbd5e1">500 min — $150</button>
+        <button onclick="buyMinutes(1000)" class="px-6 py-3 rounded-xl font-semibold text-sm" style="background:#1a1a28;border:1px solid #252533;color:#cbd5e1">1,000 min — $290</button>
+        <button onclick="buyMinutes(5000)" class="px-6 py-3 rounded-xl font-semibold text-sm" style="background:linear-gradient(135deg,#a855f7,#ec4899);color:white">5,000 min — $490 <span style="font-size:10px;opacity:0.8">🔥 Best value</span></button>
       </div>
       <div id="buyResult" class="mt-3 hidden"></div>
     </div>
@@ -781,7 +781,7 @@ setTimeout(refreshMonitor, 500);
 
   <script>
   function buyMinutes(amount) {
-    var prices = {500: 15, 1000: 25, 5000: 99};
+    var prices = {500: 150, 1000: 290, 5000: 490};
     if (!confirm('Add ' + amount + ' minutes ($' + prices[amount] + ') to your account?')) return;
     var btn = event.target;
     btn.disabled = true;
@@ -823,6 +823,36 @@ setTimeout(refreshMonitor, 500);
       result.innerHTML = '❌ Network error';
       result.classList.remove('hidden');
       btn.disabled = false;
+      btn.textContent = amount + ' min — $' + prices[amount];
+    });
+  }
+  // Handle Stripe success redirect
+  (function() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('stripe') === 'success') {
+      var min = params.get('minutes');
+      var result = document.getElementById('buyResult');
+      if (result) {
+        result.className = 'mt-3 p-3 rounded-lg text-xs';
+        result.style.background = '#22c55e15';
+        result.style.border = '1px solid #22c55e30';
+        result.style.color = '#4ade80';
+        result.innerHTML = '✅ Payment successful!' + (min ? ' ' + min + ' extra minutes added!' : '') + ' <a href='/?tab=billing' class=\"underline\">Refresh</a>';
+        result.classList.remove('hidden');
+      }
+    }
+    if (params.get('stripe') === 'cancel') {
+      var result = document.getElementById('buyResult');
+      if (result) {
+        result.className = 'mt-3 p-3 rounded-lg text-xs';
+        result.style.background = '#ef444415';
+        result.style.border = '1px solid #ef444430';
+        result.style.color = '#ef4444';
+        result.innerHTML = '❌ Payment cancelled. No charges were made.';
+        result.classList.remove('hidden');
+      }
+    }
+  })();
       btn.textContent = amount + ' min — $' + prices[amount];
     });
   }

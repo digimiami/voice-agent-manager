@@ -140,6 +140,48 @@ def create_stripe_checkout(business_id, plan_name, price_cents, email, success_u
         print(f"❌ Stripe error: {e}")
         return None
 
+
+def create_extra_minutes_checkout(business_id, minutes, price_cents, email, success_url, cancel_url):
+    """Create a Stripe one-time payment checkout for extra minutes."""
+    cfg = load_stripe_config()
+    if not cfg.get('enabled') or not cfg.get('secret_key'):
+        return None
+
+    import stripe
+    stripe.api_key = cfg['secret_key']
+
+    price_dollars = price_cents / 100
+    try:
+        session = stripe.checkout.Session.create(
+            customer_email=email,
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'usd',
+                    'product_data': {
+                        'name': f'{minutes} Extra Call Minutes',
+                        'description': f'One-time purchase of {minutes} extra call minutes (${price_dollars:.0f})',
+                    },
+                    'unit_amount': price_cents,
+                },
+                'quantity': 1,
+            }],
+            mode='payment',
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={
+                'business_id': business_id,
+                'type': 'extra_minutes',
+                'minutes': str(minutes),
+                'amount': str(price_cents),
+            },
+        )
+        return session.url
+    except Exception as e:
+        print(f"❌ Stripe extra minutes error: {e}")
+        return None
+
+
 def handle_stripe_webhook(payload, sig_header):
     """Verify and process Stripe webhook events."""
     cfg = load_stripe_config()
@@ -156,7 +198,28 @@ def handle_stripe_webhook(payload, sig_header):
     
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
-        bid = session.get('metadata', {}).get('business_id')
+        metadata = session.get('metadata', {})
+        bid = metadata.get('business_id')
+        
+        # Handle extra minutes purchase (one-time payment)
+        if bid and metadata.get('type') == 'extra_minutes':
+            minutes = int(metadata.get('minutes', 0))
+            db = sqlite3.connect(DB_PATH)
+            c = db.cursor()
+            try:
+                c.execute("ALTER TABLE businesses ADD COLUMN extra_minutes INTEGER DEFAULT 0")
+            except:
+                pass
+            c.execute("SELECT extra_minutes FROM businesses WHERE id=?", (bid,))
+            row = c.fetchone()
+            current = row[0] if row and row[0] else 0
+            new_total = current + minutes
+            c.execute("UPDATE businesses SET extra_minutes=? WHERE id=?", (new_total, bid))
+            db.commit()
+            db.close()
+            return {'business_id': bid, 'extra_minutes': new_total, 'type': 'extra_minutes'}
+        
+        # Handle subscription payment (existing logic)
         if bid:
             db = sqlite3.connect(DB_PATH)
             c = db.cursor()
@@ -167,8 +230,6 @@ def handle_stripe_webhook(payload, sig_header):
             return {'business_id': bid, 'status': 'active'}
     
     return None
-
-# ═══════════════════════════════════════════════
 # 3. GOOGLE CALENDAR SYNC
 # ═══════════════════════════════════════════════
 
