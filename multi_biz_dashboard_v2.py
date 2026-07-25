@@ -2354,6 +2354,23 @@ def dashboard():
     c.execute("SELECT COALESCE(SUM(cost),0) FROM call_log WHERE business_id = ?", (bid,))
     total_cost = c.fetchone()[0]
     
+    # Total duration for minutes meter
+    c.execute("SELECT COALESCE(SUM(duration),0) FROM call_log WHERE business_id = ?", (bid,))
+    total_duration = c.fetchone()[0]
+    
+    # Plan info
+    plan_key = biz.get('plan', 'starter') or 'starter'
+    pricing_tiers = {
+        "starter": {"name": "Starter", "price": 97, "minutes_limit": 250, "features": ["1 AI Agent", "1 Number", "250 min", "Booking", "Analytics", "Email Support"]},
+        "pro": {"name": "Professional", "price": 197, "minutes_limit": 1000, "features": ["2 AI Agents", "2 Numbers", "1000 min", "Campaigns", "SMS", "Calendar", "Priority Support"]},
+        "premium": {"name": "Premium", "price": 297, "minutes_limit": 2500, "features": ["3 AI Agents", "3 Numbers", "2500 min", "Forwarding", "Priority Support"]},
+        "enterprise": {"name": "Enterprise", "price": 497, "minutes_limit": 7500, "features": ["5 AI Agents", "5 Numbers", "7500 min", "API", "White-Label", "Dedicated Manager"]},
+        "custom": {"name": "Custom", "price": 997, "minutes_limit": 0, "features": ["Custom config"]}
+    }
+    user_tier = pricing_tiers.get(plan_key, pricing_tiers['starter'])
+    extra_minutes = biz.get('extra_minutes', 0) or 0
+    total_minutes_limit = (user_tier['minutes_limit'] or 0) + extra_minutes
+    
     # Recent calls
     c.execute("""
         SELECT cl.*, l.phone, l.business_name FROM call_log cl
@@ -2485,7 +2502,9 @@ def dashboard():
         conversations=conversations,
         agents=agents_list,
         today_date=today_date,
-        seven_days_ago=seven_days_ago)
+        seven_days_ago=seven_days_ago,
+        total_duration=total_duration, user_tier=user_tier,
+        extra_minutes=extra_minutes, total_minutes_limit=total_minutes_limit)
 
 # ── CONVERSATIONS API ROUTES ──
 
@@ -6719,6 +6738,37 @@ def api_stripe_checkout():
     if url:
         return jsonify({'url': url})
     return jsonify({'error': 'Stripe checkout failed'}), 500
+
+
+@app.route('/api/buy-minutes', methods=['POST'])
+@login_required
+def api_buy_minutes():
+    """Buy extra minutes (added to plan limit)."""
+    data = request.get_json(silent=True) or {}
+    minutes = int(data.get('minutes', 0))
+    
+    if minutes <= 0:
+        return jsonify({'success': False, 'error': 'Invalid minutes'}), 400
+    
+    bid = session['business_id']
+    db = get_db()
+    c = db.cursor()
+    
+    # Ensure column exists
+    try:
+        c.execute("ALTER TABLE businesses ADD COLUMN extra_minutes INTEGER DEFAULT 0")
+    except:
+        pass
+    
+    c.execute("SELECT extra_minutes FROM businesses WHERE id=?", (bid,))
+    row = c.fetchone()
+    current = row[0] if row and row[0] else 0
+    new_total = current + minutes
+    c.execute("UPDATE businesses SET extra_minutes=? WHERE id=?", (new_total, bid))
+    db.commit()
+    db.close()
+    
+    return jsonify({'success': True, 'extra_minutes': new_total, 'added': minutes})
 
 @app.route('/clone-voice', methods=['POST'])
 @login_required
