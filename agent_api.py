@@ -956,6 +956,75 @@ def api_provision_phone(api_key, bid):
     })
 
 
+# ── OUTBOUND CALL ──
+
+@agent_api.route('/businesses/<bid>/call', methods=['POST'])
+@require_api_key
+def api_outbound_call(api_key, bid):
+    """Place an outbound call via Vapi to a prospect."""
+    if 'write' not in api_key.get('permissions', '').split(',') and 'admin' not in api_key.get('permissions', '').split(','):
+        return jsonify({'error': 'Write or admin permission required'}), 403
+
+    import subprocess, json as py_json
+
+    data = request.get_json(silent=True) or {}
+    phone = (data.get('phone') or '').strip()
+    lead_name = (data.get('lead_name') or 'Prospect').strip()
+
+    if not phone:
+        return jsonify({'error': 'phone is required'}), 400
+
+    db = sqlite3.connect(DB_PATH)
+    c = db.cursor()
+    c.execute("SELECT name, vapi_assistant_id, vapi_phone_id FROM businesses WHERE id=?", (bid,))
+    biz = c.fetchone()
+    db.close()
+
+    if not biz:
+        return jsonify({'error': 'Business not found'}), 404
+
+    name = biz[0]
+    assistant_id = biz[1]
+    phone_id = biz[2]
+
+    if not assistant_id:
+        return jsonify({'error': 'No Vapi assistant configured. Provision a phone number first.'}), 400
+    if not phone_id:
+        return jsonify({'error': 'No Vapi phone number assigned. Provision a phone number first.'}), 400
+
+    body = {
+        "assistantId": assistant_id,
+        "phoneNumberId": phone_id,
+        "customer": {
+            "number": phone,
+            "name": lead_name
+        }
+    }
+
+    result = subprocess.run([
+        "curl", "-s", "-X", "POST", f"{VAPI_BASE}/call",
+        "-H", f"Authorization: Bearer {VAPI_API_KEY}",
+        "-H", "Content-Type: application/json",
+        "-d", py_json.dumps(body)
+    ], capture_output=True, text=True, timeout=30)
+
+    try:
+        vapi_resp = py_json.loads(result.stdout)
+        call_id = vapi_resp.get('id')
+        if not call_id:
+            return jsonify({'error': f'Vapi call failed: {result.stdout[:300]}'}), 500
+        status = vapi_resp.get('status', 'queued')
+    except Exception as e:
+        return jsonify({'error': f'Vapi API error: {str(e)}'}), 500
+
+    return jsonify({
+        'success': True,
+        'call_id': call_id,
+        'status': status,
+        'message': f'Calling {phone} from {name}'
+    })
+
+
 # ── Helpers for auth middleware ──
 
 def api_key_required(permission='read'):
