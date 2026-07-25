@@ -886,7 +886,9 @@ def api_provision_phone(api_key, bid):
             "firstMessageMode": "assistant-speaks-first",
             "silenceTimeoutSeconds": 10,
             "maxDurationSeconds": 300,
-            "backgroundSound": "off"
+            "backgroundSound": "off",
+            "serverUrl": "https://diazites.online/api/v1/vapi-webhook",
+            "serverMessages": ["end-of-call-report", "status-update", "hang", "transcript", "conversation-update"]
         }
         result = subprocess.run([
             "curl", "-s", "-X", "POST", f"{VAPI_BASE}/assistant",
