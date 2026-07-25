@@ -204,6 +204,24 @@ def api_revoke_key(api_key, key_id):
         return jsonify({'error': 'Key not found'}), 404
     return jsonify({'success': True, 'message': f'Key {msg} successfully', 'key_id': key_id})
 
+
+@agent_api.route('/auth/keys/<key_id>/delete', methods=['DELETE'])
+@require_api_key
+def api_delete_key(api_key, key_id):
+    """Permanently delete an API key from the database (admin only)."""
+    if 'admin' not in api_key.get('permissions', '').split(','):
+        return jsonify({'error': 'Admin permission required'}), 403
+    db = sqlite3.connect(DB_PATH)
+    c = db.cursor()
+    c.execute("DELETE FROM agent_api_keys WHERE id = ?", (key_id,))
+    db.commit()
+    affected = c.rowcount
+    db.close()
+    if affected == 0:
+        return jsonify({'error': 'Key not found'}), 404
+    return jsonify({'success': True, 'message': 'Key permanently deleted', 'key_id': key_id})
+
+
 # ── BUSINESS ENDPOINTS ──
 
 @agent_api.route('/businesses', methods=['GET'])

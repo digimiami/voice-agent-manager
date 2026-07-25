@@ -1403,7 +1403,10 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                             '<div class="text-[#5c5c70] font-mono text-[10px]">' + k.id + '</div>' +
                             '</div>' +
                             (k.active ? 
-                            '<button data-key-id="' + k.id + '" onclick="revokeKey(this.dataset.keyId)" class="text-red-400 hover:text-red-300 text-xs py-1 px-2 border border-red-800 rounded"><i class="fas fa-ban mr-1"></i>Revoke</button>' :
+                            '<div class="flex items-center gap-1">' +
+                            '<button data-key-id="' + k.id + '" onclick="revokeKey(this.dataset.keyId)" class="text-red-400 hover:text-red-300 text-xs py-1 px-2 border border-red-800 rounded"><i class="fas fa-ban mr-1"></i>Revoke</button>' +
+                            '<button data-key-id="' + k.id + '" onclick="deleteKeyPermanent(this.dataset.keyId)" class="text-red-400 hover:text-red-300 text-xs py-1 px-2 border border-red-800 rounded ml-1"><i class="fas fa-times mr-1"></i>Delete</button>' +
+                            '</div>' :
                             '<button data-key-id="' + k.id + '" onclick="reactivateKey(this.dataset.keyId)" class="text-green-400 hover:text-green-300 text-xs py-1 px-2 border border-green-800 rounded"><i class="fas fa-undo mr-1"></i>Reactivate</button>'
                             ) +
                             '</div>';
@@ -1497,6 +1500,19 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
             .then(function(d) {
                 if (d.success) loadApiKeys();
                 else alert('Error: ' + (d.error || 'Failed to reactivate'));
+            })
+            .catch(function(err) { alert('Error: ' + err.message); });
+        }
+
+        // ── Permanent Delete Key ──
+        function deleteKeyPermanent(keyId) {
+            if (!confirm('⚠️ PERMANENTLY DELETE this API key? This cannot be undone!')) return;
+            if (!confirm('Are you sure? Agents using this key will lose access.')) return;
+            fetch('/api/v1/auth/keys/' + keyId + '/delete', {method: 'DELETE', credentials: 'same-origin'})
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.success) { alert('🗑️ Key permanently deleted.'); loadApiKeys(); }
+                else alert('Error: ' + (d.error || 'Failed to delete'));
             })
             .catch(function(err) { alert('Error: ' + err.message); });
         }
