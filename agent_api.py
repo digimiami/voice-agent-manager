@@ -893,7 +893,9 @@ def api_provision_phone(api_key, bid):
             'vapi_assistant_id': assistant_id,
             'vapi_phone_id': biz['vapi_phone_id'],
             'phone_number': biz.get('phone_number', ''),
-            'assistant_created': assistant_created
+            'assistant_created': assistant_created,
+            'source': 'existing',
+            'cost': 0
         })
 
     # 4. Try to reuse an unassigned Vapi number
@@ -919,6 +921,8 @@ def api_provision_phone(api_key, bid):
                         "-H", "Content-Type: application/json",
                         "-d", py_json.dumps({"assistantId": assistant_id})
                     ], capture_output=True, text=True, timeout=30)
+                    source = 'reused'
+                    cost = 0
                     break
     except:
         pass
@@ -931,6 +935,8 @@ def api_provision_phone(api_key, bid):
             return jsonify({'error': error}), 500
         vapi_phone_id = vapi_data['id'] if isinstance(vapi_data, dict) else vapi_data
         phone_number = twilio_number
+        source = 'bought'
+        cost = 1.50  # Twilio monthly fee for a phone number
 
     # 6. Update business record
     c.execute("UPDATE businesses SET phone_number=?, vapi_phone_id=? WHERE id=?", (phone_number, vapi_phone_id, bid))
@@ -944,7 +950,9 @@ def api_provision_phone(api_key, bid):
         'phone_number': phone_number,
         'vapi_assistant_id': assistant_id,
         'vapi_phone_id': vapi_phone_id,
-        'assistant_created': assistant_created
+        'assistant_created': assistant_created,
+        'source': source,
+        'cost': cost
     })
 
 
