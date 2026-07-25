@@ -18,6 +18,10 @@ from functools import wraps
 
 DB_PATH = "/root/voice-agent-businesses.db"
 
+# ── VAPI Configuration ──
+VAPI_BASE = "https://api.vapi.ai"
+VAPI_API_KEY = "49e91b8a-21d2-458c-a586-d6368289e5a6"
+
 # ── API Key Management ──
 
 def init_api_keys_table():
@@ -802,6 +806,145 @@ def api_export_businesses(api_key):
         'csv': output.getvalue(),
         'count': len(rows),
         'filename': f'diazites_businesses_export_{date.today().isoformat()}.csv'
+    })
+
+
+# ── PROVISION PHONE NUMBER ──
+
+@agent_api.route('/businesses/<bid>/phone', methods=['POST'])
+@require_api_key
+def api_provision_phone(api_key, bid):
+    """Provision a phone number for a business: create Vapi assistant, buy number, assign."""
+    if 'admin' not in api_key.get('permissions', '').split(',') and 'write' not in api_key.get('permissions', '').split(','):
+        return jsonify({'error': 'Write or admin permission required'}), 403
+
+    import subprocess, json as py_json
+    from twilio_helper import search_available_numbers, buy_twilio_number, register_with_vapi, buy_and_assign_number
+
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    c = db.cursor()
+
+    # 1. Look up business
+    c.execute("SELECT * FROM businesses WHERE id = ?", (bid,))
+    biz = c.fetchone()
+    if not biz:
+        db.close()
+        return jsonify({'error': 'Business not found'}), 404
+
+    name = biz['name']
+    industry = biz['industry'] or 'general'
+    script = biz['script_template'] or f"You are an AI assistant for {name}. Help them book more clients. Keep responses under 30 seconds."
+    kb = biz['knowledge_base'] or f"Industry: {industry}. Business: {name}."
+    voice_id = biz['voice_id'] or 'burt'
+    voice_speed = float(biz['voice_speed'] or 1.0)
+    temperature = float(biz['temperature'] or 0.3)
+    max_tokens = int(biz['max_tokens'] or 200)
+    timezone = biz['timezone'] or 'America/New_York'
+    call_start = biz['call_window_start'] or '09:00'
+    call_end = biz['call_window_end'] or '17:00'
+    area_code = request.args.get('area_code') or (request.get_json(silent=True) or {}).get('area_code')
+
+    # 2. Create VAPI assistant if missing
+    assistant_id = biz['vapi_assistant_id']
+    assistant_created = False
+    if not assistant_id:
+        full_script = f"{script}\n\nKnowledge Base Context:\n{kb}\n\nKeep responses under 30 seconds. If prospect asks for email or calendar, say a team member will handle it."
+        body = {
+            "name": f"{name} Voice Agent",
+            "model": {
+                "provider": "xai",
+                "model": "grok-4.3",
+                "temperature": temperature,
+                "maxTokens": max_tokens,
+                "systemPrompt": full_script
+            },
+            "voice": {"provider": "11labs", "voiceId": voice_id},
+            "firstMessage": f"Hi, this is {name}'s assistant from Diazites. We help {industry} businesses never miss a call. Do you have a moment?",
+            "firstMessageMode": "assistant-speaks-first",
+            "silenceTimeoutSeconds": 10,
+            "maxDurationSeconds": 300,
+            "backgroundSound": "off"
+        }
+        result = subprocess.run([
+            "curl", "-s", "-X", "POST", f"{VAPI_BASE}/assistant",
+            "-H", f"Authorization: Bearer {VAPI_API_KEY}",
+            "-H", "Content-Type: application/json",
+            "-d", py_json.dumps(body)
+        ], capture_output=True, text=True, timeout=30)
+        try:
+            assistant = py_json.loads(result.stdout)
+            assistant_id = assistant.get('id')
+            if not assistant_id:
+                db.close()
+                return jsonify({'error': f'Vapi assistant creation failed: {result.stdout[:300]}'}), 500
+        except Exception as e:
+            db.close()
+            return jsonify({'error': f'Vapi API error: {str(e)}'}), 500
+        assistant_created = True
+        c.execute("UPDATE businesses SET vapi_assistant_id=? WHERE id=?", (assistant_id, bid))
+        db.commit()
+
+    # 3. Check for existing phone number
+    if biz['vapi_phone_id']:
+        db.close()
+        return jsonify({
+            'success': True, 'message': f'{name} already has a phone number',
+            'vapi_assistant_id': assistant_id,
+            'vapi_phone_id': biz['vapi_phone_id'],
+            'phone_number': biz.get('phone_number', ''),
+            'assistant_created': assistant_created
+        })
+
+    # 4. Try to reuse an unassigned Vapi number
+    vapi_phone_id = None
+    phone_number = None
+    result = subprocess.run([
+        "curl", "-s", f"{VAPI_BASE}/phone-number",
+        "-H", f"Authorization: Bearer {VAPI_API_KEY}"
+    ], capture_output=True, text=True, timeout=30)
+    try:
+        all_phones = py_json.loads(result.stdout)
+        if isinstance(all_phones, list):
+            c.execute("SELECT vapi_phone_id FROM businesses WHERE vapi_phone_id IS NOT NULL AND id != ?", (bid,))
+            used_ids = set(r[0] for r in c.fetchall() if r[0])
+            for p in all_phones:
+                if p.get('id') not in used_ids and not p.get('assistantId'):
+                    vapi_phone_id = p['id']
+                    phone_number = p.get('number', '')
+                    # Assign to assistant
+                    subprocess.run([
+                        "curl", "-s", "-X", "PATCH", f"{VAPI_BASE}/phone-number/{vapi_phone_id}",
+                        "-H", f"Authorization: Bearer {VAPI_API_KEY}",
+                        "-H", "Content-Type: application/json",
+                        "-d", py_json.dumps({"assistantId": assistant_id})
+                    ], capture_output=True, text=True, timeout=30)
+                    break
+    except:
+        pass
+
+    # 5. If no unassigned number, buy from Twilio
+    if not vapi_phone_id:
+        vapi_data, twilio_number, error = buy_and_assign_number(assistant_id, area_code or None)
+        if error:
+            db.close()
+            return jsonify({'error': error}), 500
+        vapi_phone_id = vapi_data['id'] if isinstance(vapi_data, dict) else vapi_data
+        phone_number = twilio_number
+
+    # 6. Update business record
+    c.execute("UPDATE businesses SET phone_number=?, vapi_phone_id=? WHERE id=?", (phone_number, vapi_phone_id, bid))
+    db.commit()
+    db.close()
+
+    return jsonify({
+        'success': True,
+        'message': f'Phone {phone_number} assigned to {name}',
+        'business_id': bid,
+        'phone_number': phone_number,
+        'vapi_assistant_id': assistant_id,
+        'vapi_phone_id': vapi_phone_id,
+        'assistant_created': assistant_created
     })
 
 
