@@ -22,6 +22,21 @@ DB_PATH = "/root/voice-agent-businesses.db"
 VAPI_BASE = "https://api.vapi.ai"
 VAPI_API_KEY = "49e91b8a-21d2-458c-a586-d6368289e5a6"
 
+# ── Git auto-commit helper ──
+def git_auto_commit(message):
+    """Auto-commit and push changes to GitHub."""
+    import subprocess
+    try:
+        subprocess.run(["git", "-C", "/root/voice-agent-manager", "add", "-A"],
+                       capture_output=True, timeout=10)
+        subprocess.run(["git", "-C", "/root/voice-agent-manager", "commit",
+                       "-m", f"api: {message[:80]}"],
+                       capture_output=True, timeout=10)
+        subprocess.run(["git", "-C", "/root/voice-agent-manager", "push", "origin", "main"],
+                       capture_output=True, timeout=30)
+    except:
+        pass  # don't break the API if git fails
+
 # ── API Key Management ──
 
 def init_api_keys_table():
@@ -157,6 +172,7 @@ def api_generate_key(api_key):
         expires_at=expires_at
     )
 
+    git_auto_commit(f'generated API key {name}')
     return jsonify({
         'success': True,
         'key_id': key_id,
@@ -206,6 +222,7 @@ def api_revoke_key(api_key, key_id):
 
     if affected == 0:
         return jsonify({'error': 'Key not found'}), 404
+    git_auto_commit(f'{msg} API key {key_id}')
     return jsonify({'success': True, 'message': f'Key {msg} successfully', 'key_id': key_id})
 
 
@@ -223,6 +240,7 @@ def api_delete_key(api_key, key_id):
     db.close()
     if affected == 0:
         return jsonify({'error': 'Key not found'}), 404
+    git_auto_commit(f'deleted API key {key_id}')
     return jsonify({'success': True, 'message': 'Key permanently deleted', 'key_id': key_id})
 
 
@@ -329,6 +347,7 @@ def api_create_business(api_key):
     db.commit()
     db.close()
 
+    git_auto_commit(f'created business {name} ({bid})')
     return jsonify({
         'success': True,
         'business_id': bid,
@@ -373,6 +392,7 @@ def api_update_business(api_key, bid):
     if affected == 0:
         return jsonify({'error': 'Business not found'}), 404
 
+    git_auto_commit(f'updated business {bid}: {",".join(u.split(" =")[0] for u in updates)}')
     return jsonify({'success': True, 'message': 'Business updated', 'updated_fields': [u.split(' =')[0] for u in updates]})
 
 @agent_api.route('/businesses/<bid>', methods=['DELETE'])
@@ -398,6 +418,7 @@ def api_delete_business(api_key, bid):
     db.commit()
     db.close()
 
+    git_auto_commit(f'deleted business {name} ({bid})')
     return jsonify({'success': True, 'message': f'Business "{name}" and all associated data deleted'})
 
 # ── LEADS ENDPOINTS ──
@@ -505,6 +526,7 @@ def api_add_leads(api_key):
     db.commit()
     db.close()
 
+    git_auto_commit(f'added {added} lead(s) to business {business_id}')
     return jsonify({
         'success': True,
         'business_id': business_id,
@@ -943,6 +965,7 @@ def api_provision_phone(api_key, bid):
     db.commit()
     db.close()
 
+    git_auto_commit(f'provisioned phone {phone_number} for {name} ({bid})')
     return jsonify({
         'success': True,
         'message': f'Phone {phone_number} assigned to {name}',
