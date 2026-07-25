@@ -4061,8 +4061,18 @@ def api_update_voice():
     biz = c.execute("SELECT vapi_assistant_id FROM businesses WHERE id=?", (bid,)).fetchone()
     if biz and biz['vapi_assistant_id']:
         try:
-            import requests
-            VAPI_KEY = "49e91b8a-21d2-458c-a586-d6368289e5a6"
+            import requests, os
+            VAPI_KEY = os.environ.get("VAPI_API_KEY", "")
+            if not VAPI_KEY:
+                try:
+                    with open("/root/voice-agent-manager/.env") as f:
+                        for line in f:
+                            line = line.strip()
+                            if line.startswith("VAPI_API_KEY="):
+                                VAPI_KEY = line.split("=", 1)[1]
+                                break
+                except:
+                    pass
             # Find which provider the voice uses
             provider = "11labs"
             for v in get_available_voices():

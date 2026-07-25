@@ -26,7 +26,19 @@ from agent_api import agent_api, init_api_keys_table, generate_api_key, validate
 from agent_api import api_key_required
 
 DB_PATH = "/root/voice-agent-businesses.db"
-VAPI_API_KEY = "49e91b8a-21d2-458c-a586-d6368289e5a6"
+
+# ── Load VAPI key from env (DO NOT hardcode in source) ──
+VAPI_API_KEY = os.environ.get("VAPI_API_KEY", "")
+if not VAPI_API_KEY:
+    try:
+        with open("/root/voice-agent-manager/.env") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("VAPI_API_KEY="):
+                    VAPI_API_KEY = line.split("=", 1)[1]
+                    break
+    except:
+        pass
 VAPI_BASE = "https://api.vapi.ai"
 
 app = Flask(__name__)

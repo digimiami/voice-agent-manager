@@ -20,7 +20,19 @@ DB_PATH = "/root/voice-agent-businesses.db"
 
 # ── VAPI Configuration ──
 VAPI_BASE = "https://api.vapi.ai"
-VAPI_API_KEY = "49e91b8a-21d2-458c-a586-d6368289e5a6"
+
+# ── Load VAPI key from env (DO NOT hardcode in source) ──
+VAPI_API_KEY = os.environ.get("VAPI_API_KEY", "")
+if not VAPI_API_KEY:
+    try:
+        with open("/root/voice-agent-manager/.env") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("VAPI_API_KEY="):
+                    VAPI_API_KEY = line.split("=", 1)[1]
+                    break
+    except:
+        pass
 
 # ── Git auto-commit helper ──
 def git_auto_commit(message):
