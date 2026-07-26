@@ -44,11 +44,177 @@ tr:last-child td{border-bottom:none}
 .flash-success{background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.3);color:#4ade80}
 .flash-error{background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);color:#f87171}
 .flash-info{background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:#60a5fa}
+
+/* ── MOBILE RESPONSIVE ── */
+
+/* Hamburger menu button - hidden on desktop */
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: #f1f1f5;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  z-index: 45;
+  position: fixed;
+  top: 12px;
+  left: 12px;
+}
+
+/* Sidebar overlay backdrop */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 39;
+}
+
+@media (max-width: 768px) {
+  /* Show hamburger on mobile */
+  .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+  
+  /* Sidebar slides in from left when open */
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    z-index: 40;
+    width: 260px;
+  }
+  .sidebar.open { transform: translateX(0); }
+  
+  /* Main content - full width on mobile */
+  .main-content {
+    margin-left: 0 !important;
+    padding: 16px 12px !important;
+    padding-top: 56px !important;
+  }
+  
+  /* Mobile header spacing */
+  .main-content > .flex:first-child {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 4px;
+    margin-bottom: 16px !important;
+  }
+  
+  /* Stack stats grid */
+  .grid.grid-cols-2 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .grid.grid-cols-3 {
+    grid-template-columns: 1fr !important;
+  }
+  .grid.grid-cols-4, .grid.md\\:grid-cols-4 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .grid-cols-5 {
+    grid-template-columns: 1fr 1fr 1fr !important;
+  }
+  
+  /* Full-width cards on mobile */
+  .card {
+    padding: 14px !important;
+  }
+  
+  /* Tables - scroll horizontally within card, not page */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Wrap flex items on mobile */
+  .flex-wrap {
+    gap: 6px !important;
+  }
+  
+  .btn-primary, .btn-secondary, button[class*="px-6"] {
+    padding: 8px 14px !important;
+    font-size: 0.8rem !important;
+  }
+  
+  /* Stats number sizing */
+  .stat-value {
+    font-size: 1.4rem !important;
+  }
+  
+  /* Modal on mobile */
+  .modal-content {
+    margin: 8px !important;
+    padding: 16px !important;
+  }
+  
+  /* Max-width containers */
+  .max-w-2xl, .max-w-3xl, .max-w-4xl, .max-w-5xl, .max-w-6xl, .max-w-7xl {
+    max-width: 100% !important;
+  }
+
+  /* Buy minutes buttons - stack on mobile */
+  .card .flex.gap-3.flex-wrap > button,
+  .card .flex.gap-3.flex-wrap > a {
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+    font-size: 0.8rem !important;
+    padding: 10px 8px !important;
+  }
+
+  /* Feature badges - smaller on mobile */
+  .feature-badge, .inline-flex.items-center.gap-1 {
+    font-size: 0.65rem !important;
+    padding: 2px 8px !important;
+  }
+
+  /* Call history / conversations */
+  .text-\[0\.7rem\] {
+    font-size: 0.6rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .grid.grid-cols-2, .grid.md\\:grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+  .stat-value {
+    font-size: 1.2rem !important;
+  }
+  .main-content {
+    padding: 10px 8px !important;
+    padding-top: 50px !important;
+  }
+  h2.text-xl {
+    font-size: 1.1rem !important;
+  }
+  h3.text-lg {
+    font-size: 0.95rem !important;
+  }
+}
 </style>
 </head>
 <body>
 
 <!-- SIDEBAR -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+<button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+<script>
+function toggleSidebar() {
+  document.querySelector(".sidebar").classList.toggle("open");
+  document.getElementById("sidebarOverlay").style.display = 
+    document.querySelector(".sidebar").classList.contains("open") ? "block" : "none";
+}
+// Close sidebar when clicking a nav link on mobile
+document.querySelectorAll(".sidebar a").forEach(function(a) {
+  a.addEventListener("click", function() {
+    if (window.innerWidth <= 768) {
+      document.querySelector(".sidebar").classList.remove("open");
+      document.getElementById("sidebarOverlay").style.display = "none";
+    }
+  });
+});
+</script>
 <div class="sidebar">
   <div class="flex items-center gap-2 mb-8 px-2">
     <span class="text-xl">🎙️</span>
@@ -303,6 +469,154 @@ tr:last-child td{border-bottom:none}
 .monitor-log-entry.level-error{border-left-color:#ef4444;background:rgba(239,68,68,0.05)}
 .monitor-log-entry.level-warning{border-left-color:#fbbf24;background:rgba(251,191,36,0.05)}
 .monitor-log-entry.level-info{border-left-color:#818cf8;background:rgba(129,140,248,0.05)}
+
+/* ── MOBILE RESPONSIVE ── */
+
+/* Hamburger menu button - hidden on desktop */
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: #f1f1f5;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  z-index: 45;
+  position: fixed;
+  top: 12px;
+  left: 12px;
+}
+
+/* Sidebar overlay backdrop */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 39;
+}
+
+@media (max-width: 768px) {
+  /* Show hamburger on mobile */
+  .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+  
+  /* Sidebar slides in from left when open */
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    z-index: 40;
+    width: 260px;
+  }
+  .sidebar.open { transform: translateX(0); }
+  
+  /* Main content - full width on mobile */
+  .main-content {
+    margin-left: 0 !important;
+    padding: 16px 12px !important;
+    padding-top: 56px !important;
+  }
+  
+  /* Mobile header spacing */
+  .main-content > .flex:first-child {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 4px;
+    margin-bottom: 16px !important;
+  }
+  
+  /* Stack stats grid */
+  .grid.grid-cols-2 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .grid.grid-cols-3 {
+    grid-template-columns: 1fr !important;
+  }
+  .grid.grid-cols-4, .grid.md\\:grid-cols-4 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .grid-cols-5 {
+    grid-template-columns: 1fr 1fr 1fr !important;
+  }
+  
+  /* Full-width cards on mobile */
+  .card {
+    padding: 14px !important;
+  }
+  
+  /* Tables - scroll horizontally within card, not page */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Wrap flex items on mobile */
+  .flex-wrap {
+    gap: 6px !important;
+  }
+  
+  .btn-primary, .btn-secondary, button[class*="px-6"] {
+    padding: 8px 14px !important;
+    font-size: 0.8rem !important;
+  }
+  
+  /* Stats number sizing */
+  .stat-value {
+    font-size: 1.4rem !important;
+  }
+  
+  /* Modal on mobile */
+  .modal-content {
+    margin: 8px !important;
+    padding: 16px !important;
+  }
+  
+  /* Max-width containers */
+  .max-w-2xl, .max-w-3xl, .max-w-4xl, .max-w-5xl, .max-w-6xl, .max-w-7xl {
+    max-width: 100% !important;
+  }
+
+  /* Buy minutes buttons - stack on mobile */
+  .card .flex.gap-3.flex-wrap > button,
+  .card .flex.gap-3.flex-wrap > a {
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+    font-size: 0.8rem !important;
+    padding: 10px 8px !important;
+  }
+
+  /* Feature badges - smaller on mobile */
+  .feature-badge, .inline-flex.items-center.gap-1 {
+    font-size: 0.65rem !important;
+    padding: 2px 8px !important;
+  }
+
+  /* Call history / conversations */
+  .text-\[0\.7rem\] {
+    font-size: 0.6rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .grid.grid-cols-2, .grid.md\\:grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+  .stat-value {
+    font-size: 1.2rem !important;
+  }
+  .main-content {
+    padding: 10px 8px !important;
+    padding-top: 50px !important;
+  }
+  h2.text-xl {
+    font-size: 1.1rem !important;
+  }
+  h3.text-lg {
+    font-size: 0.95rem !important;
+  }
+}
 </style>
 
 <script>
@@ -1127,7 +1441,7 @@ setTimeout(refreshMonitor, 500);
         result.style.background = '#22c55e15';
         result.style.border = '1px solid #22c55e30';
         result.style.color = '#4ade80';
-        result.innerHTML = '✅ Payment successful!' + (min ? ' ' + min + ' extra minutes added!' : '') + ' <a href='/?tab=billing' class=\"underline\">Refresh</a>';
+        result.innerHTML = '✅ Payment successful!' + (min ? ' ' + min + ' extra minutes added!' : '') + ' <a href="/?tab=billing" class=\"underline\">Refresh</a>';
         result.classList.remove('hidden');
       }
     }
@@ -1143,9 +1457,6 @@ setTimeout(refreshMonitor, 500);
       }
     }
   })();
-      btn.textContent = amount + ' min — $' + prices[amount];
-    });
-  }
   function createCheckout() {
     fetch('/create-checkout-session', {method: 'POST'})
     .then(function(r) { return r.json(); })
@@ -1153,7 +1464,155 @@ setTimeout(refreshMonitor, 500);
     .catch(function() { alert('Network error'); });
   }
   </script>
-  <style>.feature-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 8px;border-radius:6px;background:#1a1a28;color:#cbd5e1;margin:2px}.feature-badge.active{background:#22c55e15;border:1px solid #22c55e30;color:#4ade80}</style>
+  <style>.feature-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 8px;border-radius:6px;background:#1a1a28;color:#cbd5e1;margin:2px}.feature-badge.active{background:#22c55e15;border:1px solid #22c55e30;color:#4ade80}
+/* ── MOBILE RESPONSIVE ── */
+
+/* Hamburger menu button - hidden on desktop */
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: #f1f1f5;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  z-index: 45;
+  position: fixed;
+  top: 12px;
+  left: 12px;
+}
+
+/* Sidebar overlay backdrop */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 39;
+}
+
+@media (max-width: 768px) {
+  /* Show hamburger on mobile */
+  .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+  
+  /* Sidebar slides in from left when open */
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    z-index: 40;
+    width: 260px;
+  }
+  .sidebar.open { transform: translateX(0); }
+  
+  /* Main content - full width on mobile */
+  .main-content {
+    margin-left: 0 !important;
+    padding: 16px 12px !important;
+    padding-top: 56px !important;
+  }
+  
+  /* Mobile header spacing */
+  .main-content > .flex:first-child {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 4px;
+    margin-bottom: 16px !important;
+  }
+  
+  /* Stack stats grid */
+  .grid.grid-cols-2 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .grid.grid-cols-3 {
+    grid-template-columns: 1fr !important;
+  }
+  .grid.grid-cols-4, .grid.md\\:grid-cols-4 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .grid-cols-5 {
+    grid-template-columns: 1fr 1fr 1fr !important;
+  }
+  
+  /* Full-width cards on mobile */
+  .card {
+    padding: 14px !important;
+  }
+  
+  /* Tables - scroll horizontally within card, not page */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Wrap flex items on mobile */
+  .flex-wrap {
+    gap: 6px !important;
+  }
+  
+  .btn-primary, .btn-secondary, button[class*="px-6"] {
+    padding: 8px 14px !important;
+    font-size: 0.8rem !important;
+  }
+  
+  /* Stats number sizing */
+  .stat-value {
+    font-size: 1.4rem !important;
+  }
+  
+  /* Modal on mobile */
+  .modal-content {
+    margin: 8px !important;
+    padding: 16px !important;
+  }
+  
+  /* Max-width containers */
+  .max-w-2xl, .max-w-3xl, .max-w-4xl, .max-w-5xl, .max-w-6xl, .max-w-7xl {
+    max-width: 100% !important;
+  }
+
+  /* Buy minutes buttons - stack on mobile */
+  .card .flex.gap-3.flex-wrap > button,
+  .card .flex.gap-3.flex-wrap > a {
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+    font-size: 0.8rem !important;
+    padding: 10px 8px !important;
+  }
+
+  /* Feature badges - smaller on mobile */
+  .feature-badge, .inline-flex.items-center.gap-1 {
+    font-size: 0.65rem !important;
+    padding: 2px 8px !important;
+  }
+
+  /* Call history / conversations */
+  .text-\[0\.7rem\] {
+    font-size: 0.6rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .grid.grid-cols-2, .grid.md\\:grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+  .stat-value {
+    font-size: 1.2rem !important;
+  }
+  .main-content {
+    padding: 10px 8px !important;
+    padding-top: 50px !important;
+  }
+  h2.text-xl {
+    font-size: 1.1rem !important;
+  }
+  h3.text-lg {
+    font-size: 0.95rem !important;
+  }
+}
+</style>
 
   {% endif %}
 
