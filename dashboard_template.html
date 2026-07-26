@@ -64,6 +64,7 @@ tr:last-child td{border-bottom:none}
     <a href="/?tab=calls" class="nav-item {% if tab == 'calls' %}active{% endif %}"><span>📞</span> Call History</a>
     <a href="/?tab=followups" class="nav-item {% if tab == 'followups' %}active{% endif %}"><span>🔄</span> Follow-ups</a>
     <a href="/?tab=numbers" class="nav-item {% if tab == 'numbers' %}active{% endif %}"><span>📱</span> Phone Numbers</a>
+    <a href="/?tab=agents" class="nav-item {% if tab == 'agents' %}active{% endif %}"><span>🤖</span> Agents</a>
     <a href="/?tab=settings" class="nav-item {% if tab == 'settings' %}active{% endif %}"><span>⚙️</span> Settings</a>
     <a href="/?tab=landing" class="nav-item {% if tab == 'landing' %}active{% endif %}"><span>🌐</span> Landing Page</a>
     <a href="/?tab=calendar" class="nav-item {% if tab == 'calendar' %}active{% endif %}"><span>📅</span> Calendar</a>
@@ -87,6 +88,7 @@ tr:last-child td{border-bottom:none}
         {% elif tab == 'calls' %}📞 Call History
         {% elif tab == 'followups' %}🔄 Follow-ups
         {% elif tab == 'numbers' %}📱 Phone Numbers
+        {% elif tab == 'agents' %}🤖 Agents
         {% elif tab == 'settings' %}⚙️ Settings
         {% elif tab == 'landing' %}🌐 Landing Page
         {% elif tab == 'calendar' %}📅 Calendar
@@ -545,6 +547,294 @@ setTimeout(refreshMonitor, 500);
       <div id="browseResults"></div>
     </div>
   </div>
+
+  <!-- ======== TAB: AGENTS ======== -->
+  {% elif tab == 'agents' %}
+  <div class="max-w-4xl mx-auto">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">🤖 AI Agents</h2>
+      <button onclick="showCreateAgent()" class="btn-primary text-xs" id="addAgentBtn">+ New Agent</button>
+    </div>
+    <p class="text-xs text-[#7a7a8e] mb-4">Each agent has its own phone number, voice, script, and knowledge base.</p>
+
+    <!-- Plan limit meter -->
+    <div id="agentLimitBar" class="card mb-4 p-3 hidden">
+      <div class="text-xs flex justify-between mb-1">
+        <span id="agentCountLabel">Agents: 0</span>
+        <span id="agentMaxLabel">Max: 0</span>
+      </div>
+      <div class="h-2 bg-[#1a1a28] rounded-full overflow-hidden">
+        <div id="agentProgressBar" class="h-full rounded-full transition-all" style="width:0%;background:linear-gradient(135deg,#a855f7,#ec4899)"></div>
+      </div>
+    </div>
+
+    <!-- Agent list -->
+    <div id="agentsLoading" class="text-center py-8 text-[#7a7a8e]">🔍 Loading agents...</div>
+    <div id="agentsList"></div>
+
+    <!-- Create/Edit Agent Modal -->
+    <div id="agentModal" class="fixed inset-0 z-50 hidden flex items-center justify-center" style="background:rgba(0,0,0,0.7)">
+      <div class="bg-[#111118] rounded-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto p-6 border border-[#252533]">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-bold" id="agentModalTitle">🤖 New Agent</h3>
+          <button onclick="closeAgentModal()" class="text-[#5c5c70] hover:text-white text-lg">&times;</button>
+        </div>
+        <input type="hidden" id="editAgentId" value="">
+
+        <div class="space-y-3">
+          <div>
+            <label class="text-xs text-[#7a7a8e] mb-1 block">Agent Name</label>
+            <input id="agentName" class="w-full px-3 py-2 bg-[#1a1a28] rounded-lg border border-[#252533] text-xs" placeholder="e.g. Sales Agent, Support Agent">
+          </div>
+          <div>
+            <label class="text-xs text-[#7a7a8e] mb-1 block">Phone Number</label>
+            <select id="agentPhone" class="w-full px-3 py-2 bg-[#1a1a28] rounded-lg border border-[#252533] text-xs">
+              <option value="">— Use business default —</option>
+              {% for n in assigned_numbers %}
+              <option value="{{ n.number }}">{{ n.number }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-[#7a7a8e] mb-1 block">Voice</label>
+            <select id="agentVoice" class="w-full px-3 py-2 bg-[#1a1a28] rounded-lg border border-[#252533] text-xs">
+              <option value="">— Default —</option>
+              {% for v in voices %}
+              <option value="{{ v.id }}">{{ v.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-[#7a7a8e] mb-1 block">Voice Speed</label>
+            <input id="agentSpeed" type="range" min="0.8" max="1.5" step="0.05" value="1.0" class="w-full"
+                   oninput="document.getElementById('speedLabel').textContent=this.value">
+            <span id="speedLabel" class="text-xs text-[#c084fc]">1.0</span>
+          </div>
+          <div>
+            <label class="text-xs text-[#7a7a8e] mb-1 block">🤖 Script Template</label>
+            <textarea id="agentScript" rows="4" class="w-full px-3 py-2 bg-[#1a1a28] rounded-lg border border-[#252533] text-xs font-mono"
+                      placeholder="You are an AI assistant for {{ biz_name }}. Help book more clients."></textarea>
+          </div>
+          <div>
+            <label class="text-xs text-[#7a7a8e] mb-1 block">🧠 Knowledge Base</label>
+            <textarea id="agentKB" rows="5" class="w-full px-3 py-2 bg-[#1a1a28] rounded-lg border border-[#252533] text-xs font-mono"
+                      placeholder="Business-specific knowledge and information the agent should know."></textarea>
+            <div class="flex gap-2 mt-2">
+              <button onclick="generateKBAgent()" id="genKBAgentBtn" class="btn-secondary text-xs">🤖 Auto-Generate KB</button>
+            </div>
+            <div id="kbAgentGenStatus" class="text-xs mt-1 hidden"></div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-5 pt-4 border-t border-[#252533]">
+          <button onclick="saveAgent()" class="btn-primary text-sm flex-1" id="saveAgentBtn">💾 Save Agent</button>
+          <button onclick="closeAgentModal()" class="btn-outline text-sm">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Agents JavaScript -->
+  <script>
+  function loadAgents() {
+    var list = document.getElementById('agentsList');
+    var loading = document.getElementById('agentsLoading');
+    loading.style.display = 'block';
+    list.innerHTML = '';
+
+    fetch('/api/agents/list').then(function(r){return r.json()}).then(function(d){
+      loading.style.display = 'none';
+      if (!d.success) { list.innerHTML = '<div class="text-red-400 text-center py-4">'+d.error+'</div>'; return; }
+
+      var agents = d.agents || [];
+      var max = d.max_agents || 1;
+      var count = d.agent_count || 0;
+
+      // Update limit bar
+      var bar = document.getElementById('agentLimitBar');
+      bar.style.display = 'block';
+      document.getElementById('agentCountLabel').textContent = 'Agents: ' + count;
+      document.getElementById('agentMaxLabel').textContent = 'Max: ' + max;
+      var pct = Math.min(100, (count / max) * 100);
+      var prog = document.getElementById('agentProgressBar');
+      prog.style.width = pct + '%';
+      prog.style.background = pct > 80 ? 'linear-gradient(135deg,#ef4444,#ec4899)' : 'linear-gradient(135deg,#a855f7,#ec4899)';
+
+      // Toggle add button
+      document.getElementById('addAgentBtn').style.display = count >= max ? 'none' : 'inline-flex';
+
+      if (agents.length === 0) {
+        list.innerHTML = '<div class="text-center py-8 text-[#5c5c70]"><p class="text-4xl mb-3">🤖</p><p>No agents yet. Create your first one!</p></div>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < agents.length; i++) {
+        var a = agents[i];
+        var kbPreview = (a.knowledge_base || '').substring(0, 80);
+        var scriptPreview = (a.script_template || '').substring(0, 80);
+        html += '<div class="card mb-3 p-4">';
+        html += '<div class="flex items-start justify-between">';
+        html += '<div class="flex items-center gap-3">';
+        html += '<div class="w-10 h-10 rounded-full flex items-center justify-center text-lg" style="background:linear-gradient(135deg,#a855f7,#ec4899)">🤖</div>';
+        html += '<div><h4 class="font-semibold text-sm">' + (a.name || 'Unnamed') + '</h4>';
+        html += '<span class="text-xs text-[#c084fc]">' + (a.call_count || 0) + ' calls</span>';
+        html += '</div></div>';
+        html += '<div class="flex gap-2">';
+        html += '<button onclick="editAgent(\'' + a.id + '\')" class="btn-secondary text-xs" style="padding:4px 10px">✏️ Edit</button>';
+        html += '<button onclick="deleteAgent(\'' + a.id + '\',\'' + (a.name || '').replace(/'/g,"\\'") + '\')" class="btn-outline text-xs text-red-400" style="padding:4px 10px">🗑️</button>';
+        html += '</div></div>';
+
+        if (a.knowledge_base) {
+          html += '<div class="mt-2 text-xs text-[#7a7a8e]"><span class="text-[#c084fc]">🧠 KB:</span> ' + escHtml(kbPreview) + (a.knowledge_base.length > 80 ? '...' : '') + '</div>';
+        }
+        if (a.script_template) {
+          html += '<div class="mt-1 text-xs text-[#7a7a8e]"><span class="text-[#818cf8]">🤖 Script:</span> ' + escHtml(scriptPreview) + (a.script_template.length > 80 ? '...' : '') + '</div>';
+        }
+        if (a.voice_id) {
+          html += '<div class="mt-1 text-xs text-[#7a7a8e]">🎙️ Voice: ' + escHtml(a.voice_id) + '</div>';
+        }
+        html += '</div>';
+      }
+      list.innerHTML = html;
+    }).catch(function(e){
+      loading.style.display = 'none';
+      list.innerHTML = '<div class="text-red-400 text-center py-4">Error loading agents</div>';
+    });
+  }
+
+  function showCreateAgent() {
+    document.getElementById('editAgentId').value = '';
+    document.getElementById('agentModalTitle').textContent = '🤖 New Agent';
+    document.getElementById('agentName').value = '';
+    document.getElementById('agentPhone').value = '';
+    document.getElementById('agentVoice').value = '';
+    document.getElementById('agentSpeed').value = '1.0';
+    document.getElementById('speedLabel').textContent = '1.0';
+    document.getElementById('agentScript').value = '';
+    document.getElementById('agentKB').value = '';
+    document.getElementById('saveAgentBtn').textContent = '💾 Create Agent';
+    document.getElementById('agentModal').style.display = 'flex';
+  }
+
+  function editAgent(aid) {
+    fetch('/api/agents/get/' + aid).then(function(r){return r.json()}).then(function(d){
+      if (!d.success || !d.agent) { alert('Agent not found'); return; }
+      var a = d.agent;
+      document.getElementById('editAgentId').value = a.id;
+      document.getElementById('agentModalTitle').textContent = '✏️ Edit: ' + (a.name || '');
+      document.getElementById('agentName').value = a.name || '';
+      document.getElementById('agentPhone').value = a.phone_number || '';
+      document.getElementById('agentVoice').value = a.voice_id || '';
+      document.getElementById('agentSpeed').value = a.voice_speed || '1.0';
+      document.getElementById('speedLabel').textContent = a.voice_speed || '1.0';
+      document.getElementById('agentScript').value = a.script_template || '';
+      document.getElementById('agentKB').value = a.knowledge_base || '';
+      document.getElementById('saveAgentBtn').textContent = '💾 Save Changes';
+      document.getElementById('agentModal').style.display = 'flex';
+    }).catch(function(){ alert('Error loading agent'); });
+  }
+
+  function closeAgentModal() {
+    document.getElementById('agentModal').style.display = 'none';
+  }
+
+  function saveAgent() {
+    var aid = document.getElementById('editAgentId').value;
+    var data = {
+      agent_id: aid || undefined,
+      name: document.getElementById('agentName').value.trim(),
+      voice_id: document.getElementById('agentVoice').value,
+      voice_speed: document.getElementById('agentSpeed').value,
+      script_template: document.getElementById('agentScript').value.trim(),
+      knowledge_base: document.getElementById('agentKB').value.trim()
+    };
+    var phone = document.getElementById('agentPhone').value;
+    if (phone) data.phone_number = phone;
+
+    // Fix: empty required field
+    if (!data.name) { alert('Agent name is required'); return; }
+
+    var btn = document.getElementById('saveAgentBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Saving...';
+
+    var endpoint = aid ? '/api/agents/update' : '/api/agents/create';
+    fetch(endpoint, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data)
+    }).then(function(r){return r.json()}).then(function(d){
+      if (d.success) {
+        closeAgentModal();
+        loadAgents();
+      } else {
+        alert(d.error || 'Error saving agent');
+      }
+      btn.disabled = false;
+      btn.textContent = aid ? '💾 Save Changes' : '💾 Create Agent';
+    }).catch(function(){
+      alert('Error saving agent');
+      btn.disabled = false;
+      btn.textContent = aid ? '💾 Save Changes' : '💾 Create Agent';
+    });
+  }
+
+  function deleteAgent(aid, name) {
+    if (!confirm('Delete agent "' + name + '"? This cannot be undone.')) return;
+    fetch('/api/agents/delete/' + aid, {method: 'DELETE'}).then(function(r){return r.json()}).then(function(d){
+      if (d.success) { loadAgents(); }
+      else { alert(d.error || 'Error deleting agent'); }
+    }).catch(function(){ alert('Error deleting agent'); });
+  }
+
+  function generateKBAgent() {
+    var btn = document.getElementById('genKBAgentBtn');
+    var status = document.getElementById('kbAgentGenStatus');
+    btn.disabled = true;
+    btn.textContent = '⏳ Generating...';
+    status.className = 'text-xs mt-1 text-[#c084fc]';
+    status.textContent = 'Generating knowledge base...';
+    status.style.display = 'block';
+
+    fetch('/api/generate-kb', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({type: 'outbound'})
+    }).then(function(r){return r.json()}).then(function(d){
+      status.textContent = d.success ? '✅ KB generated!' : (d.error || 'Failed');
+      status.style.color = d.success ? '#4ade80' : '#ef4444';
+      if (d.success && d.knowledge_base) {
+        document.getElementById('agentKB').value = d.knowledge_base;
+      }
+      btn.disabled = false;
+      btn.textContent = '🤖 Auto-Generate KB';
+    }).catch(function(){
+      status.textContent = '❌ Error generating KB';
+      status.style.color = '#ef4444';
+      btn.disabled = false;
+      btn.textContent = '🤖 Auto-Generate KB';
+    });
+  }
+
+  function escHtml(s) {
+    if (!s) return '';
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Load agents when tab is active
+  document.addEventListener('DOMContentLoaded', function(){
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('tab') === 'agents') { loadAgents(); }
+  });
+  // Also check on tab switch
+  var _orig = window.onhashchange;
+  window.onhashchange = function() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('tab') === 'agents') { setTimeout(loadAgents, 100); }
+    if (_orig) _orig();
+  };
+  </script>
 
   <!-- ======== TAB: SETTINGS ======== -->
   {% elif tab == 'settings' %}

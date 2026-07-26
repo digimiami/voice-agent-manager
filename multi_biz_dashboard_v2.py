@@ -2107,7 +2107,15 @@ def api_agents_list():
     biz = c.execute("SELECT plan, calls_included FROM businesses WHERE id=?",
     (bid,)).fetchone()
     plan_limits = {'starter': 1, 'pro': 2, 'premium': 3, 'enterprise': 5}
-    max_agents = plan_limits.get(biz['plan'] if biz else 'pro', 2) if biz else 2
+    plan_key = (biz['plan'] if biz else 'starter').lower()
+    max_agents = plan_limits.get(plan_key, 1)
+    if max_agents == 1 and biz and 'custom' in plan_key:
+        import re
+        nums = re.findall(r'\d+', biz['plan'])
+        if nums and int(nums[0]) >= 300:
+            max_agents = 5
+        elif nums and int(nums[0]) >= 150:
+            max_agents = 3
     
     return jsonify({'success': True, 'agents': agents, 'max_agents': max_agents, 'agent_count': len(agents)})
 
@@ -2138,7 +2146,16 @@ def api_agent_create():
         return jsonify({'success': False, 'error': 'Business not found'}), 404
     
     plan_limits = {'starter': 1, 'pro': 2, 'premium': 3, 'enterprise': 5}
-    max_agents = plan_limits.get(biz['plan'], 2)
+    plan_key = (biz['plan'] or 'starter').lower()
+    max_agents = plan_limits.get(plan_key, 1)
+    # Custom plans with numbers in them get extra agents
+    if max_agents == 1 and 'custom' in plan_key:
+        import re
+        nums = re.findall(r'\d+', biz['plan'])
+        if nums and int(nums[0]) >= 300:
+            max_agents = 5
+        elif nums and int(nums[0]) >= 150:
+            max_agents = 3
     current_count = c.execute("SELECT COUNT(*) FROM agents WHERE business_id=?", (bid,)).fetchone()[0] or 0
     
     if current_count >= max_agents:
