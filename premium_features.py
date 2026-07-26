@@ -153,7 +153,7 @@ def create_extra_minutes_checkout(business_id, minutes, price_cents, email, succ
     price_dollars = price_cents / 100
     try:
         session = stripe.checkout.Session.create(
-            customer_email=email,
+            customer_email=email if email else None,
             payment_method_types=['card'],
             line_items=[{
                 'price_data': {
