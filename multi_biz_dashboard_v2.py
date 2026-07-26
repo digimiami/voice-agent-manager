@@ -735,7 +735,36 @@ html{scroll-behavior:smooth}
 /* Mobile sticky CTA */
 .mobile-cta-bar{position:fixed;bottom:0;left:0;right:0;z-index:999;background:rgba(10,10,15,.95);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-top:1px solid #252533;padding:10px 16px;display:none;gap:8px}
 @media(max-width:768px){.mobile-cta-bar{display:flex}.mobile-cta-bar a{flex:1;text-align:center;font-size:13px;padding:10px 8px;border-radius:10px;font-weight:600;text-decoration:none}}
-</style></head><body>
+</style>
+
+/* ── MOBILE RESPONSIVE ── */
+@media(max-width:768px){
+  nav.glass{flex-wrap:wrap;gap:8px;padding:10px 16px !important}
+  nav.glass>div:first-child{flex:1}
+  nav.glass .flex.items-center.gap-4{display:none}
+  nav.glass .flex.items-center.gap-4.open{display:flex;flex-direction:column;position:fixed;top:60px;left:0;right:0;background:rgba(10,10,15,.98);border-bottom:1px solid #252533;padding:16px;gap:12px;z-index:100}
+  section{overflow-x:hidden}
+  h1.text-5xl{font-size:1.8rem !important;line-height:1.2 !important}
+  h1.md\:text-6xl{font-size:2rem !important}
+  p.text-lg{font-size:0.9rem !important;max-width:100% !important}
+  .max-w-6xl,.max-w-4xl,.max-w-2xl{max-width:100% !important;padding-left:16px !important;padding-right:16px !important}
+  .flex.items-center.justify-center.gap-4{flex-direction:column;width:100%}
+  .flex.items-center.justify-center.gap-4 a{width:100%;text-align:center;box-sizing:border-box;padding-left:16px !important;padding-right:16px !important}
+  .grid.md\:grid-cols-2,.grid.md\:grid-cols-3,.grid.md\:grid-cols-4,.grid.lg\:grid-cols-2,.grid.lg\:grid-cols-3,.grid.lg\:grid-cols-4{grid-template-columns:1fr !important}
+  .grid.grid-cols-3,.grid.grid-cols-4{grid-template-columns:1fr 1fr !important}
+  .gap-12{gap:24px !important}
+  .card,.audio-card{padding:16px !important}
+  .p-8{padding:16px !important}
+  .px-8{padding-left:16px !important;padding-right:16px !important}
+  .play-btn{width:40px;height:40px}
+  .grid.md\:grid-cols-3.gap-8{gap:16px !important}
+  .grid.md\:grid-cols-4{gap:16px !important;grid-template-columns:1fr 1fr !important}
+}
+@media(max-width:480px){
+  h1.text-5xl{font-size:1.5rem !important}
+  .grid.grid-cols-2,.grid.grid-cols-3{grid-template-columns:1fr !important}
+  .grid.md\:grid-cols-4{grid-template-columns:1fr !important}
+}</head><body>
 
 <!-- NAV -->
 <nav class="glass flex items-center justify-between max-w-6xl mx-auto px-6 py-4 sticky top-0 z-50" style="border-bottom:1px solid #252533">
