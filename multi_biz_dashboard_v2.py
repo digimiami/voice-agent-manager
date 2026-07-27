@@ -28,9 +28,12 @@ from pathlib import Path
 from flask import Flask, render_template_string, jsonify, request, redirect, session, url_for, send_file, flash
 from functools import wraps
 import secrets
+from landing_page_route import INDUSTRY_DATA, get_industry_data, FALLBACK_FAQ, FALLBACK_TESTIMONIALS, FALLBACK_FEATURES
 
 DB_PATH = "/root/voice-agent-businesses.db"
-VAPI_API_KEY = os.environ.get("VAPI_API_KEY", "") or "d9486ec8-b862-460b-97ba-64bbb639f234"
+VAPI_API_KEY = os.environ.get("VAPI_API_KEY", "")
+CAL_COM_API_KEY = os.environ.get("CAL_COM_API_KEY", "")
+CAL_COM_USERNAME = os.environ.get("CAL_COM_USERNAME", "pablo-d-i2xmhr")
 # Force use of the actual calling key (the env var may contain the admin key)
 VAPI_API_KEY = "d9486ec8-b862-460b-97ba-64bbb639f234"
 VAPI_BASE = "https://api.vapi.ai"
@@ -2533,6 +2536,16 @@ def dashboard():
         conversations = []
         agents_list = []
     
+    # Fetch landing page
+    landing_page = None
+    try:
+        c.execute("SELECT * FROM landing_pages WHERE business_id=? LIMIT 1", (bid,))
+        row = c.fetchone()
+        if row:
+            landing_page = dict(row)
+    except Exception as e:
+        print(f"Landing page fetch error: {e}")
+    
     return render_template_string(dashboard_html,
         session=session, tab=tab, biz_name=biz['name'],
         industry_title=(biz['industry'] or '').title(),
@@ -2550,7 +2563,7 @@ def dashboard():
         factory_products=factory_products,
         ai_stats=ai_stats,
         type_icon=product_type_icon,
-        landing_page=None,
+        landing_page=landing_page,
         conversations=conversations,
         agents=agents_list,
         today_date=today_date,
@@ -3377,413 +3390,68 @@ def landing_generate_images():
 
 @app.route('/lp/<bid>')
 def serve_landing_page(bid):
-    """Serve a published landing page for a business."""
+    """Serve a published landing page for a business - industry-aware with full SEO, audio, gallery, video."""
     db = get_db()
     c = db.cursor()
-    c.execute("SELECT lp.*, b.name as biz_name, b.industry, b.phone_number FROM landing_pages lp JOIN businesses b ON lp.business_id=b.id WHERE lp.business_id=? AND lp.published=1", (bid,))
-    lp = c.fetchone()
+    try:
+        c.execute("SELECT lp.*, b.name as biz_name, b.industry, b.phone_number FROM landing_pages lp JOIN businesses b ON lp.business_id=b.id WHERE lp.business_id=? AND lp.published=1", (bid,))
+        lp = c.fetchone()
+    except Exception as e:
+        print(f"Landing page fetch error: {e}")
+        lp = None
     if not lp:
         return "<h1>Landing page not found</h1>", 404
     
-    # Convert sqlite3.Row to dict for .get() support
     lp = dict(lp)
+    industry = (lp.get('industry') or 'general').lower().strip()
+    ind = get_industry_data(industry)
     
     phone = lp.get('phone_number', '') or lp.get('contact_phone', '')
     display_phone = phone if phone else '+1 (888) 555-1234'
+    biz_name = lp['biz_name']
     
     features = []
     if lp.get('features_desc'):
         features = [f.strip() for f in lp['features_desc'].split('|') if f.strip()]
     if not features:
-        features = [
-            "Free Roof Inspection & No-Obligation Quote",
-            "Vetted, Licensed & Insured Contractors",
-            "Multiple Competitive Bids - Save 15-25%",
-            "Fast Appointment - Often Within 24 Hours",
-            "Full Project Management from Start to Finish",
-            "Warranty on All Work & Materials"
+        features = FALLBACK_FEATURES
+    
+    hero_img = lp.get('hero_image') or ''
+    fc = lp.get('primary_color', '#a855f7')
+    sc = lp.get('secondary_color', '#ec4899')
+    title = lp.get('title', ind.get('og_title', 'Professional Services'))
+    tagline = lp.get('tagline', 'Never Miss a Call. Book More Clients.')
+    desc = lp.get('description', f'AI-powered service that answers calls 24/7, books appointments, and follows up with leads for {biz_name}.')
+    
+    seo_title = lp.get('seo_title', '') or f'{title} | {biz_name}'
+    meta_desc = lp.get('meta_description', '') or desc[:155]
+    meta_kw = lp.get('meta_keywords', '') or f'{biz_name}, {industry}, AI voice agent, appointment booking, customer service'
+    
+    gallery = [g.strip() for g in (lp.get('gallery_images') or '').split('|') if g.strip()]
+    featured_video = lp.get('featured_video', '')
+    demo_audio = lp.get('demo_audio', '')
+    demo_audio_label = lp.get('demo_audio_label', 'Hear Our AI in Action')
+    
+    if not gallery:
+        gallery = [
+            'https://images.unsplash.com/photo-1590674899484-d5640f00aec6?w=800&q=80',
+            'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&q=80',
         ]
     
-    hero_img = lp['hero_image'] or 'https://images.unsplash.com/photo-1632778149955-e80d8ce8e2c8?w=1200&q=80'
-    about_img = 'https://images.unsplash.com/photo-1590674899484-d5640f00aec6?w=800&q=80'
-    process_img = 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&q=80'
+    icon = ind.get('icon', '📞')
+    hero_badge = ind.get('hero_badge', 'Professional Services')
+    trust_1 = ind.get('trust_1', 'Trusted Locally')
+    trust_2 = ind.get('trust_2', '5-Star Service')
+    cta_text = ind.get('cta', '📞 Call Us Today')
+    cta_sub = ind.get('cta_sub', 'Free consultation • Professional service')
+    cal_username = lp.get('cal_username', '') or CAL_COM_USERNAME
+    cal_event_slug = lp.get('cal_event_slug', '30min')
     
-    fc = lp['primary_color']
-    sc = lp['secondary_color']
-    title = lp['title']
-    tagline = lp['tagline']
-    desc = lp['description']
-    biz_name = lp['biz_name']
-    
-    # Features images from product_images
-    feature_images = [
-        '/static/product_images/hero_bg.png',
-        '/static/product_images/feature_247.png',
-        '/static/product_images/feature_analytics.png',
-        '/static/product_images/feature_multilingual.png',
-        '/static/product_images/feature_calendar.png',
-    ]
-    
-    lp_html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title} - {biz_name}</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-<link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-<style>
-*{{font-family:'Inter',sans-serif;margin:0;padding:0;box-sizing:border-box}}
-body{{background:#08080f;color:#f1f1f5;overflow-x:hidden}}
-.gradient-text{{background:linear-gradient(135deg,{fc},{sc});-webkit-background-clip:text;-webkit-text-fill-color:transparent}}
-.hero-gradient{{background:radial-gradient(ellipse at 30% 20%,{fc}25 0%,transparent 50%),radial-gradient(ellipse at 70% 80%,{sc}20 0%,transparent 50%),#08080f}}
-.glass{{background:rgba(18,18,26,0.7);backdrop-filter:blur(20px);border:1px solid rgba(37,37,51,0.5)}}
-.btn-primary{{background:linear-gradient(135deg,{fc},{sc});color:white;padding:16px 40px;border-radius:14px;font-weight:700;font-size:1.125rem;display:inline-block;transition:all .3s;text-decoration:none}}
-.btn-primary:hover{{transform:translateY(-3px);box-shadow:0 20px 60px rgba(0,0,0,.3)}}
-.section-title{{font-size:2.5rem;font-weight:800;margin-bottom:0.5rem}}
-.section-subtitle{{color:#7a7a8e;font-size:1.125rem;max-width:600px;margin:0 auto}}
-.feature-card{{background:rgba(18,18,26,0.5);border:1px solid rgba(37,37,51,0.4);border-radius:20px;padding:28px;transition:all .3s}}
-.feature-card:hover{{background:rgba(18,18,26,0.8);border-color:{fc}40;transform:translateY(-5px);box-shadow:0 10px 40px rgba(0,0,0,.2)}}
-.step-number{{background:linear-gradient(135deg,{fc},{sc});width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.25rem;color:white;flex-shrink:0}}
-.floating-phone{{position:fixed;bottom:24px;right:24px;z-index:100;background:linear-gradient(135deg,{fc},{sc});color:white;border-radius:50%;width:60px;height:60px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 4px 30px rgba(0,0,0,.4);transition:all .3s;text-decoration:none}}
-.floating-phone:hover{{transform:scale(1.1);box-shadow:0 8px 40px {fc}60}}
-.hero-image{{border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.4);width:100%;height:auto;object-fit:cover}}
-.faq-item{{background:rgba(18,18,26,0.5);border:1px solid rgba(37,37,51,0.4);border-radius:16px;padding:20px;cursor:pointer;transition:all .3s}}
-.faq-item:hover{{border-color:{fc}30}}
-.review-card{{background:rgba(18,18,26,0.5);border:1px solid rgba(37,37,51,0.4);border-radius:16px;padding:24px}}
-/* Mobile Menu */
-.hamburger{{display:none;flex-direction:column;cursor:pointer;gap:5px;padding:4px;z-index:60;background:none;border:none}}
-.hamburger span{{display:block;width:24px;height:2px;background:#f1f1f5;border-radius:2px;transition:all .3s}}
-.hamburger.active span:nth-child(1){{transform:rotate(45deg) translate(5px,5px)}}
-.hamburger.active span:nth-child(2){{opacity:0}}
-.hamburger.active span:nth-child(3){{transform:rotate(-45deg) translate(5px,-5px)}}
-.mobile-nav{{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(8,8,15,0.98);backdrop-filter:blur(20px);z-index:55;flex-direction:column;align-items:center;justify-content:center;gap:28px}}
-.mobile-nav.open{{display:flex}}
-.mobile-nav a{{color:#f1f1f5;font-size:1.25rem;font-weight:600;text-decoration:none;transition:color .3s}}
-.mobile-nav a:hover{{background:linear-gradient(135deg,{fc},{sc});-webkit-background-clip:text;-webkit-text-fill-color:transparent}}
-.mobile-nav .btn-primary{{font-size:1rem;padding:14px 32px}}
-@media (max-width:768px){{.hamburger{{display:flex}}.desktop-nav{{display:none}}.section-title{{font-size:1.75rem}}.hero-image{{margin-top:2rem}}}}
-</style>
-</head>
-<body>
-
-<!-- NAV -->
-<nav class="glass fixed top-0 left-0 right-0 z-50 py-3 px-6">
-  <div class="max-w-6xl mx-auto flex items-center justify-between">
-    <div class="flex items-center gap-2">
-      <span class="text-2xl">🏠</span>
-      <span class="font-bold text-lg">{biz_name}</span>
-    </div>
-    <div class="desktop-nav flex items-center gap-6 text-sm">
-      <a href="#features" class="text-[#7a7a8e] hover:text-white transition">Services</a>
-      <a href="#process" class="text-[#7a7a8e] hover:text-white transition">How It Works</a>
-      <a href="#faq" class="text-[#7a7a8e] hover:text-white transition">FAQ</a>
-      <a href="tel:{display_phone}" class="btn-primary text-sm py-2 px-5"><span>📞</span> {display_phone}</a>
-    </div>
-    <button class="hamburger" id="hamburger" onclick="toggleMobileMenu()" aria-label="Menu">
-      <span></span><span></span><span></span>
-    </button>
-  </div>
-</nav>
-
-<!-- MOBILE OVERLAY MENU -->
-<div class="mobile-nav" id="mobileNav">
-  <a href="#features" onclick="toggleMobileMenu()">Services</a>
-  <a href="#process" onclick="toggleMobileMenu()">How It Works</a>
-  <a href="#faq" onclick="toggleMobileMenu()">FAQ</a>
-  <a href="tel:{display_phone}" class="btn-primary" onclick="toggleMobileMenu()">📞 {display_phone}</a>
-</div>
-
-<!-- HERO -->
-<section class="hero-gradient min-h-screen flex items-center pt-20 pb-20 px-4">
-  <div class="max-w-6xl mx-auto w-full grid md:grid-cols-2 gap-12 items-center">
-    <div data-aos="fade-right">
-      <div class="inline-block px-4 py-2 rounded-full bg-[{fc}]20 border border-[{fc}]30 text-sm font-medium mb-6 text-[{fc}]">🏆 Orlando's Trusted Roofing Referral Service</div>
-      <h1 class="text-5xl md:text-6xl font-black mb-4 leading-tight">{title}</h1>
-      <p class="text-xl md:text-2xl font-bold gradient-text mb-4">{tagline}</p>
-      <p class="text-base md:text-lg text-[#7a7a8e] mb-8 leading-relaxed">{desc}</p>
-      <div class="flex flex-wrap gap-4 items-center">
-        <a href="tel:{display_phone}" class="btn-primary text-base px-8 py-4">📞 Call {display_phone}</a>
-        <a href="#features" class="text-sm text-[#7a7a8e] hover:text-white transition flex items-center gap-2">Learn More ↓</a>
-      </div>
-      <div class="flex items-center gap-4 mt-8 text-sm text-[#5c5c70]">
-        <span>⭐ 4.9/5</span>
-        <span>•</span>
-        <span>500+ Orlando Homes Served</span>
-        <span>•</span>
-        <span>Licensed & Insured</span>
-      </div>
-    </div>
-    <div data-aos="fade-left" class="relative">
-      <img src="{hero_img}" alt="Roofing Service" class="hero-image rounded-2xl" onerror="this.style.display='none'">
-      <div class="glass absolute -bottom-6 -left-6 p-4 rounded-xl text-sm" style="display:none" id="statsBox">
-        <div class="font-bold text-lg gradient-text">850+</div>
-        <div class="text-[#7a7a8e]">Happy Homeowners</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- TRUST BAR -->
-<section class="py-10 border-y border-[#252533]/50 bg-[#0c0c14]">
-  <div class="max-w-6xl mx-auto px-4 text-center">
-    <p class="text-xs text-[#5c5c70] uppercase tracking-widest mb-6">Trusted by Orlando Homeowners & Contractors</p>
-    <div class="flex flex-wrap justify-center gap-8 items-center text-[#4a4a5e] text-sm font-medium opacity-50">
-      <span>Orlando Roofing Association</span>
-      <span>•</span>
-      <span>BBB Accredited</span>
-      <span>•</span>
-      <span>Licensed FL Contractors</span>
-      <span>•</span>
-      <span>100% Free Service</span>
-    </div>
-  </div>
-</section>
-
-<!-- FEATURES -->
-<section id="features" class="py-24 px-4">
-  <div class="max-w-6xl mx-auto">
-    <div class="text-center mb-16" data-aos="fade-up">
-      <p class="text-sm font-semibold text-[{fc}] uppercase tracking-widest mb-3">Why Choose Us</p>
-      <h2 class="section-title">Everything You Need for a <span class="gradient-text">Stress-Free Roof</span></h2>
-      <p class="section-subtitle mt-3">From inspection to completion, we handle everything so you don't have to lift a finger.</p>
-    </div>
-    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {chr(10).join(f'''      <div class="feature-card" data-aos="fade-up" data-aos-delay="{i*100}">
-        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[{fc}]30 to-[{sc}]30 flex items-center justify-center text-2xl mb-4">{"🔍💰📋🤝🛡️✅"[i] if i < 6 else "⭐"}</div>
-        <h3 class="text-lg font-bold mb-2">{feature}</h3>
-        <p class="text-sm text-[#7a7a8e]">Professional {feature.lower()} for homeowners in Orlando and Central Florida.</p>
-      </div>''' for i, feature in enumerate(features[:6]))}
-    </div>
-  </div>
-</section>
-
-<!-- TRUSTED BY -->
-<section class="max-w-5xl mx-auto px-6 pb-8 text-center">
-<p class="text-sm text-[#5c5c70] mb-6 tracking-wider uppercase font-semibold">Trusted By Local Businesses</p>
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-<div class="card py-5 text-center"><div class="text-lg mb-1">🔧</div><div class="text-sm font-medium">Plumbing Companies</div></div>
-<div class="card py-5 text-center"><div class="text-lg mb-1">🦷</div><div class="text-sm font-medium">Dental Offices</div></div>
-<div class="card py-5 text-center"><div class="text-lg mb-1">🏡</div><div class="text-sm font-medium">Real Estate Teams</div></div>
-<div class="card py-5 text-center"><div class="text-lg mb-1">❄️</div><div class="text-sm font-medium">HVAC Companies</div></div>
-</div>
-<p class="text-xs text-[#5c5c70] mt-5">Built for: Home Services ✓  Healthcare ✓  Real Estate ✓  Professional Services ✓</p>
-</section>
-
-<!-- LIVE VOICE DEMOS -->
-<section id="demos" class="max-w-5xl mx-auto px-6 pb-16">
-<h2 class="text-3xl font-bold text-center mb-3">🎧 Hear It In <span class="gradient-text">Action</span></h2>
-<p class="text-[#7a7a8e] text-center mb-2 max-w-xl mx-auto">Listen to a real customer call handled by Diazites AI — hear how natural, professional, and instant it sounds.</p>
-<p class="text-sm text-[#a855f7] text-center mb-10 font-semibold">Click any demo to play</p>
-
-<div class="grid md:grid-cols-3 gap-5">
-<!-- Plumber Demo -->
-<div class="audio-card" data-demo="plumber" onclick="toggleAudio(this,'/static/audio/demo-plumber.mp3')">
-<div class="flex items-start gap-4 mb-3">
-<button class="play-btn" id="play-plumber"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-<div class="flex-1">
-<div class="flex items-center gap-2 mb-1"><span class="text-lg">🔧</span><span class="font-semibold">Plumber</span><span class="text-[10px] px-2 py-0.5 rounded-full" style="background:#a855f722;color:#c084fc">Emergency</span></div>
-<p class="text-xs text-[#7a7a8e]">Burst pipe call — AI triages urgency, captures address, dispatches plumber</p>
-</div>
-</div>
-<div class="flex items-center gap-1" id="waveform-plumber">
-<div class="waveform-bar" style="height:12px"></div><div class="waveform-bar" style="height:18px"></div><div class="waveform-bar" style="height:24px"></div><div class="waveform-bar" style="height:32px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:48px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:32px"></div><div class="waveform-bar" style="height:24px"></div><div class="waveform-bar" style="height:18px"></div><div class="waveform-bar" style="height:12px"></div>
-</div>
-<div class="flex items-center justify-between mt-2">
-<span class="text-[10px] text-[#5c5c70]" id="time-plumber">0:00 / 0:20</span>
-<span class="text-[10px] text-[#c084fc]" id="status-plumber">▶ Click to play</span>
-</div>
-</div>
-
-<!-- Dentist Demo -->
-<div class="audio-card" data-demo="dentist" onclick="toggleAudio(this,'/static/audio/demo-dentist.mp3')">
-<div class="flex items-start gap-4 mb-3">
-<button class="play-btn" id="play-dentist"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-<div class="flex-1">
-<div class="flex items-center gap-2 mb-1"><span class="text-lg">🦷</span><span class="font-semibold">Dentist</span><span class="text-[10px] px-2 py-0.5 rounded-full" style="background:#22c55e22;color:#4ade80">Booking</span></div>
-<p class="text-xs text-[#7a7a8e]">Patient calls — AI checks availability, schedules appointment, sets reminder</p>
-</div>
-</div>
-<div class="flex items-center gap-1" id="waveform-dentist">
-<div class="waveform-bar" style="height:14px"></div><div class="waveform-bar" style="height:20px"></div><div class="waveform-bar" style="height:28px"></div><div class="waveform-bar" style="height:36px"></div><div class="waveform-bar" style="height:42px"></div><div class="waveform-bar" style="height:46px"></div><div class="waveform-bar" style="height:48px"></div><div class="waveform-bar" style="height:42px"></div><div class="waveform-bar" style="height:36px"></div><div class="waveform-bar" style="height:28px"></div><div class="waveform-bar" style="height:20px"></div><div class="waveform-bar" style="height:14px"></div>
-</div>
-<div class="flex items-center justify-between mt-2">
-<span class="text-[10px] text-[#5c5c70]" id="time-dentist">0:00 / 0:23</span>
-<span class="text-[10px] text-[#c084fc]" id="status-dentist">▶ Click to play</span>
-</div>
-</div>
-
-<!-- Real Estate Demo -->
-<div class="audio-card" data-demo="realestate" onclick="toggleAudio(this,'/static/audio/demo-realestate.mp3')">
-<div class="flex items-start gap-4 mb-3">
-<button class="play-btn" id="play-realestate"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button>
-<div class="flex-1">
-<div class="flex items-center gap-2 mb-1"><span class="text-lg">🏡</span><span class="font-semibold">Real Estate</span><span class="text-[10px] px-2 py-0.5 rounded-full" style="background:#f59e0b22;color:#fbbf24">Qualification</span></div>
-<p class="text-xs text-[#7a7a8e]">Property inquiry — AI qualifies buyer, schedules showing, confirms by text</p>
-</div>
-</div>
-<div class="flex items-center gap-1" id="waveform-realestate">
-<div class="waveform-bar" style="height:10px"></div><div class="waveform-bar" style="height:16px"></div><div class="waveform-bar" style="height:22px"></div><div class="waveform-bar" style="height:30px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:48px"></div><div class="waveform-bar" style="height:44px"></div><div class="waveform-bar" style="height:38px"></div><div class="waveform-bar" style="height:30px"></div><div class="waveform-bar" style="height:22px"></div><div class="waveform-bar" style="height:16px"></div><div class="waveform-bar" style="height:10px"></div>
-</div>
-<div class="flex items-center justify-between mt-2">
-<span class="text-[10px] text-[#5c5c70]" id="time-realestate">0:00 / 0:21</span>
-<span class="text-[10px] text-[#c084fc]" id="status-realestate">▶ Click to play</span>
-</div>
-</div>
-</div>
-</section>
-
-<!-- HOW IT WORKS -->
-<section id="process" class="py-24 px-4 bg-[#0a0a12]">
-  <div class="max-w-6xl mx-auto">
-    <div class="text-center mb-16" data-aos="fade-up">
-      <p class="text-sm font-semibold text-[{fc}] uppercase tracking-widest mb-3">Simple Process</p>
-      <h2 class="section-title">How It Works — <span class="gradient-text">3 Easy Steps</span></h2>
-      <p class="section-subtitle mt-3">Get started with your free roof inspection today.</p>
-    </div>
-    <div class="grid md:grid-cols-3 gap-8">
-      <div class="text-center" data-aos="fade-up">
-        <div class="step-number mx-auto mb-4">1</div>
-        <h3 class="text-xl font-bold mb-2">Call or Request Online</h3>
-        <p class="text-sm text-[#7a7a8e]">Call us or fill out a quick form. We\'ll ask about your roof and schedule a free inspection at your convenience.</p>
-      </div>
-      <div class="text-center" data-aos="fade-up" data-aos-delay="150">
-        <div class="step-number mx-auto mb-4">2</div>
-        <h3 class="text-xl font-bold mb-2">Free Inspection & Quotes</h3>
-        <p class="text-sm text-[#7a7a8e]">A vetted contractor inspects your roof and provides a detailed estimate. You get multiple competitive bids.</p>
-      </div>
-      <div class="text-center" data-aos="fade-up" data-aos-delay="300">
-        <div class="step-number mx-auto mb-4">3</div>
-        <h3 class="text-xl font-bold mb-2">Roof Replacement Done</h3>
-        <p class="text-sm text-[#7a7a8e]">Choose the best contractor and price. Your new roof is installed with full warranty and project management.</p>
-      </div>
-    </div>
-    <div class="text-center mt-12" data-aos="fade-up">
-      <a href="tel:{display_phone}" class="btn-primary">📞 Start Your Free Inspection</a>
-    </div>
-  </div>
-</section>
-
-<!-- BEFORE / AFTER / ABOUT -->
-<section class="py-24 px-4">
-  <div class="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
-    <div data-aos="fade-right">
-      <p class="text-sm font-semibold text-[{fc}] uppercase tracking-widest mb-3">Orlando\'s Best Roofers</p>
-      <h2 class="section-title mb-4">We Find You the <span class="gradient-text">Best Roofing Contractors</span></h2>
-      <p class="text-[#7a7a8e] leading-relaxed mb-6">
-        At {biz_name}, we\'ve done the hard work of vetting Orlando\'s top roofing contractors so you don\'t have to. 
-        Whether your roof needs minor repairs or a full replacement after a Florida storm, we connect you with 
-        licensed, insured professionals who compete for your business — saving you 15-25%.
-      </p>
-      <p class="text-[#7a7a8e] leading-relaxed mb-6">
-        Our service is 100% free for homeowners. We handle the research, the quotes, and the project coordination. 
-        You get a beautiful, durable roof that protects your home for decades.
-      </p>
-      <ul class="space-y-2 text-sm">
-        <li class="flex items-center gap-3"><span style="color:{fc}">✅</span> Fast response — often same-day</li>
-        <li class="flex items-center gap-3"><span style="color:{fc}">✅</span> Up to 25-year workmanship warranty</li>
-        <li class="flex items-center gap-3"><span style="color:{fc}">✅</span> Financing options available</li>
-      </ul>
-    </div>
-    <div class="grid grid-cols-2 gap-4" data-aos="fade-left">
-      <img src="{about_img}" alt="Roofing work in progress" class="rounded-2xl w-full h-48 object-cover" onerror="this.style.display='none'">
-      <img src="{process_img}" alt="New roof installation" class="rounded-2xl w-full h-48 object-cover mt-8" onerror="this.style.display='none'">
-    </div>
-  </div>
-</section>
-
-<!-- TESTIMONIALS -->
-<section class="py-24 px-4 bg-[#0a0a12]">
-  <div class="max-w-6xl mx-auto">
-    <div class="text-center mb-16" data-aos="fade-up">
-      <p class="text-sm font-semibold text-[{fc}] uppercase tracking-widest mb-3">Testimonials</p>
-      <h2 class="section-title">What Orlando Homeowners <span class="gradient-text">Are Saying</span></h2>
-    </div>
-    <div class="grid md:grid-cols-3 gap-6">
-      <div class="review-card" data-aos="fade-up">
-        <div class="text-yellow-400 mb-2">★★★★★</div>
-        <p class="text-sm text-[#7a7a8e] mb-4 leading-relaxed">"Saved me thousands by getting multiple quotes. The whole process was seamless from inspection to new roof installation. Highly recommend!"</p>
-        <div class="font-semibold text-sm">— Michael T.</div>
-        <div class="text-xs text-[#5c5c70]">Orlando, FL</div>
-      </div>
-      <div class="review-card" data-aos="fade-up" data-aos-delay="100">
-        <div class="text-yellow-400 mb-2">★★★★★</div>
-        <p class="text-sm text-[#7a7a8e] mb-4 leading-relaxed">"After Hurricane Ian, I didn\'t know where to start. They connected me with an amazing roofer who fixed everything within a week."</p>
-        <div class="font-semibold text-sm">— Sarah K.</div>
-        <div class="text-xs text-[#5c5c70]">Winter Park, FL</div>
-      </div>
-      <div class="review-card" data-aos="fade-up" data-aos-delay="200">
-        <div class="text-yellow-400 mb-2">★★★★★</div>
-        <p class="text-sm text-[#7a7a8e] mb-4 leading-relaxed">"Professional, fast, and completely free for me. The contractors were vetted and the work was top quality. 10/10 would use again."</p>
-        <div class="font-semibold text-sm">— David R.</div>
-        <div class="text-xs text-[#5c5c70]">Kissimmee, FL</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- FAQ -->
-<section id="faq" class="py-24 px-4">
-  <div class="max-w-3xl mx-auto">
-    <div class="text-center mb-16" data-aos="fade-up">
-      <p class="text-sm font-semibold text-[{fc}] uppercase tracking-widest mb-3">FAQ</p>
-      <h2 class="section-title">Frequently Asked <span class="gradient-text">Questions</span></h2>
-    </div>
-    <div class="space-y-4" data-aos="fade-up">
-      {chr(10).join(f'''      <div class="faq-item" onclick="this.querySelector('.faq-a').classList.toggle('hidden')">
-        <div class="flex items-center justify-between">
-          <h4 class="font-semibold">{q}</h4>
-          <span class="text-[{fc}] text-xl">+</span>
-        </div>
-        <p class="faq-a hidden text-sm text-[#7a7a8e] mt-3 leading-relaxed">{a}</p>
-      </div>''' for q, a in [
-        ("How much does it cost?","Our service is 100% free for homeowners. Roofing contractors pay a referral fee, not you. You get free inspection, free quotes, and free project coordination."),
-        ("How long does roof replacement take?","Most residential roof replacements in Orlando take 1-3 days depending on the size of your home, roof complexity, and weather conditions. We'll give you a precise timeline during the quote."),
-        ("What areas do you serve?","We serve all of Orlando and Central Florida including Winter Park, Maitland, Altamonte Springs, Kissimmee, Sanford, and surrounding areas."),
-        ("Do you work with insurance claims?","Yes! Our contractors have experience working with insurance companies for storm damage claims. We can help guide you through the claims process."),
-        ("What types of roofing do you offer?","We offer all major roofing types: asphalt shingles (most popular), metal roofing, tile (clay/concrete), and flat roofing systems. Our contractors will recommend the best option for your home and budget."),
-        ("How do I get started?","Simply call {display_phone} or request a callback. We'll schedule a free inspection at a time that works for you — often within 24 hours."),
-      ])}
-    </div>
-  </div>
-</section>
-
-<!-- FINAL CTA -->
-<section class="py-24 px-4 hero-gradient">
-  <div class="max-w-3xl mx-auto text-center" data-aos="fade-up">
-    <div class="text-5xl mb-6">🏠</div>
-    <h2 class="section-title mb-4">Ready for a <span class="gradient-text">New Roof?</span></h2>
-    <p class="text-lg text-[#7a7a8e] mb-8 max-w-xl mx-auto">Call us today for your free inspection and competitive quotes from Orlando's best roofing contractors.</p>
-    <a href="tel:{display_phone}" class="btn-primary text-xl px-12 py-5 mb-4">📞 Call {display_phone}</a>
-    <div class="mt-4 text-sm text-[#5c5c70]">Free inspection • No obligation • Multiple competitive bids</div>
-  </div>
-</section>
-
-<!-- FOOTER -->
-<footer class="py-12 px-4 border-t border-[#252533]">
-  <div class="max-w-6xl mx-auto text-center text-sm text-[#5c5c70]">
-    <p class="font-semibold text-[#7a7a8e] mb-1">{biz_name}</p>
-    <p>Serving Orlando & Central Florida</p>
-    <p class="mt-1">📞 <a href="tel:{display_phone}" class="hover:text-white transition">{display_phone}</a></p>
-    <div class="mt-6 text-xs">Powered by Diazites AI Voice Agents</div>
-  </div>
-</footer>
-
-<!-- Floating Call Button -->
-<a href="tel:{display_phone}" class="floating-phone">📞</a>
-
-<script>AOS.init({{duration:800,once:true}});
-function toggleMobileMenu(){{
-  document.getElementById('mobileNav').classList.toggle('open');
-  document.getElementById('hamburger').classList.toggle('active');
-  document.body.style.overflow=document.getElementById('mobileNav').classList.contains('open')?'hidden':'';
-}}
-</script>
-</body>
-</html>"""
-    return lp_html
+    from lp_generator import generate_landing_html
+    return generate_landing_html(bid, biz_name, title, tagline, desc, features, hero_img, fc, sc,
+                                seo_title, meta_desc, meta_kw, gallery, featured_video,
+                                demo_audio, demo_audio_label, icon, hero_badge, trust_1, trust_2,
+                                cta_text, cta_sub, display_phone, cal_username, cal_event_slug)
 
 @app.route('/landing/ai-generate', methods=['POST'])
 @login_required
@@ -3914,6 +3582,180 @@ Make the title and tagline specific to {industry} businesses. The description sh
         'page_url': f'/lp/{bid}',
         'copy': copy
     })
+
+@app.route('/landing/update', methods=['POST'])
+@login_required
+def landing_update():
+    """Update specific landing page fields."""
+    bid = session['business_id']
+    field = request.form.get('field', '')
+    value = request.form.get('value', '')
+    allowed_fields = ['title', 'tagline', 'description', 'primary_color', 'secondary_color',
+                      'features_desc', 'custom_domain', 'meta_description', 'meta_keywords',
+                      'seo_title', 'featured_video', 'demo_audio_label', 'contact_phone', 'contact_email']
+    if field not in allowed_fields:
+        return jsonify({'success': False, 'message': 'Invalid field'})
+    db = get_db()
+    c = db.cursor()
+    c.execute(f"UPDATE landing_pages SET {field}=?, updated_at=datetime('now') WHERE business_id=?", (value, bid))
+    db.commit()
+    return jsonify({'success': True, 'message': '✅ Updated!'})
+
+@app.route('/landing/unpublish', methods=['POST'])
+@login_required
+def landing_unpublish():
+    bid = session['business_id']
+    db = get_db()
+    c = db.cursor()
+    c.execute("UPDATE landing_pages SET published=0, updated_at=datetime('now') WHERE business_id=?", (bid,))
+    db.commit()
+    return jsonify({'success': True, 'message': '✅ Landing page unpublished'})
+
+@app.route('/landing/publish', methods=['POST'])
+@login_required
+def landing_publish():
+    bid = session['business_id']
+    db = get_db()
+    c = db.cursor()
+    c.execute("UPDATE landing_pages SET published=1, updated_at=datetime('now') WHERE business_id=?", (bid,))
+    db.commit()
+    return jsonify({'success': True, 'message': '✅ Landing page published!'})
+
+@app.route('/landing/upload-media', methods=['POST'])
+@login_required
+def landing_upload_media():
+    """Upload media (image, audio) for landing page."""
+    bid = session['business_id']
+    media_type = request.args.get('type', 'hero')
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'message': 'No file uploaded'})
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({'success': False, 'message': 'No file selected'})
+    media_dir = f"/root/voice-agent-manager/static/landing_media/{bid}"
+    os.makedirs(media_dir, exist_ok=True)
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else 'png'
+    safe_ext = ext if ext in ['png', 'jpg', 'jpeg', 'gif', 'webp', 'mp3', 'wav', 'ogg', 'mp4'] else 'png'
+    if media_type == 'hero':
+        fname = f"hero.{safe_ext}"
+    elif media_type == 'gallery':
+        fname = f"gallery_{int(time.time())}.{safe_ext}"
+    elif media_type == 'audio':
+        fname = f"demo.{safe_ext}" if safe_ext in ['mp3', 'wav', 'ogg'] else f"demo.mp3"
+    else:
+        fname = f"media_{int(time.time())}.{safe_ext}"
+    fpath = os.path.join(media_dir, fname)
+    file.save(fpath)
+    url = f"/static/landing_media/{bid}/{fname}"
+    db = get_db()
+    c = db.cursor()
+    if media_type == 'hero':
+        c.execute("UPDATE landing_pages SET hero_image=?, updated_at=datetime('now') WHERE business_id=?", (url, bid))
+    elif media_type == 'audio':
+        c.execute("UPDATE landing_pages SET demo_audio=?, updated_at=datetime('now') WHERE business_id=?", (url, bid))
+    elif media_type == 'gallery':
+        c.execute("SELECT gallery_images FROM landing_pages WHERE business_id=?", (bid,))
+        row = c.fetchone()
+        existing = row['gallery_images'] if row and row['gallery_images'] else ''
+        images = [i.strip() for i in existing.split('|') if i.strip()]
+        images.append(url)
+        c.execute("UPDATE landing_pages SET gallery_images=?, updated_at=datetime('now') WHERE business_id=?", ('|'.join(images), bid))
+    db.commit()
+    return jsonify({'success': True, 'message': '✅ Media uploaded!', 'url': url})
+
+# ── CAL.COM INTEGRATION ──
+
+@app.route('/api/calcom/save-settings', methods=['POST'])
+@login_required
+def save_calcom_settings():
+    """Save Cal.com settings for a business."""
+    bid = session['business_id']
+    username = request.form.get('username', '').strip()
+    event_slug = request.form.get('event_slug', '30min').strip()
+    db = get_db()
+    c = db.cursor()
+    c.execute("UPDATE landing_pages SET cal_username=?, cal_event_slug=?, updated_at=datetime('now') WHERE business_id=?", (username, event_slug, bid))
+    if c.rowcount == 0:
+        c.execute("INSERT OR IGNORE INTO landing_pages (business_id, cal_username, cal_event_slug) VALUES (?, ?, ?)", (bid, username, event_slug))
+    db.commit()
+    return jsonify({'success': True, 'message': '✅ Booking settings saved!'})
+
+@app.route('/api/calcom/create-booking', methods=['POST'])
+@login_required
+def calcom_create_booking():
+    """Create a booking in Cal.com — called by AI agent or dashboard."""
+    bid = session['business_id']
+    name = request.form.get('name', 'Client')
+    email = request.form.get('email', '')
+    phone = request.form.get('phone', '')
+    notes = request.form.get('notes', '')
+    start_time = request.form.get('start_time', '')
+    timezone = request.form.get('timezone', 'America/New_York')
+    
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT cal_username, cal_event_slug FROM landing_pages WHERE business_id=?", (bid,))
+    row = c.fetchone()
+    cal_username = row['cal_username'] if row and row['cal_username'] else CAL_COM_USERNAME
+    cal_event_slug = row['cal_event_slug'] if row and row['cal_event_slug'] else '30min'
+    
+    # Get event type ID from slug
+    import requests as http_req
+    headers = {'Authorization': f'Bearer {CAL_COM_API_KEY}', 'Content-Type': 'application/json'}
+    
+    # Find event type ID
+    et_resp = http_req.get(f'https://api.cal.com/v2/event-types?username={cal_username}', headers=headers, timeout=15)
+    event_type_id = None
+    if et_resp.status_code == 200:
+        et_data = et_resp.json()
+        groups = et_data.get('data', {}).get('eventTypeGroups', [])
+        for g in groups:
+            for et in g.get('eventTypes', []):
+                if et.get('slug') == cal_event_slug:
+                    event_type_id = et['id']
+                    break
+    
+    if not event_type_id:
+        event_type_id = 4493177  # fallback: 30min meeting ID
+    
+    # Create booking via Cal.com API v2
+    payload = {
+        'eventTypeId': event_type_id,
+        'start': start_time,
+        'responses': {
+            'name': name,
+            'email': email,
+            'notes': notes,
+            'location': {'optionValue': '', 'value': 'userPhone' if phone else 'integrations:daily'}
+        },
+        'timeZone': timezone,
+        'language': 'en',
+        'metadata': {'source': 'diazites-ai-agent', 'business_id': bid, 'phone': phone},
+    }
+    
+    try:
+        resp = http_req.post('https://api.cal.com/v2/bookings', json=payload, headers=headers, timeout=15)
+        data = resp.json()
+        if resp.status_code in (200, 201):
+            booking_uid = data.get('data', {}).get('uid', '')
+            return jsonify({'success': True, 'message': '✅ Booking created!', 'booking_uid': booking_uid, 'data': data.get('data', {})})
+        else:
+            return jsonify({'success': False, 'message': f'Cal.com error: {data.get("error", data.get("status", "unknown"))}', 'detail': str(data)[:500]})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+
+@app.route('/api/calcom/embed-url', methods=['GET'])
+@login_required
+def calcom_embed_url():
+    """Get the Cal.com embed URL for the current business."""
+    bid = session['business_id']
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT cal_username, cal_event_slug FROM landing_pages WHERE business_id=?", (bid,))
+    row = c.fetchone()
+    username = (row['cal_username'] if row and row['cal_username'] else CAL_COM_USERNAME)
+    slug = (row['cal_event_slug'] if row and row['cal_event_slug'] else '30min')
+    return jsonify({'success': True, 'url': f'https://cal.com/{username}/{slug}', 'username': username, 'slug': slug})
 
 # ── PAYMENT COLLECTION ──
 

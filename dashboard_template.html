@@ -1229,13 +1229,420 @@ setTimeout(refreshMonitor, 500);
 
   <!-- ======== TAB: LANDING PAGE ======== -->
   {% elif tab == 'landing' %}
-  <div class="card">
-    <h3 class="font-bold mb-4">🌐 Your Landing Page</h3>
-    {% if landing_page and landing_page.published %}
-    <div class="flex items-center gap-3 mb-4 p-3 bg-green-500/10 rounded-lg border border-green-500/20"><span class="text-green-400 text-lg">✅</span><div><div class="font-semibold text-sm">Published</div><div class="text-xs text-[#7a7a8e]">https://diazites.online/lp/{{ session.business_id }}</div></div></div>
-    {% endif %}
-    <p class="text-sm text-[#5c5c70]">AI-generated landing pages coming soon.</p>
+  <div class="space-y-6">
+
+    <!-- ── Section 1: AI Generate ── -->
+    <div class="card">
+      <h3 class="font-bold mb-4">🤖 AI Landing Page Generator</h3>
+      <button id="aiGenBtn" onclick="aiGenerateLanding()" class="btn-primary w-full text-lg py-3 flex items-center justify-center gap-2">
+        🤖 AI Generate Landing Page
+      </button>
+      <p id="aiGenStatus" class="text-xs text-[#7a7a8e] mt-2 hidden"></p>
+      <div id="aiGenResult" class="hidden mt-3 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+        <p class="text-sm text-green-400">✅ Landing page copy generated!</p>
+        <button onclick="aiGenerateLanding()" class="btn-outline text-xs mt-2">🔄 Regenerate</button>
+      </div>
+    </div>
+
+    <!-- ── Section 2: Publish Status + Preview ── -->
+    <div class="card">
+      <h3 class="font-bold mb-4">📋 Publish Status</h3>
+      {% if landing_page and landing_page.published %}
+      <div class="flex items-center gap-3 mb-4 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+        <span class="text-green-400 text-lg">✅</span>
+        <div>
+          <div class="font-semibold text-sm">Published</div>
+          <div class="text-xs text-[#7a7a8e]">https://diazites.online/lp/{{ session.business_id }}</div>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <a href="/lp/{{ session.business_id }}" target="_blank" class="btn-primary text-xs flex-1 text-center">👁️ View Live Page</a>
+        <button onclick="unpublishLanding()" class="btn-outline text-xs flex-1">⏸️ Unpublish</button>
+      </div>
+      {% else %}
+      <p class="text-sm text-[#7a7a8e] mb-3">Your landing page is not yet published.</p>
+      <button onclick="publishLanding()" class="btn-primary text-xs">🚀 Publish Now</button>
+      {% endif %}
+    </div>
+
+    <!-- ── Section 3: Content Editor ── -->
+    <div class="card">
+      <h3 class="font-bold mb-4">✏️ Content Editor</h3>
+      <form id="contentForm" onsubmit="saveLandingContent(event)" class="space-y-4">
+        <input type="hidden" name="action" value="save_content">
+        {% set lp = landing_page or {} %}
+        <div>
+          <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Title</label>
+          <input type="text" name="title" value="{{ lp.get('title','') }}" placeholder="Business Name - Tagline" class="w-full bg-[#1a1a28] border border-[#252533] rounded-lg px-3 py-2 text-white text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Tagline</label>
+          <input type="text" name="tagline" value="{{ lp.get('tagline','') }}" placeholder="Your compelling tagline" class="w-full bg-[#1a1a28] border border-[#252533] rounded-lg px-3 py-2 text-white text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Description</label>
+          <textarea name="description" rows="3" placeholder="Describe your business..." class="w-full bg-[#1a1a28] border border-[#252533] rounded-lg px-3 py-2 text-white text-sm">{{ lp.get('description','') }}</textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Features (one per line)</label>
+          <textarea name="features" rows="3" placeholder="24/7 Support&#10;Fast Response&#10;Professional Service" class="w-full bg-[#1a1a28] border border-[#252533] rounded-lg px-3 py-2 text-white text-sm">{{ lp.get('features_desc','')|replace('|','&#10;') }}</textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Primary Color</label>
+            <div class="flex items-center gap-2">
+              <input type="color" name="primary_color" value="{{ lp.get('primary_color','#a855f7') }}" class="w-10 h-10 rounded-lg border border-[#252533] cursor-pointer bg-transparent p-0.5">
+              <span id="primaryColorVal" class="text-xs text-[#7a7a8e]">{{ lp.get('primary_color','#a855f7') }}</span>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Secondary Color</label>
+            <div class="flex items-center gap-2">
+              <input type="color" name="secondary_color" value="{{ lp.get('secondary_color','#ec4899') }}" class="w-10 h-10 rounded-lg border border-[#252533] cursor-pointer bg-transparent p-0.5">
+              <span id="secondaryColorVal" class="text-xs text-[#7a7a8e]">{{ lp.get('secondary_color','#ec4899') }}</span>
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="btn-primary text-sm w-full">💾 Save Content</button>
+      </form>
+    </div>
+
+    <!-- ── Section 4: Media ── -->
+    <div class="card">
+      <h3 class="font-bold mb-4">🖼️ Media</h3>
+
+      <div class="space-y-4">
+        <!-- Hero Image -->
+        <div>
+          <label class="block text-xs font-medium text-[#a0a0b8] mb-2">Hero Image</label>
+          {% if lp.get('hero_image') %}
+          <div class="mb-2 rounded-lg overflow-hidden border border-[#252533]">
+            <img src="{{ lp['hero_image'] }}" alt="Hero" class="w-full h-32 object-cover">
+          </div>
+          {% endif %}
+          <div class="flex items-center gap-2">
+            <input type="file" id="heroImageInput" accept="image/*" class="hidden" onchange="uploadMedia('hero',this)">
+            <button onclick="document.getElementById('heroImageInput').click()" class="btn-outline text-xs">📷 Upload Hero Image</button>
+            <span id="heroUploadStatus" class="text-xs text-[#7a7a8e]"></span>
+          </div>
+        </div>
+
+        <!-- Gallery Images -->
+        <div>
+          <label class="block text-xs font-medium text-[#a0a0b8] mb-2">Gallery Images</label>
+          <div id="galleryPreview" class="flex flex-wrap gap-2 mb-2">
+            {% if lp.get('gallery_images') %}
+              {% for img in lp['gallery_images'].split(',') %}
+              {% if img %}
+              <div class="relative w-20 h-20 rounded-lg overflow-hidden border border-[#252533]">
+                <img src="{{ img }}" alt="Gallery" class="w-full h-full object-cover">
+              </div>
+              {% endif %}
+              {% endfor %}
+            {% endif %}
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="file" id="galleryInput" accept="image/*" multiple class="hidden" onchange="uploadMedia('gallery',this)">
+            <button onclick="document.getElementById('galleryInput').click()" class="btn-outline text-xs">🖼️ Add Gallery Images</button>
+            <span id="galleryUploadStatus" class="text-xs text-[#7a7a8e]"></span>
+          </div>
+        </div>
+
+        <!-- Featured Video -->
+        <div>
+          <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Featured Video URL</label>
+          <div class="flex gap-2">
+            <input type="text" id="featuredVideoInput" value="{{ lp.get('featured_video','') }}" placeholder="https://youtube.com/watch?v=..." class="flex-1 bg-[#1a1a28] border border-[#252533] rounded-lg px-3 py-2 text-white text-xs">
+            <button onclick="saveLandingField('featured_video', document.getElementById('featuredVideoInput').value)" class="btn-primary text-xs">💾 Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 5: Audio Demo Player ── -->
+    <div class="card">
+      <h3 class="font-bold mb-4">🎵 Audio Demo</h3>
+      <div class="space-y-3">
+        {% if lp.get('demo_audio') %}
+        <div class="p-3 bg-[#1a1a28] rounded-lg border border-[#252533]">
+          <audio controls class="w-full mb-2" src="{{ lp['demo_audio'] }}"></audio>
+          <p class="text-xs text-[#7a7a8e]">Label: {{ lp.get('demo_audio_label','Audio Sample') }}</p>
+        </div>
+        {% endif %}
+        <div>
+          <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Upload MP3</label>
+          <div class="flex items-center gap-2">
+            <input type="file" id="audioInput" accept="audio/*" class="hidden" onchange="uploadMedia('audio',this)">
+            <button onclick="document.getElementById('audioInput').click()" class="btn-outline text-xs">🎤 Upload Audio</button>
+            <span id="audioUploadStatus" class="text-xs text-[#7a7a8e]"></span>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Audio Label</label>
+          <div class="flex gap-2">
+            <input type="text" id="audioLabelInput" value="{{ lp.get('demo_audio_label','') }}" placeholder="e.g. Customer Testimonial" class="flex-1 bg-[#1a1a28] border border-[#252533] rounded-lg px-3 py-2 text-white text-xs">
+            <button onclick="saveLandingField('demo_audio_label', document.getElementById('audioLabelInput').value)" class="btn-primary text-xs">💾 Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 6: SEO Settings (collapsible) ── -->
+    <div class="card">
+      <details class="group">
+        <summary class="font-bold cursor-pointer flex items-center justify-between list-none">
+          <span>🔍 SEO Settings</span>
+          <span class="text-[#7a7a8e] text-xs group-open:rotate-180 transition-transform">▼</span>
+        </summary>
+        <div class="mt-4 space-y-4">
+          <div>
+            <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Meta Title</label>
+            <input type="text" id="seoTitleInput" value="{{ lp.get('seo_title','') }}" placeholder="SEO Title" class="w-full bg-[#1a1a28] border border-[#252533] rounded-lg px-3 py-2 text-white text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Meta Description</label>
+            <textarea id="seoDescInput" rows="3" placeholder="Meta description..." class="w-full bg-[#1a1a28] border border-[#252533] rounded-lg px-3 py-2 text-white text-sm" oninput="updateSeoCharCount()">{{ lp.get('meta_description','') }}</textarea>
+            <p id="seoCharCount" class="text-xs text-[#5c5c70] text-right mt-1">0 / 160</p>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Meta Keywords</label>
+            <input type="text" id="seoKeywordsInput" value="{{ lp.get('meta_keywords','') }}" placeholder="keyword1, keyword2, keyword3" class="w-full bg-[#1a1a28] border border-[#252533] rounded-lg px-3 py-2 text-white text-sm">
+          </div>
+          <button onclick="saveSeoSettings()" class="btn-primary text-sm w-full">💾 Save SEO Settings</button>
+        </div>
+      </details>
+    </div>
+
+    <!-- ── Section 7: Booking Settings (Cal.com) ── -->
+    <div class="card">
+      <h3 class="font-bold mb-4">📅 Booking Settings (Cal.com)</h3>
+      <p class="text-xs text-[#5c5c70] mb-4">Connect your Cal.com account so prospects can book appointments directly from your landing page.</p>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Cal.com Username</label>
+          <input type="text" id="calUsernameInput" value="{{ lp.get('cal_username','') }}" placeholder="your-username" class="w-full bg-[#1a1a28] border border-[#252533] rounded-lg px-3 py-2 text-white text-sm">
+          <p class="text-xs text-[#5c5c70] mt-1">From your Cal.com profile URL: cal.com/<b>your-username</b></p>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Event Type Slug</label>
+          <select id="calEventSlugInput" class="w-full bg-[#1a1a28] border border-[#252533] rounded-lg px-3 py-2 text-white text-sm">
+            <option value="30min" {% if lp.get('cal_event_slug') == '30min' %}selected{% endif %}>30 min meeting</option>
+            <option value="15min" {% if lp.get('cal_event_slug') == '15min' %}selected{% endif %}>15 min meeting</option>
+          </select>
+        </div>
+        <button onclick="saveCalcomSettings()" class="btn-primary text-sm w-full">💾 Save Booking Settings</button>
+        <div id="calcomStatus" class="text-xs text-green-400 hidden"></div>
+        <div class="mt-3 pt-3 border-t border-[#252533]">
+          <p class="text-xs text-[#5c5c70] mb-2">Your booking page URL:</p>
+          <a href="https://cal.com/{{ lp.get('cal_username','pablo-d-i2xmhr') }}/{{ lp.get('cal_event_slug','30min') }}" target="_blank" class="text-sm text-[#a855f7] hover:underline" id="calcomUrlDisplay">https://cal.com/{{ lp.get('cal_username','pablo-d-i2xmhr') }}/{{ lp.get('cal_event_slug','30min') }}</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 8: Preview ── -->
+    <div class="card">
+      <h3 class="font-bold mb-4">👁️ Landing Page Preview</h3>
+      <div class="rounded-lg overflow-hidden border border-[#252533] bg-[#0f0f1a]">
+        <iframe src="/lp/{{ session.business_id }}" class="w-full h-[500px]" frameborder="0" loading="lazy"></iframe>
+      </div>
+    </div>
+
   </div>
+
+  <!-- Landing page JS -->
+  <script>
+  // ── Toast helper ──
+  function showLandingToast(msg, type) {
+    var existing = document.getElementById('landingToast');
+    if (existing) existing.remove();
+    var t = document.createElement('div');
+    t.id = 'landingToast';
+    t.className = 'fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-sm font-medium shadow-lg animate-slide-in ' +
+      (type === 'error' ? 'bg-red-500/90 text-white' : type === 'success' ? 'bg-green-500/90 text-white' : 'bg-[#252533] text-white');
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function(){ t.style.opacity = '0'; setTimeout(function(){ t.remove(); }, 300); }, 3500);
+  }
+
+  // ── AI Generate ──
+  function aiGenerateLanding() {
+    var btn = document.getElementById('aiGenBtn');
+    var status = document.getElementById('aiGenStatus');
+    var result = document.getElementById('aiGenResult');
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Generating...';
+    status.classList.remove('hidden');
+    status.textContent = '🤖 AI is crafting your landing page copy...';
+    status.style.color = '#c084fc';
+    result.classList.add('hidden');
+    fetch('/landing/ai-generate', { method: 'POST' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        btn.disabled = false;
+        btn.innerHTML = '🤖 AI Generate Landing Page';
+        if (d.success) {
+          status.classList.add('hidden');
+          result.classList.remove('hidden');
+          showLandingToast('✅ Landing page generated!', 'success');
+          setTimeout(function(){ location.reload(); }, 1500);
+        } else {
+          status.textContent = '❌ ' + (d.message || 'Generation failed');
+          status.style.color = '#ef4444';
+        }
+      })
+      .catch(function() {
+        btn.disabled = false;
+        btn.innerHTML = '🤖 AI Generate Landing Page';
+        status.textContent = '❌ Network error. Please try again.';
+        status.style.color = '#ef4444';
+      });
+  }
+
+  // ── Publish / Unpublish ──
+  function publishLanding() {
+    fetch('/landing/save', { method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: 'action=publish' })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.success) { showLandingToast('✅ Landing page published!', 'success'); setTimeout(function(){ location.reload(); }, 1000); }
+        else { showLandingToast('❌ ' + (d.message || 'Publish failed'), 'error'); }
+      })
+      .catch(function(){ showLandingToast('❌ Network error', 'error'); });
+  }
+
+  function unpublishLanding() {
+    fetch('/landing/unpublish', { method: 'POST' })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.success) { showLandingToast('✅ Landing page unpublished', 'success'); setTimeout(function(){ location.reload(); }, 1000); }
+        else { showLandingToast('❌ ' + (d.message || 'Unpublish failed'), 'error'); }
+      })
+      .catch(function(){ showLandingToast('❌ Network error', 'error'); });
+  }
+
+  // ── Save Content ──
+  function saveLandingContent(e) {
+    e.preventDefault();
+    var form = document.getElementById('contentForm');
+    var fd = new FormData(form);
+    var btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = '⏳ Saving...';
+    fetch('/landing/save', { method: 'POST', body: fd })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        btn.disabled = false;
+        btn.innerHTML = '💾 Save Content';
+        if (d.success) { showLandingToast('✅ Content saved!', 'success'); }
+        else { showLandingToast('❌ ' + (d.message || 'Save failed'), 'error'); }
+      })
+      .catch(function(){
+        btn.disabled = false;
+        btn.innerHTML = '💾 Save Content';
+        showLandingToast('❌ Network error', 'error');
+      });
+  }
+
+  // ── Save single field (video, audio label) ──
+  function saveLandingField(field, value) {
+    fetch('/landing/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'field=' + encodeURIComponent(field) + '&value=' + encodeURIComponent(value)
+    })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.success) { showLandingToast('✅ ' + field.replace(/_/g,' ') + ' saved!', 'success'); }
+        else { showLandingToast('❌ ' + (d.message || 'Save failed'), 'error'); }
+      })
+      .catch(function(){ showLandingToast('❌ Network error', 'error'); });
+  }
+
+  // ── Upload Media ──
+  function uploadMedia(type, input) {
+    var file = input.files[0];
+    if (!file) return;
+    var fd = new FormData();
+    fd.append('media', file);
+    var statusEl = document.getElementById(type + 'UploadStatus');
+    statusEl.textContent = '⏳ Uploading...';
+    fetch('/landing/upload-media?type=' + encodeURIComponent(type), { method: 'POST', body: fd })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        statusEl.textContent = '';
+        if (d.success) { showLandingToast('✅ ' + type + ' uploaded!', 'success'); setTimeout(function(){ location.reload(); }, 1000); }
+        else { showLandingToast('❌ ' + (d.message || 'Upload failed'), 'error'); }
+      })
+      .catch(function(){
+        statusEl.textContent = '';
+        showLandingToast('❌ Upload network error', 'error');
+      });
+  }
+
+  // ── SEO ──
+  function updateSeoCharCount() {
+    var ta = document.getElementById('seoDescInput');
+    var ct = document.getElementById('seoCharCount');
+    ct.textContent = (ta ? ta.value.length : 0) + ' / 160';
+  }
+
+  function saveSeoSettings() {
+    var title = document.getElementById('seoTitleInput').value;
+    var desc = document.getElementById('seoDescInput').value;
+    var keywords = document.getElementById('seoKeywordsInput').value;
+    fetch('/landing/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'field=seo_settings&seo_title=' + encodeURIComponent(title) + '&meta_description=' + encodeURIComponent(desc) + '&meta_keywords=' + encodeURIComponent(keywords)
+    })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.success) { showLandingToast('✅ SEO settings saved!', 'success'); }
+        else { showLandingToast('❌ ' + (d.message || 'Save failed'), 'error'); }
+      })
+      .catch(function(){ showLandingToast('❌ Network error', 'error'); });
+  }
+
+  // ── Cal.com Settings ──
+  function saveCalcomSettings() {
+    var username = document.getElementById('calUsernameInput').value.trim();
+    var slug = document.getElementById('calEventSlugInput').value;
+    var status = document.getElementById('calcomStatus');
+    var fd = new FormData();
+    fd.append('username', username || 'pablo-d-i2xmhr');
+    fd.append('event_slug', slug);
+    status.classList.remove('hidden');
+    status.textContent = '⏳ Saving...';
+    status.style.color = '#c084fc';
+    fetch('/api/calcom/save-settings', { method: 'POST', body: fd })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.success) {
+          status.textContent = '✅ ' + d.message;
+          status.style.color = '#4ade80';
+          var urlEl = document.getElementById('calcomUrlDisplay');
+          if (urlEl) urlEl.href = 'https://cal.com/' + (username || 'pablo-d-i2xmhr') + '/' + slug;
+          if (urlEl) urlEl.textContent = 'https://cal.com/' + (username || 'pablo-d-i2xmhr') + '/' + slug;
+          showLandingToast('✅ Cal.com settings saved!', 'success');
+        } else {
+          status.textContent = '❌ ' + (d.message || 'Save failed');
+          status.style.color = '#ef4444';
+        }
+      })
+      .catch(function(){
+        status.textContent = '❌ Network error';
+        status.style.color = '#ef4444';
+      });
+  }
+
+  // ── Color picker live preview ──
+  document.addEventListener('DOMContentLoaded', function(){
+    var pc = document.querySelector('input[name="primary_color"]');
+    var sc = document.querySelector('input[name="secondary_color"]');
+    if (pc) pc.addEventListener('input', function(){ document.getElementById('primaryColorVal').textContent = this.value; });
+    if (sc) sc.addEventListener('input', function(){ document.getElementById('secondaryColorVal').textContent = this.value; });
+    updateSeoCharCount();
+  });
+  </script>
 
   <!-- ======== TAB: CALENDAR ======== -->
   {% elif tab == 'calendar' %}
