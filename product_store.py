@@ -660,14 +660,16 @@ def my_courses():
     
     cards = ''
     for c in courses:
-        pct = int((c[5]/max(c[4],1))*100) if c[4] else 0
+        total = c[5] or 0
+        completed = c[6] or 0
+        pct = int((completed/max(total,1))*100) if total else 0
         cards += f'''<a href="/course/{c[0]}/" class="card p-5 hover:border-purple-500/30 transition group block">
           <div class="flex items-center gap-4">
             <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center text-2xl">📖</div>
             <div class="flex-1 min-w-0">
               <h3 class="font-bold text-sm text-white group-hover:text-purple-300 transition">{c[1][:60]}</h3>
               <div class="flex items-center gap-3 mt-1 text-xs text-[#7a7a8e]">
-                <span>{c[4] or 0}/{c[5] or 0} modules</span>
+                <span>{completed}/{total} modules</span>
                 <span>Purchased {c[3][:10] if c[3] else ''}</span>
               </div>
               <div class="mt-2 h-1.5 bg-[#1a1a26] rounded-full overflow-hidden">
@@ -1033,6 +1035,257 @@ def api_generate_ads():
         return {'error': 'product_id required'}, 400
     result = generate_all_ads(product_id)
     return result
+
+@app.route('/factory/ads/openai')
+@admin_required
+def openai_ads_campaign():
+    """OpenAI Ads campaign manager — generates all products for ads.openai.com."""
+    db = get_db()
+    products = db.execute("""
+        SELECT p.id, p.title, p.description, p.price, p.product_type, 
+               p.slug, p.thumbnail_url, p.seo_description
+        FROM products p 
+        WHERE p.status='published'
+        ORDER BY p.created_at DESC
+    """).fetchall()
+    db.close()
+
+    rows = ''
+    for p in products:
+        title = p['title'][:60]
+        desc = (p['seo_description'] or p['description'] or title)[:120]
+        img = p['thumbnail_url'] or f"/static/product_images/product_{p['id']}.png"
+        if not img.startswith('http'):
+            img = f"https://shopzario.com{img}"
+        url = f"https://shopzario.com/product/{p['id']}/"
+        rows += f'''<tr class="border-b border-white/5 hover:bg-white/[0.02]">
+          <td class="py-3 px-3"><span class="text-xs font-medium text-white">{title[:45]}</span></td>
+          <td class="py-3 px-3"><span class="text-xs text-purple-400">${p['price']}</span></td>
+          <td class="py-3 px-3"><span class="text-[10px] text-gray-500">{p['product_type'] or '-'}</span></td>
+          <td class="py-3 px-3"><span class="text-[10px] text-gray-500 truncate block max-w-[180px]">{desc[:60]}</span></td>
+          <td class="py-3 px-3 text-right">
+            <a href="{url}" target="_blank" class="text-[10px] text-purple-400 hover:underline">View</a>
+          </td>
+        </tr>'''
+    
+    total = len(products)
+    total_val = sum(p['price'] for p in products)
+    
+    return LAYOUT_HEAD + TOP_NAV + f'''<div class="max-w-6xl mx-auto px-4 py-8">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-xl font-bold text-white">🤖 OpenAI Ads Campaign</h1>
+        <p class="text-xs text-gray-500 mt-1">Advertise in ChatGPT — {total} products · ${total_val:.2f} total value</p>
+      </div>
+      <div class="flex gap-2">
+        <a href="/factory/ads" class="btn-outline text-xs" style="padding:10px 20px">← Ad Generator</a>
+        <a href="https://ads.openai.com" target="_blank" class="btn-primary text-xs" style="padding:10px 20px"><i class="fas fa-external-link-alt mr-1"></i> Open Ads Manager</a>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      <div class="card p-4 text-center">
+        <div class="text-2xl font-bold gradient-text">{total}</div>
+        <div class="text-[10px] text-gray-500 mt-1">Products Ready</div>
+      </div>
+      <div class="card p-4 text-center">
+        <div class="text-2xl font-bold" style="color:#4ade80">${total_val:.0f}</div>
+        <div class="text-[10px] text-gray-500 mt-1">Total Inventory Value</div>
+      </div>
+      <div class="card p-4 text-center">
+        <div class="text-2xl font-bold" style="color:#38bdf8">6</div>
+        <div class="text-[10px] text-gray-500 mt-1">Ad Formats</div>
+      </div>
+      <div class="card p-4 text-center">
+        <div class="text-2xl font-bold" style="color:#f59e0b">ChatGPT</div>
+        <div class="text-[10px] text-gray-500 mt-1">Ad Placement</div>
+      </div>
+    </div>
+
+    <!-- Quick Start Guide -->
+    <div class="card p-5 mb-6">
+      <h3 class="font-semibold text-sm mb-3">🚀 How to Launch on OpenAI Ads</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-gray-400">
+        <div class="flex items-start gap-3 p-3 rounded-xl bg-white/[0.03]">
+          <span class="w-7 h-7 rounded-full bg-purple-500/20 flex items-center justify-center text-sm font-bold text-purple-400 shrink-0">1</span>
+          <div>
+            <div class="font-semibold text-white mb-1">Go to ads.openai.com</div>
+            <p>Sign in and create a new campaign. Select "Product Feed" type.</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3 p-3 rounded-xl bg-white/[0.03]">
+          <span class="w-7 h-7 rounded-full bg-purple-500/20 flex items-center justify-center text-sm font-bold text-purple-400 shrink-0">2</span>
+          <div>
+            <div class="font-semibold text-white mb-1">Upload Product Feed</div>
+            <p>Download the JSON feed below and import it into Ads Manager.</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3 p-3 rounded-xl bg-white/[0.03]">
+          <span class="w-7 h-7 rounded-full bg-purple-500/20 flex items-center justify-center text-sm font-bold text-purple-400 shrink-0">3</span>
+          <div>
+            <div class="font-semibold text-white mb-1">Set Budget & Launch</div>
+            <p>Configure your budget, targeting, and launch your ChatGPT ad campaign.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Download Section -->
+    <div class="card p-5 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold text-sm">📦 Product Feed Export</h3>
+        <a href="/api/ads/openai-export" class="btn-primary text-xs" style="padding:10px 20px"><i class="fas fa-download mr-1"></i> Download JSON Feed</a>
+      </div>
+      <p class="text-xs text-gray-500 mb-3">JSON feed with {total} products formatted for OpenAI Ads Manager. Contains headlines, descriptions, images, and landing page URLs.</p>
+      <div class="bg-black/30 rounded-xl p-3 text-[10px] text-gray-500 font-mono overflow-x-auto whitespace-nowrap">
+        shopzario_openai_ads_feed.json · {total} entries · {total_val:.0f} total value
+      </div>
+    </div>
+
+    <!-- Product List -->
+    <div class="card p-5">
+      <h3 class="font-semibold text-sm mb-4">📋 All Products in Feed</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead><tr class="text-[10px] text-gray-500 uppercase tracking-wider">
+            <th class="pb-3 px-3 font-semibold">Product</th>
+            <th class="pb-3 px-3 font-semibold">Price</th>
+            <th class="pb-3 px-3 font-semibold">Type</th>
+            <th class="pb-3 px-3 font-semibold">Description</th>
+            <th class="pb-3 px-3 text-right font-semibold">Link</th>
+          </tr></thead>
+          <tbody>{rows}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+    document.querySelectorAll('tr').forEach(function(r){{
+      r.addEventListener('click', function(e){{
+        if(e.target.tagName !== 'A') return;
+        var link = this.querySelector('a');
+        if(link) window.open(link.href, '_blank');
+      }});
+    }});
+    </script>
+    </div>''' + LAYOUT_FOOT
+
+@app.route('/api/ads/openai-export')
+@admin_required
+def openai_ads_export():
+    """Export product feed JSON for OpenAI Ads Manager."""
+    db = get_db()
+    products = db.execute("""
+        SELECT p.id, p.title, p.description, p.price, p.product_type, 
+               p.slug, p.thumbnail_url, p.seo_description
+        FROM products p 
+        WHERE p.status='published'
+        ORDER BY p.created_at DESC
+    """).fetchall()
+    db.close()
+
+    entries = []
+    for p in products:
+        pd = dict(p)
+        title = pd['title'][:60]
+        desc = (pd['seo_description'] or pd['description'] or title)[:120]
+        price = pd['price']
+        url = f"https://shopzario.com/product/{pd['id']}/"
+        img = pd['thumbnail_url'] or f"/static/product_images/product_{pd['id']}.png"
+        if not img.startswith('http'):
+            img = f"https://shopzario.com{img}"
+        
+        headlines = [
+            title[:30],
+            f"${price} - {title[:25]}"[:30],
+            (title[:27] + "...") if len(title) > 27 else title
+        ]
+        descriptions = [
+            f"Discover {title[:70]}. Only ${price}. Instant download."[:90],
+            (desc[:85] + "...") if len(desc) > 85 else desc
+        ]
+        
+        entries.append({
+            "product_id": pd['id'],
+            "title": title,
+            "price": price,
+            "landing_page": url,
+            "image_url": img,
+            "category": pd['product_type'] or 'General',
+            "headlines": headlines,
+            "descriptions": descriptions,
+        })
+    
+    output = {
+        "campaign_name": "ShopZario - ChatGPT Ads",
+        "platform": "openai_ads",
+        "generated_at": str(datetime.datetime.now()),
+        "total_products": len(entries),
+        "total_value": sum(e['price'] for e in entries),
+        "entries": entries
+    }
+    return jsonify(output)
+
+@app.route('/factory/campaigns/openai')
+@admin_required
+def openai_campaigns_dashboard():
+    """View and manage OpenAI Ads campaigns."""
+    db = get_db()
+    campaigns = db.execute("""
+        SELECT * FROM openai_ads_campaigns ORDER BY created_at DESC
+    """).fetchall()
+    db.close()
+
+    rows = ''
+    for c in campaigns:
+        status_badge = ''
+        s = c['campaign_status']
+        if s == 'active': status_badge = '<span class="text-[10px] font-semibold text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full">Active</span>'
+        elif s == 'paused': status_badge = '<span class="text-[10px] font-semibold text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded-full">Paused</span>'
+        elif s == 'in_review': status_badge = '<span class="text-[10px] font-semibold text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded-full">In Review</span>'
+        else: status_badge = f'<span class="text-[10px] font-semibold text-gray-400 bg-gray-400/10 px-2 py-0.5 rounded-full">{s}</span>'
+        
+        budget_usd = c['budget_micros'] / 1000000 if c['budget_micros'] else 0
+        rows += f'''<tr class="border-b border-white/5 hover:bg-white/[0.02]">
+          <td class="py-3 px-3"><span class="text-xs font-medium text-white">{c['campaign_name'][:45]}</span></td>
+          <td class="py-3 px-3"><span class="text-xs text-purple-400">{c['product_title'][:35]}</span></td>
+          <td class="py-3 px-3">{status_badge}</td>
+          <td class="py-3 px-3"><span class="text-xs text-white">${budget_usd:.0f}</span></td>
+          <td class="py-3 px-3 text-right text-[10px] text-gray-500">{c['created_at'][:10] if c['created_at'] else ''}</td>
+        </tr>'''
+
+    return LAYOUT_HEAD + TOP_NAV + f'''<div class="max-w-5xl mx-auto px-4 py-8">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-xl font-bold text-white">📢 OpenAI Ads Campaigns</h1>
+        <p class="text-xs text-gray-500 mt-1">Manage your ChatGPT Ads campaigns from ShopZario</p>
+      </div>
+      <div class="flex gap-2">
+        <a href="/factory/ads/openai" class="btn-outline text-xs" style="padding:10px 20px">← Product Feed</a>
+        <a href="https://ads.openai.com/manage/campaigns?act=adacct_6a18172a4f88819cb8f935ffb32bb67e" target="_blank" class="btn-primary text-xs" style="padding:10px 20px"><i class="fas fa-external-link-alt mr-1"></i> OpenAI Ads Manager</a>
+      </div>
+    </div>
+
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold text-sm">📋 Campaigns</h3>
+        <span class="text-[10px] text-gray-500">{len(campaigns)} total</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead><tr class="text-[10px] text-gray-500 uppercase tracking-wider">
+            <th class="pb-3 px-3 font-semibold">Campaign</th>
+            <th class="pb-3 px-3 font-semibold">Product</th>
+            <th class="pb-3 px-3 font-semibold">Status</th>
+            <th class="pb-3 px-3 font-semibold">Budget</th>
+            <th class="pb-3 px-3 text-right font-semibold">Created</th>
+          </tr></thead>
+          <tbody>{rows or '<tr><td colspan="5" class="py-8 text-center text-[10px] text-gray-500">No campaigns yet. Create one from the Product Feed page.</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+    </div>''' + LAYOUT_FOOT
 
 @app.route('/api/checkout/<product_id>', methods=['GET', 'POST'])
 def api_checkout(product_id):
@@ -4007,6 +4260,7 @@ POST /api/v1/orders</pre>
 {LAYOUT_FOOT}'''
 
 
+@app.route('/member')
 @app.route('/membership')
 def membership_page():
     """Membership plans page."""
