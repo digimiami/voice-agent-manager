@@ -1548,7 +1548,7 @@ def api_signup():
     c.execute("""INSERT INTO businesses 
         (id, name, industry, phone_number, script_template, knowledge_base,
          plan, monthly_price, email, status, voice_id, created_at, subscription_status, trial_end)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'trial', 'burt', datetime('now'), 'trial', datetime('now', '+3 days'))""",
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'trial', 'rachel', datetime('now'), 'trial', datetime('now', '+3 days'))""",
         (bid, name, industry, phone,
          f"You are an AI assistant for {name}. Help them book more clients. Keep responses under 30 seconds.",
          f"Industry: {industry}. Business: {name}.",
@@ -1645,7 +1645,7 @@ def api_signup_stripe():
     c.execute("""INSERT INTO businesses 
         (id, name, industry, phone_number, script_template, knowledge_base,
          plan, monthly_price, email, status, voice_id, created_at, subscription_status, trial_end)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'trial', 'burt', datetime('now'), 'trial', datetime('now', '+3 days'))""",
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'trial', 'rachel', datetime('now'), 'trial', datetime('now', '+3 days'))""",
         (bid, name, industry, phone,
          f"You are an AI assistant for {name}. Help them book more clients. Keep responses under 30 seconds.",
          f"Industry: {industry}. Business: {name}.",
@@ -2040,7 +2040,7 @@ def stripe_signup_webhook():
                 c.execute("""INSERT INTO businesses 
                     (id, name, industry, phone_number, script_template, knowledge_base,
                      plan, monthly_price, email, status, voice_id, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'burt', datetime('now'))""",
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'rachel', datetime('now'))""",
                     (bid, pending['name'], pending['industry'], pending.get('phone', ''),
                      f"You are an AI assistant for {pending['name']}. Help them book more clients.",
                      f"Industry: {pending['industry']}. Business: {pending['name']}.",
@@ -3079,6 +3079,30 @@ html{scroll-behavior:smooth}
   </div>
 </section>
 
+<!-- VOICE DEMO -->
+<section class="py-20 px-6 bg-[#f8f9ff]">
+  <div class="max-w-4xl mx-auto text-center">
+    <p class="text-xs font-semibold tracking-[0.2em] uppercase text-[#2979FF] mb-3">Hear It Live</p>
+    <h2 class="text-3xl md:text-4xl font-bold tracking-tight mb-4">Meet <span style="background:linear-gradient(135deg,#2979FF,#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Rachel</span> — Your AI Agent</h2>
+    <p class="text-[#6B7280] text-sm mb-8 max-w-xl mx-auto">The most natural AI voice on the market. Click to hear Rachel handle a real call.</p>
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+      <button onclick="playVoiceDemo('rachel','Hi, thanks for calling! This is Rachel, your AI assistant. How can I help you today?')" class="btn-primary flex items-center gap-3 px-8 py-4 text-base">
+        <span class="text-xl" id="rachelIcon">▶️</span>
+        <span>Play Rachel</span>
+      </button>
+      <button onclick="playVoiceDemo('sam','Hey there! Sam here. I handle incoming calls for your business so you never miss an opportunity.')" class="btn-outline flex items-center gap-3 px-8 py-4 text-base">
+        <span class="text-xl" id="samIcon">▶️</span>
+        <span>Play Sam (Male)</span>
+      </button>
+      <button onclick="playVoiceDemo('emma','Hello! Emma speaking. I am your AI receptionist, ready to answer questions and book appointments 24/7.')" class="btn-outline flex items-center gap-3 px-8 py-4 text-base">
+        <span class="text-xl" id="emmaIcon">▶️</span>
+        <span>Play Emma</span>
+      </button>
+    </div>
+    <p id="demoStatus" class="text-xs text-[#6B7280]">Click any voice to hear it live. Real ElevenLabs AI voices.</p>
+  </div>
+</section>
+
 <!-- FOOTER -->
 <footer class="border-t border-[#e5e5e5] py-8 px-6 text-center bg-white">
   <div class="max-w-md mx-auto">
@@ -3093,6 +3117,18 @@ html{scroll-behavior:smooth}
 <script>
 var formData = {step: 0, name: '', phone: '', email: '', industry: '', budget: ''};
 var selectedVal = {};
+
+// Voice demo player
+var demoAudio = null;
+function playVoiceDemo(voiceId, text) {
+  if (demoAudio) { demoAudio.pause(); demoAudio = null; }
+  document.querySelectorAll('[id$=Icon]').forEach(function(el){ el.textContent = '▶️'; });
+  document.getElementById(voiceId + 'Icon').textContent = '⏳';
+  demoAudio = new Audio('/api/test-voice?voice_id=' + encodeURIComponent(voiceId) + '&text=' + encodeURIComponent(text) + '&speed=1.0&t=' + Date.now());
+  demoAudio.onended = function(){ document.getElementById(voiceId + 'Icon').textContent = '▶️'; demoAudio = null; };
+  demoAudio.onerror = function(){ document.getElementById(voiceId + 'Icon').textContent = '❌'; demoAudio = null; };
+  demoAudio.play().catch(function(){ document.getElementById(voiceId + 'Icon').textContent = '❌'; });
+}
 
 function nextStep(s) {
   var err = document.getElementById('step'+s+'Error');
@@ -3927,7 +3963,7 @@ def api_list_voices():
         return jsonify({'success': False, 'message': 'Business not found'}), 404
     
     available = get_available_voices()
-    current = biz['voice_id'] or 'burt'
+    current = biz['voice_id'] or 'rachel'
     speed = biz['voice_speed'] or '1.15'
     
     return jsonify({
@@ -3943,7 +3979,7 @@ def api_update_voice():
     """Update the voice for the business's AI agent."""
     bid = session['business_id']
     data = request.get_json() or {}
-    voice_id = data.get('voice_id', 'burt')
+    voice_id = data.get('voice_id', 'rachel')
     speed = str(data.get('speed', '1.15'))
     
     db = get_db()
@@ -5760,7 +5796,7 @@ def update_agent_prompt():
 @login_required
 def update_voice():
     bid = session['business_id']
-    voice_id = request.form.get('voice_id', 'burt')
+    voice_id = request.form.get('voice_id', 'rachel')
     voice_speed = float(request.form.get('voice_speed', 1.15))
     language = request.form.get('language', 'en')
     db = get_db()
@@ -5791,7 +5827,7 @@ def update_voice():
 @app.route('/api/test-voice', methods=['GET'])
 def test_voice():
     """Generate a short test audio for a voice using edge-tts with mapped voices."""
-    voice_id = request.args.get('voice_id', 'burt')
+    voice_id = request.args.get('voice_id', 'rachel')
     text = request.args.get('text', 'Hi, this is your AI voice assistant. How can I help you today?')
     speed = float(request.args.get('speed', 1.0))
     lang = request.args.get('lang', 'en')
@@ -5885,7 +5921,7 @@ def update_settings():
     biz = c.fetchone()
     if biz and biz['vapi_assistant_id']:
         import json
-        voice_id = biz['voice_id'] or 'burt'
+        voice_id = biz['voice_id'] or 'rachel'
         voice_speed = float(biz['voice_speed'] or 1.15)
         language = biz['language'] or 'en'
         script = biz['script_template'] or ''
