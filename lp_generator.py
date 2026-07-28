@@ -328,7 +328,7 @@ body{{background:#08080f;color:#f1f1f5;overflow-x:hidden}}
     <a href="tel:{display_phone}" class="btn-primary text-xl px-12 py-5 mb-4">{cta_text}</a>
     <div class="mt-4 text-sm text-[#5c5c70]">{cta_sub}</div>
     <div class="mt-6">
-    <a href="https://cal.com/{cal_username}/{cal_event_slug}" target="_blank" class="btn-outline text-sm px-6 py-3 inline-flex items-center gap-2" onclick="return !window.Cal?true: (Cal('booking', {calLink:'{cal_username}/{cal_event_slug}'}), false)">
+    <a href="https://cal.com/{cal_username}/{cal_event_slug}" target="_blank" class="btn-outline text-sm px-6 py-3 inline-flex items-center gap-2" onclick="return !window.Cal?true: (Cal('booking', {{calLink:'{cal_username}/{cal_event_slug}'}}), false)">
     📅 Book Appointment
     </a>
     </div>
