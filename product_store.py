@@ -1238,15 +1238,20 @@ def openai_campaigns_dashboard():
     db.close()
 
     rows = ''
+    active_count = 0
+    total_budget = 0
     for c in campaigns:
         status_badge = ''
         s = c['campaign_status']
-        if s == 'active': status_badge = '<span class="text-[10px] font-semibold text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full">Active</span>'
+        if s == 'active': 
+            status_badge = '<span class="text-[10px] font-semibold text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full">Active</span>'
+            active_count += 1
         elif s == 'paused': status_badge = '<span class="text-[10px] font-semibold text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded-full">Paused</span>'
         elif s == 'in_review': status_badge = '<span class="text-[10px] font-semibold text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded-full">In Review</span>'
         else: status_badge = f'<span class="text-[10px] font-semibold text-gray-400 bg-gray-400/10 px-2 py-0.5 rounded-full">{s}</span>'
         
         budget_usd = c['budget_micros'] / 1000000 if c['budget_micros'] else 0
+        total_budget += budget_usd
         rows += f'''<tr class="border-b border-white/5 hover:bg-white/[0.02]">
           <td class="py-3 px-3"><span class="text-xs font-medium text-white">{c['campaign_name'][:45]}</span></td>
           <td class="py-3 px-3"><span class="text-xs text-purple-400">{c['product_title'][:35]}</span></td>
@@ -1264,6 +1269,28 @@ def openai_campaigns_dashboard():
       <div class="flex gap-2">
         <a href="/factory/ads/openai" class="btn-outline text-xs" style="padding:10px 20px">← Product Feed</a>
         <a href="https://ads.openai.com/manage/campaigns?act=adacct_6a18172a4f88819cb8f935ffb32bb67e" target="_blank" class="btn-primary text-xs" style="padding:10px 20px"><i class="fas fa-external-link-alt mr-1"></i> OpenAI Ads Manager</a>
+      </div>
+    </div>
+
+    <!-- Quick Glance Stats -->
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      <div class="card p-4 text-center">
+        <div class="text-2xl font-bold gradient-text">{len(campaigns)}</div>
+        <div class="text-[10px] text-gray-500 mt-1">Total Campaigns</div>
+      </div>
+      <div class="card p-4 text-center">
+        <div class="text-2xl font-bold" style="color:#4ade80">{active_count}</div>
+        <div class="text-[10px] text-gray-500 mt-1">Active</div>
+        <div class="mt-2 w-2 h-2 rounded-full bg-green-400 mx-auto animate-pulse"></div>
+      </div>
+      <div class="card p-4 text-center">
+        <div class="text-2xl font-bold" style="color:#38bdf8">${total_budget:.0f}</div>
+        <div class="text-[10px] text-gray-500 mt-1">Total Budget</div>
+      </div>
+      <div class="card p-4 text-center">
+        <div class="text-lg font-bold" style="color:#a855f7">ChatGPT</div>
+        <div class="text-[10px] text-gray-500 mt-1">Placement</div>
+        <div class="text-[8px] text-green-400/60 mt-0.5">● Live</div>
       </div>
     </div>
 
