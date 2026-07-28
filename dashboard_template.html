@@ -1216,11 +1216,59 @@ setTimeout(refreshMonitor, 500);
         <select name="voicemail_action" class="mb-2" onchange="document.getElementById('vmMsgWrap').style.display=this.value=='leave_message'?'block':'none'"><option value="hangup" {% if biz_info.voicemail_action == 'hangup' or not biz_info.voicemail_action %}selected{% endif %}>Hang up</option><option value="leave_message" {% if biz_info.voicemail_action == 'leave_message' %}selected{% endif %}>Leave message</option></select>
         <div id="vmMsgWrap" {% if biz_info.voicemail_action != 'leave_message' %}style="display:none"{% endif %}><label class="text-xs text-[#7a7a8e] block mb-1">📝 Message</label><textarea name="voicemail_message" rows="3" class="w-full text-xs">{{ biz_info.voicemail_message or '' }}</textarea></div>
         <button type="submit" class="btn-primary text-xs w-full mt-2">💾 Save Voicemail</button>
-      </form>
-    </div>
-  </div>
+        </form>
+        </div>
+        <div class="card">
+        <h3 class="font-bold mb-3">📅 Booking (Cal.com)</h3>
+        <p class="text-xs text-[#5c5c70] mb-2">Connect Cal.com for appointment booking.</p>
+        <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Cal.com Username</label>
+        <input type="text" id="calUsernameInput" value="{{ lp.get('cal_username','') }}" placeholder="your-username" class="w-full bg-[#1a1a28] border border-[#252533] rounded-lg px-3 py-2 text-white text-sm mb-3">
+        <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Event Type</label>
+        <select id="calEventSlugInput" class="w-full bg-[#1a1a28] border border-[#252533] rounded-lg px-3 py-2 text-white text-sm mb-3">
+        <option value="30min" {% if lp.get('cal_event_slug') == '30min' %}selected{% endif %}>30 min meeting</option>
+        <option value="15min" {% if lp.get('cal_event_slug') == '15min' %}selected{% endif %}>15 min meeting</option>
+        </select>
+        <button onclick="saveCalcomSettings()" class="btn-primary text-xs w-full">💾 Save Booking Settings</button>
+        <div id="calcomStatus" class="text-xs text-green-400 hidden mt-2"></div>
+        <div class="mt-2 text-[10px] text-[#5c5c70]">
+        Your page: <a href="https://cal.com/{{ lp.get('cal_username','pablo-d-i2xmhr') }}/{{ lp.get('cal_event_slug','30min') }}" target="_blank" id="calcomUrlDisplay" class="text-[#a855f7]">https://cal.com/{{ lp.get('cal_username','pablo-d-i2xmhr') }}/{{ lp.get('cal_event_slug','30min') }}</a>
+        </div>
+        </div>
+        </div>
 
-  <!-- Call Settings -->
+        <script>
+        function saveCalcomSettings() {
+          var username = document.getElementById('calUsernameInput').value.trim();
+          var slug = document.getElementById('calEventSlugInput').value;
+          var status = document.getElementById('calcomStatus');
+          var fd = new FormData();
+          fd.append('username', username || 'pablo-d-i2xmhr');
+          fd.append('event_slug', slug);
+          status.classList.remove('hidden');
+          status.textContent = '⏳ Saving...';
+          status.style.color = '#c084fc';
+          fetch('/api/calcom/save-settings', { method: 'POST', body: fd })
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+              if (d.success) {
+                status.textContent = '✅ ' + d.message;
+                status.style.color = '#4ade80';
+                var urlEl = document.getElementById('calcomUrlDisplay');
+                if (urlEl) urlEl.href = 'https://cal.com/' + (username || 'pablo-d-i2xmhr') + '/' + slug;
+                if (urlEl) urlEl.textContent = 'https://cal.com/' + (username || 'pablo-d-i2xmhr') + '/' + slug;
+              } else {
+                status.textContent = '❌ ' + (d.message || 'Save failed');
+                status.style.color = '#ef4444';
+              }
+            })
+            .catch(function(){
+              status.textContent = '❌ Network error';
+              status.style.color = '#ef4444';
+            });
+        }
+        </script>
+
+        <!-- Call Settings -->
   <div class="grid md:grid-cols-3 gap-6 mt-6">
     <div class="card"><h3 class="font-bold mb-3">⏱️ Max Tokens</h3><p class="text-xs text-[#7a7a8e] mb-2">How much the AI can say per response.</p><form method="POST" action="/update-call-settings"><input type="range" name="max_tokens" min="100" max="1000" step="50" value="{{ biz_info.max_tokens or 200 }}" oninput="this.nextElementSibling.textContent=this.value" class="w-full"><output class="text-sm font-bold text-[#4ade80] block text-center mb-2">{{ biz_info.max_tokens or 200 }}</output><button type="submit" class="btn-primary text-xs w-full">Save</button></form></div>
     <div class="card"><h3 class="font-bold mb-3">🔇 Silence Timeout</h3><p class="text-xs text-[#7a7a8e] mb-2">Seconds before hanging up.</p><form method="POST" action="/update-call-settings"><input type="range" name="silence_timeout" min="3" max="30" step="1" value="{{ biz_info.silence_timeout or 10 }}" oninput="this.nextElementSibling.textContent=this.value+'s'" class="w-full"><output class="text-sm font-bold text-[#4ade80] block text-center mb-2">{{ biz_info.silence_timeout or 10 }}s</output><button type="submit" class="btn-primary text-xs w-full">Save</button></form></div>
@@ -1413,33 +1461,7 @@ setTimeout(refreshMonitor, 500);
       </details>
     </div>
 
-    <!-- ── Section 7: Booking Settings (Cal.com) ── -->
-    <div class="card">
-      <h3 class="font-bold mb-4">📅 Booking Settings (Cal.com)</h3>
-      <p class="text-xs text-[#5c5c70] mb-4">Connect your Cal.com account so prospects can book appointments directly from your landing page.</p>
-      <div class="space-y-3">
-        <div>
-          <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Cal.com Username</label>
-          <input type="text" id="calUsernameInput" value="{{ lp.get('cal_username','') }}" placeholder="your-username" class="w-full bg-[#1a1a28] border border-[#252533] rounded-lg px-3 py-2 text-white text-sm">
-          <p class="text-xs text-[#5c5c70] mt-1">From your Cal.com profile URL: cal.com/<b>your-username</b></p>
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Event Type Slug</label>
-          <select id="calEventSlugInput" class="w-full bg-[#1a1a28] border border-[#252533] rounded-lg px-3 py-2 text-white text-sm">
-            <option value="30min" {% if lp.get('cal_event_slug') == '30min' %}selected{% endif %}>30 min meeting</option>
-            <option value="15min" {% if lp.get('cal_event_slug') == '15min' %}selected{% endif %}>15 min meeting</option>
-          </select>
-        </div>
-        <button onclick="saveCalcomSettings()" class="btn-primary text-sm w-full">💾 Save Booking Settings</button>
-        <div id="calcomStatus" class="text-xs text-green-400 hidden"></div>
-        <div class="mt-3 pt-3 border-t border-[#252533]">
-          <p class="text-xs text-[#5c5c70] mb-2">Your booking page URL:</p>
-          <a href="https://cal.com/{{ lp.get('cal_username','pablo-d-i2xmhr') }}/{{ lp.get('cal_event_slug','30min') }}" target="_blank" class="text-sm text-[#a855f7] hover:underline" id="calcomUrlDisplay">https://cal.com/{{ lp.get('cal_username','pablo-d-i2xmhr') }}/{{ lp.get('cal_event_slug','30min') }}</a>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Section 8: Preview ── -->
+    <!-- ── Section 7: Preview ── -->
     <div class="card">
       <h3 class="font-bold mb-4">👁️ Landing Page Preview</h3>
       <div class="rounded-lg overflow-hidden border border-[#252533] bg-[#0f0f1a]">
@@ -1600,38 +1622,6 @@ setTimeout(refreshMonitor, 500);
         else { showLandingToast('❌ ' + (d.message || 'Save failed'), 'error'); }
       })
       .catch(function(){ showLandingToast('❌ Network error', 'error'); });
-  }
-
-  // ── Cal.com Settings ──
-  function saveCalcomSettings() {
-    var username = document.getElementById('calUsernameInput').value.trim();
-    var slug = document.getElementById('calEventSlugInput').value;
-    var status = document.getElementById('calcomStatus');
-    var fd = new FormData();
-    fd.append('username', username || 'pablo-d-i2xmhr');
-    fd.append('event_slug', slug);
-    status.classList.remove('hidden');
-    status.textContent = '⏳ Saving...';
-    status.style.color = '#c084fc';
-    fetch('/api/calcom/save-settings', { method: 'POST', body: fd })
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        if (d.success) {
-          status.textContent = '✅ ' + d.message;
-          status.style.color = '#4ade80';
-          var urlEl = document.getElementById('calcomUrlDisplay');
-          if (urlEl) urlEl.href = 'https://cal.com/' + (username || 'pablo-d-i2xmhr') + '/' + slug;
-          if (urlEl) urlEl.textContent = 'https://cal.com/' + (username || 'pablo-d-i2xmhr') + '/' + slug;
-          showLandingToast('✅ Cal.com settings saved!', 'success');
-        } else {
-          status.textContent = '❌ ' + (d.message || 'Save failed');
-          status.style.color = '#ef4444';
-        }
-      })
-      .catch(function(){
-        status.textContent = '❌ Network error';
-        status.style.color = '#ef4444';
-      });
   }
 
   // ── Color picker live preview ──
