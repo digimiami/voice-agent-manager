@@ -926,10 +926,9 @@ document.querySelectorAll('[id^=voice-status-]').forEach(function(e){e.textConte
 document.getElementById('voice-icon-'+s).textContent='⏳';
 document.getElementById('voice-status-'+s).textContent='🔊 Loading...';
 p.src='/api/test-voice?voice_id='+encodeURIComponent(v)+'&text='+encodeURIComponent(t)+'&speed=1.0&t='+Date.now();
-p.onloadeddata=function(){document.getElementById('voice-status-'+s).textContent='🔊 Playing...';p.play().catch(function(){document.getElementById('voice-icon-'+s).textContent='❌';document.getElementById('voice-status-'+s).textContent='Blocked'})};
-p.onerror=function(){document.getElementById('voice-icon-'+s).textContent='❌';document.getElementById('voice-status-'+s).textContent='Error';p.src=''};
 p.onended=function(){document.getElementById('voice-icon-'+s).textContent='🎤';document.getElementById('voice-status-'+s).textContent='▶ Click to play'};
 p.load();
+p.play().then(function(){document.getElementById('voice-status-'+s).textContent='🔊 Playing...'}).catch(function(e){document.getElementById('voice-icon-'+s).textContent='❌';document.getElementById('voice-status-'+s).textContent='Click again: '+e.message.slice(0,20)});
 }
 </script>
 
