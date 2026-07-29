@@ -1366,6 +1366,25 @@ def get_available_voices():
         {"id": "patrick", "name": "Patrick (Male, Professional)", "provider": "11labs"},
         {"id": "clyde", "name": "Clyde (Male, Storytelling)", "provider": "11labs"},
         {"id": "alice", "name": "Alice (Female, Friendly)", "provider": "11labs"},
+        # New ElevenLabs premium voices (UUID-based)
+        {"id": "TX3LPaxmHKxFdv7VOQHJ", "name": "Liam (Male, Energetic)", "provider": "11labs"},
+        {"id": "onwK4e9ZLuTAKqWW03F9", "name": "Daniel (Male, Steady Broadcaster)", "provider": "11labs"},
+        {"id": "bIHbv24MWmeRgasZH58o", "name": "Will (Male, Relaxed Optimist)", "provider": "11labs"},
+        {"id": "iP95p4xoKVk53GoZ742B", "name": "Chris (Male, Charming)", "provider": "11labs"},
+        {"id": "cjVigY5qzO86Huf0OWal", "name": "Eric (Male, Smooth)", "provider": "11labs"},
+        {"id": "cgSgspJ2msm6clMCkdW9", "name": "Jessica (Female, Playful)", "provider": "11labs"},
+        {"id": "XrExE9yKIg1WjnnlVkGX", "name": "Matilda (Female, Professional)", "provider": "11labs"},
+        {"id": "pFZP5JQG7iQjIQuC4Bku", "name": "Lily (Female, Velvety)", "provider": "11labs"},
+        {"id": "CwhRBWXzGAHq8TQ4Fs17", "name": "Roger (Male, Laid-Back)", "provider": "11labs"},
+        {"id": "EXAVITQu4vr4xnSDxMaL", "name": "Sarah (Female, Reassuring)", "provider": "11labs"},
+        {"id": "IKne3meq5aSn9XLyUdCD", "name": "Charlie (Male, Deep)", "provider": "11labs"},
+        {"id": "JBFqnCBsd6RMkjVDRZzb", "name": "George (Male, Captivating)", "provider": "11labs"},
+        {"id": "SAz9YHcvj6GT2YYXdXww", "name": "River (Relaxed, Neutral)", "provider": "11labs"},
+        {"id": "N2lVS1w4EtoT3dr4eOWO", "name": "Callum (Male, Husky)", "provider": "11labs"},
+        {"id": "SOYHLrjzK2X1ezoPC6cr", "name": "Harry (Male, Fierce)", "provider": "11labs"},
+        {"id": "nPczCjzI2devNBz1zQrb", "name": "Brian (Male, Resonant)", "provider": "11labs"},
+        {"id": "pqHfZKP75CvOlQylNhV4", "name": "Bill (Male, Wise)", "provider": "11labs"},
+        {"id": "FGY2WhTYpPnrIDTdsKH5", "name": "Laura (Female, Enthusiast)", "provider": "11labs"},
     ]
 
 def login_required(f):
@@ -1788,7 +1807,7 @@ body{background:#0a0a0f;color:#f1f1f5;overflow-x:hidden}
 <div class="bg-[#1a1a26] rounded-xl p-4">
 <div class="flex items-center gap-3">
 <div class="text-2xl">🎙️</div>
-<div><div class="font-semibold">Choose a Voice</div><div class="text-[#7a7a8e]">Pick from 16+ Eleven Labs voices in Settings</div></div>
+<div><div class="font-semibold">Choose a Voice</div><div class="text-[#7a7a8e]">Pick from 34+ Eleven Labs voices in Settings</div></div>
 </div>
 </div>
 <div class="bg-[#1a1a26] rounded-xl p-4">
@@ -3097,6 +3116,14 @@ html{scroll-behavior:smooth}
       <button onclick="playVoiceDemo('emma','Hello! Emma speaking. I am your AI receptionist, ready to answer questions and book appointments 24/7.')" class="btn-outline flex items-center gap-3 px-8 py-4 text-base">
         <span class="text-xl" id="emmaIcon">▶️</span>
         <span>Play Emma</span>
+      </button>
+      <button onclick="playVoiceDemo('TX3LPaxmHKxFdv7VOQHJ','Hey, Liam here. I handle your calls, qualify leads, and book appointments so you can focus on the work that matters.')" class="btn-outline flex items-center gap-3 px-8 py-4 text-base">
+        <span class="text-xl" id="TX3LPaxmHKxFdv7VOQHJIcon">▶️</span>
+        <span>Play Liam</span>
+      </button>
+      <button onclick="playVoiceDemo('cgSgspJ2msm6clMCkdW9','Hi, this is Jessica! I am your friendly AI receptionist, ready to help your callers with anything they need.')" class="btn-outline flex items-center gap-3 px-8 py-4 text-base">
+        <span class="text-xl" id="cgSgspJ2msm6clMCkdW9Icon">▶️</span>
+        <span>Play Jessica</span>
       </button>
     </div>
     <p id="demoStatus" class="text-xs text-[#6B7280]">Click any voice to hear it live. Real ElevenLabs AI voices.</p>
