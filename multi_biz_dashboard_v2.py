@@ -883,6 +883,54 @@ Diazites AI voice agents answer calls <strong class="text-[#f1f1f5]">24/7</stron
 </div>
 </section>
 
+<!-- PREMIUM VOICE SAMPLES -->
+<section class="max-w-5xl mx-auto px-6 pb-16">
+<h2 class="text-3xl font-bold text-center mb-2">🎙️ Choose Your <span class="gradient-text">Voice</span></h2>
+<p class="text-[#7a7a8e] text-center mb-2 max-w-xl mx-auto">Hear our premium ElevenLabs AI voices. Click any voice to hear it live.</p>
+<p class="text-sm text-[#a855f7] text-center mb-10 font-semibold">34+ voices available — try the top picks</p>
+<div class="grid md:grid-cols-4 gap-4">
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('rachel','Hi, thanks for calling! This is Rachel, your AI assistant. How can I help you today?','rachel')">
+<div class="text-3xl mb-2" id="voice-icon-rachel">🎤</div>
+<div class="font-semibold text-sm">Rachel</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Female · Warm · Most Popular</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-rachel">▶ Click to play</div>
+</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('sam','Hey there! Sam here. I handle incoming calls for your business so you never miss an opportunity.','sam')">
+<div class="text-3xl mb-2" id="voice-icon-sam">🎤</div>
+<div class="font-semibold text-sm">Sam</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Male · Warm · Natural</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-sam">▶ Click to play</div>
+</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('TX3LPaxmHKxFdv7VOQHJ','Hey, Liam here. I handle your calls, qualify leads, and book appointments so you can focus on the work that matters.','liam')">
+<div class="text-3xl mb-2" id="voice-icon-liam">🎤</div>
+<div class="font-semibold text-sm">Liam</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Male · Energetic · New</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-liam">▶ Click to play</div>
+</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('cgSgspJ2msm6clMCkdW9','Hi, this is Jessica! I am your friendly AI receptionist, ready to help your callers with anything they need.','jessica')">
+<div class="text-3xl mb-2" id="voice-icon-jessica">🎤</div>
+<div class="font-semibold text-sm">Jessica</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Female · Playful · New</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-jessica">▶ Click to play</div>
+</div>
+</div>
+</section>
+
+<script>
+var voiceAudio = null;
+function playVoiceSample(v,t,s){
+if(voiceAudio){voiceAudio.pause();voiceAudio=null}
+document.querySelectorAll('[id^=voice-icon-]').forEach(function(e){e.textContent='🎤'});
+document.querySelectorAll('[id^=voice-status-]').forEach(function(e){e.textContent='▶ Click to play'});
+document.getElementById('voice-icon-'+s).textContent='⏳';
+document.getElementById('voice-status-'+s).textContent='🔊 Playing...';
+voiceAudio=new Audio('/api/test-voice?voice_id='+encodeURIComponent(v)+'&text='+encodeURIComponent(t)+'&speed=1.0&t='+Date.now());
+voiceAudio.onended=function(){document.getElementById('voice-icon-'+s).textContent='🎤';document.getElementById('voice-status-'+s).textContent='▶ Click to play';voiceAudio=null};
+voiceAudio.onerror=function(){document.getElementById('voice-icon-'+s).textContent='❌';document.getElementById('voice-status-'+s).textContent='Error';voiceAudio=null};
+voiceAudio.play().catch(function(){document.getElementById('voice-icon-'+s).textContent='❌';document.getElementById('voice-status-'+s).textContent='Failed'});
+}
+</script>
+
 <!-- HOW IT WORKS -->
 <section class="max-w-5xl mx-auto px-6 pb-16">
 <h2 class="text-3xl font-bold text-center mb-12">How It <span class="gradient-text">Works</span></h2>
