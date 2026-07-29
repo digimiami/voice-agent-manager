@@ -24,6 +24,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 # Import Agent API module
 from agent_api import agent_api, init_api_keys_table, generate_api_key, validate_api_key
 from agent_api import api_key_required
+from diazites_prompt import build_diazites_prompt
 
 DB_PATH = "/root/voice-agent-businesses.db"
 
@@ -1907,12 +1908,17 @@ def setup_vapi(bid):
     
     name = biz['name']
     industry = biz['industry'] or 'general'
-    script = biz['script_template'] or f"You are an AI assistant for {name}. Help them book more clients. Keep responses under 30 seconds."
-    kb = biz['knowledge_base'] or f"Industry: {industry}. Business: {name}."
+    script = biz['script_template'] or ''
+    kb = biz['knowledge_base'] or ''
     voice_id = biz['voice_id'] or 'burt'
     max_tokens = int(biz['max_tokens'] or 200) if biz['max_tokens'] else 200
     
-    full_script = f"{script}\n\nKnowledge Base Context:\n{kb}\n\nKeep responses under 30 seconds. If prospect asks for email or calendar, say a team member will handle it."
+    full_script = build_diazites_prompt(
+        business_name=name,
+        industry=industry,
+        script=script,
+        knowledge_base=kb
+    )
     
     import subprocess, json
     result = subprocess.run([
@@ -2726,7 +2732,7 @@ def admin_dashboard():
         tars_result=json.load(open('/dev/shm/tars_result.json'))['result'] if os.path.exists('/dev/shm/tars_result.json') else None,
         tars_status=json.load(open('/dev/shm/tars_status.json')) if os.path.exists('/dev/shm/tars_status.json') else None,
         last_task=session.get('tars_last_task', ''),
-            default_script="You are an AI assistant for {name}. Your goal: book a 10-minute discovery call with the prospect. Speak naturally and professionally.",
+            default_script="Premium AI employee for this business. Uses the Diazites voice framework — sounds like a real human with 10+ years of experience. Edit this to customize behavior.",
             stats={
             'total_businesses': total_businesses,
             'active_campaigns': active_campaigns,

@@ -14,6 +14,7 @@ USAGE:
 
 import json, os, sys, sqlite3, time, random, hashlib
 from datetime import datetime, timedelta
+from diazites_prompt import build_diazites_prompt
 
 DB_PATH = "/root/voice-agent-businesses.db"
 VAPI_API_KEY = "d9486ec8-b862-460b-97ba-64bbb639f234"
@@ -220,14 +221,18 @@ def setup_vapi_assistant(business_id):
     biz_dict = dict(zip([d[0] for d in c.description], biz))
     name = biz_dict['name']
     industry = biz_dict['industry']
-    script = biz_dict['script_template']
-    kb = biz_dict['knowledge_base']
+    script = biz_dict['script_template'] or ''
+    kb = biz_dict['knowledge_base'] or ''
     
     print(f"\n━━━ Setting up VAPI for: {name} ━━━")
     
-    # Read script file
-    script_file = f"{SCRIPTS_DIR}/{business_id}_script.txt"
-    full_script = f"{script}\n\nKnowledge Base Context:\n{kb}\n\nKeep responses under 30 seconds. If prospect asks for email or calendar, say a team member will handle it."
+    # Build Diazites premium prompt
+    full_script = build_diazites_prompt(
+        business_name=name,
+        industry=industry,
+        script=script,
+        knowledge_base=kb
+    )
     
     # Create VAPI assistant
     print("  Creating VAPI assistant...")

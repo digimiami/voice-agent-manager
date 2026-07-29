@@ -15,6 +15,7 @@ import os, sys, json, sqlite3, uuid, hashlib, time, io, csv
 from datetime import datetime, date
 from flask import Flask, Blueprint, jsonify, request, render_template_string
 from functools import wraps
+from diazites_prompt import build_diazites_prompt
 
 DB_PATH = "/root/voice-agent-businesses.db"
 
@@ -1086,8 +1087,8 @@ def api_provision_phone(api_key, bid):
 
     name = biz['name']
     industry = biz['industry'] or 'general'
-    script = biz['script_template'] or f"You are an AI assistant for {name}. Help them book more clients. Keep responses under 30 seconds."
-    kb = biz['knowledge_base'] or f"Industry: {industry}. Business: {name}."
+    script = biz['script_template'] or ''
+    kb = biz['knowledge_base'] or ''
     voice_id = biz['voice_id'] or 'burt'
     voice_speed = float(biz['voice_speed'] or 1.0)
     temperature = float(biz['temperature'] or 0.3)
@@ -1101,7 +1102,12 @@ def api_provision_phone(api_key, bid):
     assistant_id = biz['vapi_assistant_id']
     assistant_created = False
     if not assistant_id:
-        full_script = f"{script}\n\nKnowledge Base Context:\n{kb}\n\nKeep responses under 30 seconds. If prospect asks for email or calendar, say a team member will handle it."
+        full_script = build_diazites_prompt(
+            business_name=name,
+            industry=industry,
+            script=script,
+            knowledge_base=kb
+        )
         body = {
             "name": f"{name} Voice Agent",
             "model": {

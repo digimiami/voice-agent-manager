@@ -28,6 +28,7 @@ from pathlib import Path
 from flask import Flask, render_template_string, jsonify, request, redirect, session, url_for, send_file, flash
 from functools import wraps
 import secrets
+from diazites_prompt import build_diazites_prompt
 from landing_page_route import INDUSTRY_DATA, get_industry_data, FALLBACK_FAQ, FALLBACK_TESTIMONIALS, FALLBACK_FEATURES
 
 DB_PATH = "/root/voice-agent-businesses.db"
@@ -246,63 +247,63 @@ body{background:#08080f;color:#f1f1f5;overflow-x:hidden}
   <div class="max-w-7xl mx-auto">
     <div class="text-center mb-16">
       <span class="text-sm font-semibold text-purple-400 tracking-widest uppercase">Features</span>
-      <h2 class="text-4xl md:text-5xl font-bold mt-4">Everything You Need to<br><span class="gradient-text">Automate Your Calls</span></h2>
-      <p class="text-[#7a7a8e] mt-4 max-w-2xl mx-auto">From answering calls to booking appointments, Diazites handles your entire phone workflow with AI.</p>
+      <h2 class="text-4xl md:text-5xl font-bold mt-4">AI Receptionists for<br><span class="gradient-text">Any Industry</span></h2>
+      <p class="text-[#7a7a8e] mt-4 max-w-3xl mx-auto">Whether you're a small business, growing company, or enterprise, your AI receptionist is trained specifically for your operations.</p>
     </div>
     
     <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
       <!-- Feature 1 -->
       <div class="card-gradient p-6 glow-border">
         <div class="feature-icon bg-gradient-to-br from-purple-500/20 to-purple-500/5 mb-4">
-          <span class="text-2xl">🤖</span>
+          <span class="text-2xl">🏢</span>
         </div>
-        <h3 class="font-bold text-lg mb-2">AI Voice Agent</h3>
-        <p class="text-sm text-[#7a7a8e] leading-relaxed">Human-like AI that answers calls 24/7. Handles conversations naturally, takes messages, and qualifies leads.</p>
+        <h3 class="font-bold text-lg mb-2">Customized for Your Business</h3>
+        <p class="text-sm text-[#7a7a8e] leading-relaxed">Your AI receptionist is trained on your services, pricing, FAQs, policies, and workflows—so every caller gets accurate, professional answers.</p>
       </div>
       
       <!-- Feature 2 -->
       <div class="card-gradient p-6 glow-border">
         <div class="feature-icon bg-gradient-to-br from-pink-500/20 to-pink-500/5 mb-4">
-          <span class="text-2xl">📅</span>
+          <span class="text-2xl">📞</span>
         </div>
-        <h3 class="font-bold text-lg mb-2">Auto Appointment Booking</h3>
-        <p class="text-sm text-[#7a7a8e] leading-relaxed">AI detects when someone wants to book and automatically schedules appointments. Calendar invites sent instantly.</p>
+        <h3 class="font-bold text-lg mb-2">Never Miss Another Call</h3>
+        <p class="text-sm text-[#7a7a8e] leading-relaxed">Answer every call 24/7, qualify leads, schedule appointments, transfer urgent calls, and capture every opportunity.</p>
       </div>
       
       <!-- Feature 3 -->
       <div class="card-gradient p-6 glow-border">
         <div class="feature-icon bg-gradient-to-br from-cyan-500/20 to-cyan-500/5 mb-4">
-          <span class="text-2xl">🌍</span>
+          <span class="text-2xl">📅</span>
         </div>
-        <h3 class="font-bold text-lg mb-2">Multi-Language Support</h3>
-        <p class="text-sm text-[#7a7a8e] leading-relaxed">Automatically detects and responds in 17+ languages. Callers can speak Spanish, French, Portuguese, and more.</p>
+        <h3 class="font-bold text-lg mb-2">Smart Scheduling</h3>
+        <p class="text-sm text-[#7a7a8e] leading-relaxed">Connect with your calendar to book appointments, meetings, consultations, demos, estimates, or service calls automatically.</p>
       </div>
       
       <!-- Feature 4 -->
       <div class="card-gradient p-6 glow-border">
         <div class="feature-icon bg-gradient-to-br from-green-500/20 to-green-500/5 mb-4">
-          <span class="text-2xl">📞</span>
+          <span class="text-2xl">💬</span>
         </div>
-        <h3 class="font-bold text-lg mb-2">Outbound Calling</h3>
-        <p class="text-sm text-[#7a7a8e] leading-relaxed">Import leads and let the AI call them automatically. Perfect for follow-ups, appointment reminders, and campaigns.</p>
+        <h3 class="font-bold text-lg mb-2">Instant Customer Support</h3>
+        <p class="text-sm text-[#7a7a8e] leading-relaxed">Answer common questions, provide updates, collect information, and route customers to the right department.</p>
       </div>
       
       <!-- Feature 5 -->
       <div class="card-gradient p-6 glow-border">
         <div class="feature-icon bg-gradient-to-br from-amber-500/20 to-amber-500/5 mb-4">
-          <span class="text-2xl">📊</span>
+          <span class="text-2xl">🚀</span>
         </div>
-        <h3 class="font-bold text-lg mb-2">Analytics Dashboard</h3>
-        <p class="text-sm text-[#7a7a8e] leading-relaxed">Track every call, see transcripts, monitor costs, and view appointment bookings in real time.</p>
+        <h3 class="font-bold text-lg mb-2">Lead Qualification & Sales</h3>
+        <p class="text-sm text-[#7a7a8e] leading-relaxed">Qualify prospects, collect contact information, answer objections, and move leads through your sales process automatically.</p>
       </div>
       
       <!-- Feature 6 -->
       <div class="card-gradient p-6 glow-border">
         <div class="feature-icon bg-gradient-to-br from-red-500/20 to-red-500/5 mb-4">
-          <span class="text-2xl">🔔</span>
+          <span class="text-2xl">⚙️</span>
         </div>
-        <h3 class="font-bold text-lg mb-2">Smart Follow-ups</h3>
-        <p class="text-sm text-[#7a7a8e] leading-relaxed">Schedule follow-up calls automatically. Set date/time for each lead. Notes and knowledge base for every interaction.</p>
+        <h3 class="font-bold text-lg mb-2">Built Around Your Workflow</h3>
+        <p class="text-sm text-[#7a7a8e] leading-relaxed">Every AI receptionist is customized for your business processes, CRM, scheduling software, and communication tools.</p>
       </div>
     </div>
   </div>
@@ -725,12 +726,15 @@ function submitSignup(e) {
 </html>"""
 
 LANDING_PAGE = """<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Diazites — AI Voice Agents for Local Businesses</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>@import url('https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap');
 *{font-family:'Inter',sans-serif;margin:0;padding:0;box-sizing:border-box}
-body{background:#0a0a0f;color:#f1f1f5;overflow-x:hidden}
+html{scroll-behavior:smooth}
+body{background:#0a0a0f;color:#f1f1f5;overflow-x:hidden;width:100%;max-width:100vw;-webkit-overflow-scrolling:touch;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+:root{--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);--safe-left:env(safe-area-inset-left,0px);--safe-right:env(safe-area-inset-right,0px)}
+section{overflow-x:hidden}nav{overflow-x:hidden}
 .gradient-text{background:linear-gradient(135deg,#c084fc,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .gradient-bg{background:linear-gradient(135deg,#a855f7,#ec4899)}
 .btn-primary{background:linear-gradient(135deg,#a855f7,#ec4899);color:white;padding:12px 28px;border-radius:10px;font-weight:600;border:none;cursor:pointer;transition:opacity .2s,transform .2s;display:inline-block}
@@ -740,7 +744,6 @@ body{background:#0a0a0f;color:#f1f1f5;overflow-x:hidden}
 .card{background:#12121a;border:1px solid #252533;border-radius:16px;padding:24px;transition:transform .2s,border-color .2s}
 .card:hover{transform:translateY(-2px);border-color:#a855f744}
 .glass{background:rgba(18,18,26,.7);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
-html{scroll-behavior:smooth}
 /* Audio player styles */
 .audio-card{background:#12121a;border:1px solid #252533;border-radius:16px;padding:20px;transition:all .3s}
 .audio-card:hover{border-color:#ec489966;transform:translateY(-2px)}
@@ -764,9 +767,27 @@ html{scroll-behavior:smooth}
 /* Step connector line */
 .step-line{position:absolute;top:40px;left:50%;width:100%;height:2px;background:linear-gradient(90deg,#a855f744,#ec489944);transform:translateX(0)}
 @media(max-width:768px){.step-line{display:none}}
-/* Mobile sticky CTA */
+/* Mobile nav — hide links, show hamburger */
+@media(max-width:768px){
+  nav .flex.items-center.gap-4{display:none}
+  nav .flex.items-center.gap-4.open{display:flex;flex-direction:column;position:fixed;top:60px;left:0;right:0;background:rgba(10,10,15,.98);border-bottom:1px solid #252533;padding:20px 16px;gap:12px;z-index:100;align-items:stretch}
+  nav .flex.items-center.gap-4.open a{text-align:center;padding:10px;border-radius:10px}
+  nav .flex.items-center.gap-4.open a:hover{background:rgba(168,85,247,.1)}
+}
+/* Mobile optimizations */
 .mobile-cta-bar{position:fixed;bottom:0;left:0;right:0;z-index:999;background:rgba(10,10,15,.95);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-top:1px solid #252533;padding:10px 16px;display:none;gap:8px}
 @media(max-width:768px){.mobile-cta-bar{display:flex}.mobile-cta-bar a{flex:1;text-align:center;font-size:13px;padding:10px 8px;border-radius:10px;font-weight:600;text-decoration:none}}
+/* Mobile fine-tuning */
+@media(max-width:768px){
+  .max-w-5xl,.max-w-6xl,.max-w-3xl,.max-w-7xl{padding-left:16px !important;padding-right:16px !important}
+  .text-5xl.md\\:text-6xl{font-size:2rem !important;line-height:1.15 !important}
+  h1 .gradient-text{display:inline-block}
+  .flex.items-center.justify-center.gap-6{flex-direction:column;gap:8px !important;align-items:center}
+  .card,.audio-card{padding:16px !important}
+  .py-24{padding-top:48px !important;padding-bottom:48px !important}
+  .grid.md\\:grid-cols-3.gap-5{gap:12px !important}
+  .grid.md\\:grid-cols-4.gap-4{gap:8px !important}
+}
 </style>
 
 <!-- NAV -->
@@ -775,7 +796,7 @@ html{scroll-behavior:smooth}
 <div class="text-2xl">🎙️</div>
 <span class="text-lg font-bold gradient-text">Diazites</span>
 </div>
-<div class="flex items-center gap-4">
+<div class="flex items-center gap-4" id="nav-links">
 <a href="#demos" class="text-sm text-[#7a7a8e] hover:text-[#c084fc]">Live Demos</a>
 <a href="#features" class="text-sm text-[#7a7a8e] hover:text-[#c084fc]">Features</a>
 <a href="#industries" class="text-sm text-[#7a7a8e] hover:text-[#c084fc]">Industries</a>
@@ -783,6 +804,8 @@ html{scroll-behavior:smooth}
 <a href="/signup" class="btn-outline text-sm px-4 py-2">Sign Up</a>
 <a href="/login" class="btn-primary text-sm px-5 py-2">Login</a>
 </div>
+<button onclick="document.getElementById('nav-links').classList.toggle('open');this.innerHTML=this.innerHTML=='☰'?'✕':'☰'" class="md:hidden text-2xl text-[#c084fc] bg-transparent border-none cursor-pointer" style="display:none">☰</button>
+<script>if(window.innerWidth<768)document.querySelector('button').style.display='block'</script>
 </nav>
 
 <!-- HERO -->
@@ -798,7 +821,7 @@ Diazites AI voice agents answer calls <strong class="text-[#f1f1f5]">24/7</stron
 </p>
 <div class="flex items-center justify-center gap-4 flex-wrap mb-6">
 <a href="#demos" class="btn-primary text-base px-8 py-3 flex items-center gap-2">🎧 Hear My AI Agent</a>
-<a href="/login" class="btn-outline text-base px-8 py-3">📅 Book a Demo</a>
+<a href="/login" onclick="if(window.innerWidth<768){event.preventDefault();document.getElementById('signup-form').scrollIntoView({behavior:'smooth'})}" class="btn-outline text-base px-8 py-3">📅 Book a Demo</a>
 </div>
 <div class="flex items-center justify-center gap-6 text-sm text-[#5c5c70]">
   <span class="flex items-center gap-1.5"><span class="text-green-400">✓</span> No setup fees</span>
@@ -885,33 +908,57 @@ Diazites AI voice agents answer calls <strong class="text-[#f1f1f5]">24/7</stron
 
 <!-- PREMIUM VOICE SAMPLES -->
 <section class="max-w-5xl mx-auto px-6 pb-16">
-<h2 class="text-3xl font-bold text-center mb-2">🎙️ Choose Your <span class="gradient-text">Voice</span></h2>
-<p class="text-[#7a7a8e] text-center mb-2 max-w-xl mx-auto">Hear our premium ElevenLabs AI voices. Click any voice to hear it live.</p>
-<p class="text-sm text-[#a855f7] text-center mb-10 font-semibold">34+ voices available — try the top picks</p>
+<h2 class="text-3xl font-bold text-center mb-2">🎙️ Premium <span class="gradient-text">AI Voices</span></h2>
+<p class="text-[#7a7a8e] text-center mb-2 max-w-xl mx-auto">Our AI receptionists sound indistinguishable from real humans. Click any voice to hear it live.</p>
+<p class="text-sm text-[#a855f7] text-center mb-10 font-semibold">34+ premium ElevenLabs voices — try the top picks</p>
 <div class="grid md:grid-cols-4 gap-4">
-<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('rachel','Hi, this is Rachel. I answer your calls 24/7.','rachel')">
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('rachel','Hi there! This is Rachel from Diazites. How can I help you today?','rachel')">
 <div class="text-3xl mb-2" id="voice-icon-rachel">🎤</div>
 <div class="font-semibold text-sm">Rachel</div>
 <div class="text-[10px] text-[#7a7a8e] mb-2">Female · Warm · Most Popular</div>
 <div class="text-xs text-[#c084fc]" id="voice-status-rachel">▶ Click to play</div>
 </div>
-<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('sam','Hey, this is Sam. I handle your calls professionally.','sam')">
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('sam','Hey, this is Sam. I handle your calls professionally and make sure every customer feels heard.','sam')">
 <div class="text-3xl mb-2" id="voice-icon-sam">🎤</div>
 <div class="font-semibold text-sm">Sam</div>
 <div class="text-[10px] text-[#7a7a8e] mb-2">Male · Warm · Natural</div>
 <div class="text-xs text-[#c084fc]" id="voice-status-sam">▶ Click to play</div>
 </div>
-<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('TX3LPaxmHKxFdv7VOQHJ','Hi, this is Liam. I qualify leads and book appointments.','liam')">
-<div class="text-3xl mb-2" id="voice-icon-liam">🎤</div>
-<div class="font-semibold text-sm">Liam</div>
-<div class="text-[10px] text-[#7a7a8e] mb-2">Male · Energetic · New</div>
-<div class="text-xs text-[#c084fc]" id="voice-status-liam">▶ Click to play</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('bella','Hello, this is Bella. I am your dedicated AI receptionist, ready to help your callers.','bella')">
+<div class="text-3xl mb-2" id="voice-icon-bella">🎤</div>
+<div class="font-semibold text-sm">Bella</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Female · Melodic · Premium</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-bella">▶ Click to play</div>
 </div>
-<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('cgSgspJ2msm6clMCkdW9','Hi, I am Jessica. Your friendly AI receptionist.','jessica')">
-<div class="text-3xl mb-2" id="voice-icon-jessica">🎤</div>
-<div class="font-semibold text-sm">Jessica</div>
-<div class="text-[10px] text-[#7a7a8e] mb-2">Female · Playful · New</div>
-<div class="text-xs text-[#c084fc]" id="voice-status-jessica">▶ Click to play</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('josh','Hi, this is Josh. I pre-qualify leads and book appointments so your team can focus on closing.','josh')">
+<div class="text-3xl mb-2" id="voice-icon-josh">🎤</div>
+<div class="font-semibold text-sm">Josh</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Male · Deep · Professional</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-josh">▶ Click to play</div>
+</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('emma','Hi, I am Emma. Welcome to Diazites. I answer calls and help customers just like a real receptionist.','emma')">
+<div class="text-3xl mb-2" id="voice-icon-emma">🎤</div>
+<div class="font-semibold text-sm">Emma</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Female · Friendly · Premium</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-emma">▶ Click to play</div>
+</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('arnold','Good day, this is Arnold. I handle incoming calls, qualify your leads, and book appointments automatically.','arnold')">
+<div class="text-3xl mb-2" id="voice-icon-arnold">🎤</div>
+<div class="font-semibold text-sm">Arnold</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Male · Authoritative · Premium</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-arnold">▶ Click to play</div>
+</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('patrick','Hey there! I am Patrick, your AI receptionist. I answer calls around the clock so you never miss a lead.','patrick')">
+<div class="text-3xl mb-2" id="voice-icon-patrick">🎤</div>
+<div class="font-semibold text-sm">Patrick</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Male · Professional · Premium</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-patrick">▶ Click to play</div>
+</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('domi','Hi, I am Domi. I make sure every caller gets a warm, professional greeting and the help they need.','domi')">
+<div class="text-3xl mb-2" id="voice-icon-domi">🎤</div>
+<div class="font-semibold text-sm">Domi</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Female · Friendly · Premium</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-domi">▶ Click to play</div>
 </div>
 </div>
 </section>
@@ -1056,6 +1103,44 @@ p.play().then(function(){document.getElementById('voice-status-'+s).textContent=
 <div class="text-3xl flex-shrink-0">🚗</div>
 <div><h4 class="font-bold text-base">AI Receptionist For Auto Shops</h4>
 <p class="text-xs text-[#7a7a8e] mt-0.5">Book service appointments overnight. Answer customer questions about pricing, availability, and estimated times.</p></div>
+</div>
+</div>
+</section>
+
+<!-- AI RECEPTIONISTS FOR ANY INDUSTRY -->
+<section class="max-w-5xl mx-auto px-6 pb-16">
+<h2 class="text-3xl font-bold text-center mb-3">AI Receptionists for <span class="gradient-text">Any Industry</span></h2>
+<p class="text-[#7a7a8e] text-center text-sm mb-10 max-w-2xl mx-auto">Whether you're a small business, growing company, or enterprise, your AI receptionist is trained specifically for your operations.</p>
+<div class="grid md:grid-cols-3 gap-5">
+<div class="card p-5 text-center">
+<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/20 to-purple-500/5 flex items-center justify-center mx-auto mb-4 text-2xl">🏢</div>
+<h3 class="font-semibold mb-1">Customized for Your Business</h3>
+<p class="text-sm text-[#7a7a8e]">Your AI receptionist is trained on your services, pricing, FAQs, policies, and workflows—so every caller gets accurate, professional answers.</p>
+</div>
+<div class="card p-5 text-center">
+<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-500/20 to-pink-500/5 flex items-center justify-center mx-auto mb-4 text-2xl">📞</div>
+<h3 class="font-semibold mb-1">Never Miss Another Call</h3>
+<p class="text-sm text-[#7a7a8e]">Answer every call 24/7, qualify leads, schedule appointments, transfer urgent calls, and capture every opportunity.</p>
+</div>
+<div class="card p-5 text-center">
+<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-500/5 flex items-center justify-center mx-auto mb-4 text-2xl">📅</div>
+<h3 class="font-semibold mb-1">Smart Scheduling</h3>
+<p class="text-sm text-[#7a7a8e]">Connect with your calendar to book appointments, meetings, consultations, demos, estimates, or service calls automatically.</p>
+</div>
+<div class="card p-5 text-center">
+<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 flex items-center justify-center mx-auto mb-4 text-2xl">💬</div>
+<h3 class="font-semibold mb-1">Instant Customer Support</h3>
+<p class="text-sm text-[#7a7a8e]">Answer common questions, provide updates, collect information, and route customers to the right department.</p>
+</div>
+<div class="card p-5 text-center">
+<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500/20 to-green-500/5 flex items-center justify-center mx-auto mb-4 text-2xl">🚀</div>
+<h3 class="font-semibold mb-1">Lead Qualification & Sales</h3>
+<p class="text-sm text-[#7a7a8e]">Qualify prospects, collect contact information, answer objections, and move leads through your sales process automatically.</p>
+</div>
+<div class="card p-5 text-center">
+<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500/20 to-red-500/5 flex items-center justify-center mx-auto mb-4 text-2xl">⚙️</div>
+<h3 class="font-semibold mb-1">Built Around Your Workflow</h3>
+<p class="text-sm text-[#7a7a8e]">Every AI receptionist is customized for your business processes, CRM, scheduling software, and communication tools.</p>
 </div>
 </div>
 </section>
@@ -4978,11 +5063,13 @@ def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
         # Include system prompt and knowledge base in call overrides
         script = biz['script_template'] if biz and biz['script_template'] else ''
         kb = biz['knowledge_base'] if biz and biz['knowledge_base'] else ''
+        biz_name = biz.get('name') or ''
+        biz_industry = biz.get('industry') or 'general'
         
         # Fetch the assistant's actual model config to match provider/model
         try:
             r_model = subprocess.run(["curl","-s",f"{VAPI_BASE}/assistant/{assistant_id}",
-                "-H",f"Authorization: Bearer {VAPI_API_KEY}"], capture_output=True, text=True, timeout=10)
+                "-H",f"Authorization: Bearer ***"], capture_output=True, text=True, timeout=10)
             asst_data = json.loads(r_model.stdout)
             model_config = asst_data.get('model', {})
             model_provider = model_config.get('provider', 'xai')
@@ -4993,16 +5080,12 @@ def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
         
         agent_prompt = biz.get('agent_prompt') or ''
         if agent_prompt or script or kb:
-            full_prompt = ''
-            if agent_prompt:
-                full_prompt += agent_prompt
-            if script:
-                if full_prompt:
-                    full_prompt += f"\n\n--- BUSINESS SCRIPT ---\n{script}"
-                else:
-                    full_prompt = script
-            if kb:
-                full_prompt += f"\n\n--- KNOWLEDGE BASE ---\n{kb}"
+            full_prompt = build_diazites_prompt(
+                business_name=biz_name,
+                industry=biz_industry,
+                script=agent_prompt or script,
+                knowledge_base=kb
+            )
             payload["assistantOverrides"]["model"] = {
                 "maxTokens": max_tokens if max_tokens else 200,
                 "provider": model_provider,
@@ -5842,24 +5925,34 @@ def update_agent_prompt():
     db.commit()
     
     # Also update Vapi assistant system prompt with new agent prompt
-    c.execute("SELECT vapi_assistant_id, script_template, knowledge_base, agent_prompt FROM businesses WHERE id = ?", (bid,))
+    c.execute("SELECT vapi_assistant_id, name, industry, script_template, knowledge_base, agent_prompt FROM businesses WHERE id = ?", (bid,))
     biz = c.fetchone()
     if biz and biz['vapi_assistant_id']:
+        name = biz['name'] or ''
+        industry = biz['industry'] or 'general'
         agent_prompt = biz['agent_prompt'] or ''
         script = biz['script_template'] or ''
         kb = biz['knowledge_base'] or ''
-        full_prompt = ''
-        if agent_prompt:
-            full_prompt += agent_prompt
-        if script:
-            if full_prompt:
-                full_prompt += f"\n\n--- BUSINESS SCRIPT ---\n{script}"
-            else:
-                full_prompt = script
-        if kb:
-            full_prompt += f"\n\n--- KNOWLEDGE BASE ---\n{kb}"
+        
+        if agent_prompt.strip():
+            # Custom agent prompt — wrap it in Diazites framework
+            full_prompt = build_diazites_prompt(
+                business_name=name,
+                industry=industry,
+                script=agent_prompt,
+                knowledge_base=kb
+            )
+        else:
+            # Use Diazites framework with business settings
+            full_prompt = build_diazites_prompt(
+                business_name=name,
+                industry=industry,
+                script=script,
+                knowledge_base=kb
+            )
+        
         subprocess.run(["curl","-s","-X","PATCH",f"{VAPI_BASE}/assistant/{biz['vapi_assistant_id']}",
-            "-H",f"Authorization: Bearer {VAPI_API_KEY}",
+            "-H",f"Authorization: Bearer ***",
             "-H","Content-Type: application/json",
             "-d",json.dumps({
                 "model": {"provider": "xai", "model": "grok-4.3", "systemPrompt": full_prompt}
@@ -6025,10 +6118,12 @@ def update_settings():
     db.commit()
     
     # Also update VAPI assistant settings if one exists
-    c.execute("SELECT vapi_assistant_id, voice_id, voice_speed, language, script_template, knowledge_base FROM businesses WHERE id = ?", (bid,))
+    c.execute("SELECT vapi_assistant_id, name, industry, voice_id, voice_speed, language, script_template, knowledge_base FROM businesses WHERE id = ?", (bid,))
     biz = c.fetchone()
     if biz and biz['vapi_assistant_id']:
         import json
+        name = biz['name'] or ''
+        industry = biz['industry'] or 'general'
         voice_id = biz['voice_id'] or 'rachel'
         voice_speed = float(biz['voice_speed'] or 1.15)
         language = biz['language'] or 'en'
@@ -6037,7 +6132,12 @@ def update_settings():
         temp = float(request.form.get('temperature',0.3))
         silence = int(request.form.get('silence_timeout',10))
         
-        full_script = f"{script}\n\nKnowledge Base Context:\n{kb}\n\nKeep responses under 30 seconds."
+        full_script = build_diazites_prompt(
+            business_name=name,
+            industry=industry,
+            script=script,
+            knowledge_base=kb
+        )
         
         subprocess.run(["curl","-s","-X","PATCH",f"{VAPI_BASE}/assistant/{biz['vapi_assistant_id']}",
             "-H",f"Authorization: Bearer {VAPI_API_KEY}",
@@ -6878,20 +6978,22 @@ def stripe_webhook():
     return jsonify({'received': False}), 200
 
 # ── INDUSTRY PRESETS ──
+# These are short business context descriptions used with the Diazites voice framework.
+# The framework handles personality, conversation rules, and tone automatically.
 INDUSTRY_PRESETS = {
-    "plumber": "You are Alex from {business_name} Plumbing. You help local plumbing businesses get more emergency and scheduled service calls.\n\nSPEED RULES:\n- Respond in UNDER 2 SECONDS after customer finishes speaking\n- Keep responses SHORT: 1-3 sentences max\n- Never pause or say \"um\", \"uh\", \"let me think\"\n- Be direct and conversational\n\nINTERRUPTION RULES:\n- If customer interrupts you, STOP TALKING IMMEDIATELY\n- Let them finish, then respond to what they said\n- Never talk over the customer\n- If they sound confused, simplify and repeat\n\nGoal: Book a 10-min discovery call.",
-    "dentist": "You are Sarah from {business_name} Dental. You help dental practices book appointments.\n\nKeep responses short, friendly, and professional. Focus on booking a new patient appointment or cleaning. Handle questions about insurance, hours, and services.\n\nGoal: Schedule a dental appointment.",
-    "hvac": "You are Mike from {business_name} HVAC. You handle emergency and scheduled HVAC service calls.\n\nBe quick and helpful. Assess if it's an emergency, ask about symptoms (no heat, no AC, strange noises), and schedule a service visit.\n\nGoal: Book an HVAC service appointment.",
-    "roofer": "You are Jake from {business_name} Roofing. You help homeowners get roof inspections and repairs.\n\nBe reassuring and professional. Ask about damage type, urgency, and schedule a free inspection.\n\nGoal: Schedule a roof inspection.",
-    "lawyer": "You are Rachel from {business_name} Law. You pre-qualify potential clients.\n\nBe professional and empathetic. Ask about their legal issue type, collect basic info, and schedule a consultation.\n\nGoal: Book a legal consultation.",
-    "real_estate": "You are Chris from {business_name} Real Estate. You help buyers and sellers.\n\nBe enthusiastic and informative. Qualify if they're buying or selling, ask about timeline and budget, schedule a showing or valuation.\n\nGoal: Schedule a property tour or valuation.",
-    "auto_mechanic": "You are Tony from {business_name} Auto Repair. You help schedule vehicle service.\n\nBe friendly and knowledgeable. Ask about the issue, vehicle make/model, and schedule a diagnostic appointment.\n\nGoal: Book a repair appointment.",
-    "cleaning": "You are Lisa from {business_name} Cleaning. You offer residential and commercial cleaning.\n\nBe warm and professional. Ask about property type, size, frequency of service, and schedule a quote.\n\nGoal: Schedule a free cleaning estimate.",
-    "pest_control": "You are Dave from {business_name} Pest Control. You handle pest emergencies.\n\nBe quick and reassuring. Ask about pest type, severity, property type, and schedule a treatment.\n\nGoal: Schedule pest control service.",
-    "landscaper": "You are Green from {business_name} Landscaping. You help with lawn and garden needs.\n\nBe friendly. Ask about property size, type of service needed, and schedule a free estimate.\n\nGoal: Book a landscaping estimate.",
-    "solar": "You are Ray from {business_name} Solar. You help homeowners go solar.\n\nBe informative and enthusiastic. Ask about monthly electric bill, roof age, and schedule a free solar consultation.\n\nGoal: Schedule a solar consultation.",
-    "health_insurance": "You are Sam from {business_name} Health Insurance. You help people find health coverage.\n\nBe helpful and patient. Ask about their needs (individual, family, Medicare), timeline, and schedule a free review.\n\nGoal: Book a health insurance consultation.",
-    "general": "You are an AI assistant for {business_name}. Your goal is to help them book more clients.\n\nKeep responses short and direct. Handle questions about services, pricing, and availability. Always try to book an appointment or call.\n\nGoal: Book a discovery call."
+    "plumber": "We are a 24/7 emergency plumbing company. We handle burst pipes, water heater failures, drain cleaning, and general plumbing repairs. Same-day service available.",
+    "dentist": "We are a dental practice offering cleanings, fillings, crowns, whitening, and emergency dentistry. New patients welcome. Most insurance accepted.",
+    "hvac": "We are an HVAC company handling AC repair, furnace service, heat pump installation, and emergency heating/cooling calls. Serving residential and commercial customers.",
+    "roofer": "We are a roofing company offering roof inspections, repairs, replacements, and storm damage restoration. Free estimates for all services.",
+    "lawyer": "We are a law firm offering consultations for personal injury, family law, criminal defense, and business law. Free initial case review available.",
+    "real_estate": "We are a real estate agency helping buyers find their dream home and sellers get top dollar. We also offer property management and home valuation services.",
+    "auto_mechanic": "We are an auto repair shop offering diagnostics, oil changes, brake repair, engine work, transmission service, and vehicle inspections. All makes and models.",
+    "cleaning": "We offer residential and commercial cleaning services including deep cleaning, move-in/move-out, recurring weekly/biweekly, and office cleaning.",
+    "pest_control": "We are a pest control company handling termites, rodents, roaches, ants, bed bugs, and wildlife removal. Free inspections and same-day service available.",
+    "landscaper": "We offer lawn mowing, landscaping design, tree trimming, mulch installation, irrigation systems, and seasonal yard clean-up services.",
+    "solar": "We help homeowners switch to solar energy with affordable installation, financing options, and full warranty coverage. Free solar consultation and quote.",
+    "health_insurance": "We help individuals, families, and small businesses find affordable health insurance plans including ACA, Medicare, Medicaid, and short-term coverage.",
+    "general": "We offer quality products and services to our local community. Customer satisfaction is our top priority. Call us to learn more about what we offer."
 }
 
 @app.route('/load-preset', methods=['POST'])
@@ -6900,15 +7002,13 @@ def load_preset():
     bid = session['business_id']
     preset = request.form.get('preset_industry', 'general')
     script = INDUSTRY_PRESETS.get(preset, INDUSTRY_PRESETS['general'])
-    name = session.get('biz_name', 'Our Business')
-    script = script.replace('{business_name}', name)
     
     db = get_db()
     c = db.cursor()
     c.execute("UPDATE businesses SET script_template = ?, industry = ? WHERE id = ?",
         (script, preset, bid))
     db.commit()
-    flash(f'✅ {preset.replace("_"," ").title()} preset loaded!', 'success')
+    flash(f'✅ {preset.replace("_"," ").title()} preset loaded! Customize your script in the script editor.', 'success')
     return redirect('/?tab=assistant')
 
 @app.route('/test-call', methods=['POST'])
