@@ -5909,11 +5909,43 @@ def test_voice():
     
     # Map ElevenLabs voice IDs to similar edge-tts voices
     EDGE_VOICE_MAP = {
-        "burt": "en-US-BrianNeural",       # Male, Professional
-        "indy": "en-US-JennyNeural",       # Female, Warm
-        "michael": "en-US-AndrewNeural",   # Male, Deep
-        "emma": "en-US-EmmaNeural",        # Female, Friendly
-        "antoni": "en-US-GuyNeural",       # Male, Calm
+        # Original voices
+        "burt": "en-US-BrianNeural",           # Male, Professional
+        "indy": "en-US-JennyNeural",           # Female, Warm
+        "michael": "en-US-AndrewNeural",       # Male, Deep
+        "emma": "en-US-EmmaNeural",            # Female, Friendly
+        "antoni": "en-US-GuyNeural",           # Male, Calm
+        # Premium voices (mapped to working edge-tts names)
+        "rachel": "en-US-JennyNeural",         # Female, Warm
+        "domi": "en-US-MichelleNeural",        # Female, Friendly
+        "bella": "en-US-AriaNeural",           # Female, Melodic
+        "elli": "en-US-AnaNeural",             # Female, Youthful
+        "josh": "en-US-ChristopherNeural",     # Male, Deep
+        "arnold": "en-US-EricNeural",          # Male, Authoritative
+        "adam": "en-US-RogerNeural",           # Male, Confident
+        "sam": "en-US-GuyNeural",              # Male, Warm
+        "patrick": "en-US-AndrewNeural",       # Male, Professional
+        "clyde": "en-US-RogerNeural",          # Male, Storytelling
+        "alice": "en-US-JennyNeural",          # Female, Friendly
+        # New UUID-based voices
+        "TX3LPaxmHKxFdv7VOQHJ": "en-US-ChristopherNeural",  # Liam → energetic male
+        "onwK4e9ZLuTAKqWW03F9": "en-US-EricNeural",         # Daniel → steady male
+        "bIHbv24MWmeRgasZH58o": "en-US-AndrewNeural",       # Will → relaxed male
+        "iP95p4xoKVk53GoZ742B": "en-US-RogerNeural",        # Chris → charming male
+        "cjVigY5qzO86Huf0OWal": "en-US-GuyNeural",          # Eric → smooth male
+        "cgSgspJ2msm6clMCkdW9": "en-US-AriaNeural",         # Jessica → playful female
+        "XrExE9yKIg1WjnnlVkGX": "en-US-MichelleNeural",     # Matilda → professional female
+        "pFZP5JQG7iQjIQuC4Bku": "en-US-AnaNeural",          # Lily → velvety female
+        "CwhRBWXzGAHq8TQ4Fs17": "en-US-EricNeural",         # Roger → laid-back male
+        "EXAVITQu4vr4xnSDxMaL": "en-US-JennyNeural",        # Sarah → reassuring female
+        "IKne3meq5aSn9XLyUdCD": "en-US-AndrewNeural",       # Charlie → deep male
+        "JBFqnCBsd6RMkjVDRZzb": "en-US-EricNeural",         # George → captivating male
+        "SAz9YHcvj6GT2YYXdXww": "en-US-RogerNeural",        # River → neutral
+        "N2lVS1w4EtoT3dr4eOWO": "en-US-ChristopherNeural",  # Callum → husky male
+        "SOYHLrjzK2X1ezoPC6cr": "en-US-EricNeural",         # Harry → fierce male
+        "nPczCjzI2devNBz1zQrb": "en-US-RogerNeural",        # Brian → resonant male
+        "pqHfZKP75CvOlQylNhV4": "en-US-BrianNeural",        # Bill → wise male
+        "FGY2WhTYpPnrIDTdsKH5": "en-US-AriaNeural",          # Laura → enthusiast female
     }
     
     edge_voice = EDGE_VOICE_MAP.get(voice_id, "en-US-BrianNeural")
