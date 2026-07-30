@@ -5955,12 +5955,105 @@ def import_leads():
 @login_required
 def update_script():
     bid = session['business_id']
+    script = request.form.get('script', '')
+    kb = request.form.get('knowledge_base', '')
+    first_message = request.form.get('first_message', '')
+    first_message_mode = request.form.get('first_message_mode', 'assistant-speaks-first')
+    voice_provider = request.form.get('voice_provider', 'elevenlabs')
+    
     db = get_db()
     c = db.cursor()
-    c.execute("UPDATE businesses SET script_template = ?, knowledge_base = ? WHERE id = ?",
-        (request.form.get('script',''), request.form.get('knowledge_base',''), bid))
+    c.execute("""UPDATE businesses 
+                 SET script_template = ?, knowledge_base = ?, 
+                     first_message = ?, first_message_mode = ?, voice_provider = ?
+                 WHERE id = ?""",
+        (script, kb, first_message, first_message_mode, voice_provider, bid))
     db.commit()
-    flash('✅ Script updated!', 'success')
+    
+    # ── Sync to Vapi assistant ──
+    c.execute("""SELECT vapi_assistant_id, name, industry, script_template, 
+                 knowledge_base, agent_prompt, first_message, first_message_mode,
+                 voice_id, voice_speed, voice_provider
+                 FROM businesses WHERE id = ?""", (bid,))
+    biz = c.fetchone()
+    db.close()
+    
+    if biz and biz['vapi_assistant_id']:
+        name = biz['name'] or ''
+        industry = biz['industry'] or 'general'
+        agent_prompt = biz['agent_prompt'] or ''
+        saved_script = biz['script_template'] or ''
+        saved_kb = biz['knowledge_base'] or ''
+        first_msg = biz['first_message'] or ''
+        
+        # Build the full system prompt
+        if agent_prompt.strip():
+            full_prompt = build_diazites_prompt(
+                business_name=name, industry=industry,
+                script=agent_prompt, knowledge_base=saved_kb
+            )
+        else:
+            full_prompt = build_diazites_prompt(
+                business_name=name, industry=industry,
+                script=saved_script, knowledge_base=saved_kb
+            )
+        
+        # Build Vapi assistant update payload
+        vapi_payload = {
+            "model": {
+                "provider": "xai",
+                "model": "grok-4.3",
+                "systemPrompt": full_prompt
+            }
+        }
+        
+        # Add first message settings if set
+        if first_msg:
+            vapi_payload["firstMessage"] = first_msg
+            vapi_payload["firstMessageMode"] = first_message_mode
+        
+        # Add voice provider mapping
+        vp = biz['voice_provider'] or '11labs'
+        voice_id = biz['voice_id'] or 'rachel'
+        speed = float(biz['voice_speed'] or 1.15)
+        if vp == '11labs':
+            vapi_payload["voice"] = {
+                "provider": "11labs",
+                "voiceId": voice_id,
+                "speed": speed,
+                "stability": 0.5,
+                "similarityBoost": 0.7
+            }
+        elif vp == 'vapi':
+            vapi_payload["voice"] = {
+                "provider": "vapi",
+                "voiceId": voice_id,
+                "speed": speed
+            }
+        elif vp == 'azure':
+            vapi_payload["voice"] = {
+                "provider": "azure",
+                "voiceId": voice_id,
+                "speed": speed
+            }
+        
+        r = subprocess.run(["curl","-s","-X","PATCH",f"{VAPI_BASE}/assistant/{biz['vapi_assistant_id']}",
+            "-H",f"Authorization: Bearer {VAPI_API_KEY}",
+            "-H","Content-Type: application/json",
+            "-d",json.dumps(vapi_payload)],
+            capture_output=True, text=True, timeout=15)
+        
+        try:
+            result = json.loads(r.stdout)
+            if 'error' not in result and 'statusCode' not in result:
+                flash('✅ Script, KB & Vapi settings synced!', 'success')
+            else:
+                flash(f"✅ Saved locally. Vapi sync: {result.get('message','check settings')}", 'warning')
+        except:
+            flash('✅ Script & KB saved locally. Vapi sync attempted.', 'success')
+    else:
+        flash('✅ Script saved! Set up a Vapi assistant to sync to voice agent.', 'success')
+    
     return redirect('/?tab=settings')
 
 @app.route('/update-agent-prompt', methods=['POST'])
