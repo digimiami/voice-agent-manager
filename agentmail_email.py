@@ -96,7 +96,9 @@ def send_agentmail(to, subject, text, html=None, attachments=None):
 
 def send_appointment_confirmation(to, prospect_name, business_name, 
                                    appointment_time, business_phone="",
-                                   duration_min=30, cc=None):
+                                   duration_min=30, cc=None,
+                                   cal_username="pablo-d-i2xmhr",
+                                   cal_event_slug="30min"):
     """Send appointment confirmation email with .ics calendar invite."""
     
     # Parse appointment time for display
@@ -111,6 +113,20 @@ def send_appointment_confirmation(to, prospect_name, business_name,
     # Generate .ics attachment
     ics_content = generate_ics(appointment_time, business_name, prospect_name, duration_min)
     ics_b64 = base64.b64encode(ics_content.encode()).decode()
+
+    # Generate Google Calendar link
+    try:
+        gcal_dt = datetime.fromisoformat(appointment_time.replace('Z', '+00:00'))
+        gcal_end = gcal_dt + timedelta(minutes=duration_min)
+        gcal_text = f"Appointment with {business_name}".replace(' ', '+')
+        gcal_dates = f"{gcal_dt.strftime('%Y%m%dT%H%M%S')}/{gcal_end.strftime('%Y%m%dT%H%M%S')}"
+        gcal_details = f"Appointment+with+{business_name.replace(' ', '+')}%0AProspect:+{prospect_name.replace(' ', '+')}%0ADuration:+{duration_min}+minutes"
+        gcal_link = f"https://www.google.com/calendar/render?action=TEMPLATE&text={gcal_text}&dates={gcal_dates}&details={gcal_details}"
+    except:
+        gcal_link = ""
+    
+    # Cal.com booking link for rescheduling
+    calcom_link = f"https://cal.com/{cal_username}/{cal_event_slug}"
     
     attachments = [{
         "filename": f"appointment_{business_name.replace(' ', '_')}.ics",
@@ -157,11 +173,24 @@ Your appointment with <strong>{business_name}</strong> has been confirmed. Here 
 </td></tr>
 </table>
 
-<!-- Calendar Button -->
+<!-- Calendar Buttons -->
 <table width="100%" cellpadding="0" cellspacing="0">
+<tr><td align="center" style="padding-bottom:16px">
+<table cellpadding="0" cellspacing="0">
+<tr>
+<td align="center" style="border-radius:8px;background:#7c3aed;padding:12px 24px">
+<a href="{gcal_link}" target="_blank" style="color:#fff;text-decoration:none;font-size:14px;font-weight:600;display:inline-block">📅 Add to Google Calendar</a>
+</td>
+<td style="width:12px"></td>
+<td align="center" style="border-radius:8px;border:2px solid #7c3aed;padding:10px 22px">
+<a href="{calcom_link}" target="_blank" style="color:#7c3aed;text-decoration:none;font-size:14px;font-weight:600;display:inline-block">🔄 Reschedule</a>
+</td>
+</tr>
+</table>
+</td></tr>
 <tr><td align="center" style="padding-bottom:20px">
-<p style="color:#6b7280;font-size:13px;margin:0 0 8px">
-📎 A calendar invite (.ics) is attached to this email — click to add to your calendar
+<p style="color:#6b7280;font-size:12px;margin:0">
+📎 A calendar invite (.ics) is also attached — open to add to Apple/Outlook calendar
 </p>
 </td></tr>
 </table>
@@ -204,9 +233,13 @@ Your appointment with {business_name} has been confirmed.
 {f"📱 Contact: {business_phone}" if business_phone else ""}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-A calendar invite (.ics) is included as an attachment — open it to add to your calendar.
+Add to your calendar:
+📅 Google: {gcal_link}
+🔄 Reschedule: {calcom_link}
 
-Need to reschedule? Reply to this email or call us.
+A calendar invite (.ics) is also attached — open to add to Apple/Outlook.
+
+Need to reschedule? Use the link above or reply to this email.
 
 Best regards,
 {business_name} Team

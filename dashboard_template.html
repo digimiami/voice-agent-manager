@@ -235,6 +235,7 @@ document.querySelectorAll(".sidebar a").forEach(function(a) {
     <a href="/?tab=landing" class="nav-item {% if tab == 'landing' %}active{% endif %}"><span>🌐</span> Landing Page</a>
     <a href="/?tab=calendar" class="nav-item {% if tab == 'calendar' %}active{% endif %}"><span>📅</span> Calendar</a>
     <a href="/?tab=billing" class="nav-item {% if tab == 'billing' %}active{% endif %}"><span>💳</span> Billing</a>
+    <a href="/?tab=api-keys" class="nav-item {% if tab == 'api-keys' %}active{% endif %}"><span>🔑</span> API</a>
   </nav>
   
   <div class="absolute bottom-4 left-4 right-4">
@@ -259,6 +260,7 @@ document.querySelectorAll(".sidebar a").forEach(function(a) {
         {% elif tab == 'landing' %}🌐 Landing Page
         {% elif tab == 'calendar' %}📅 Calendar
         {% elif tab == 'billing' %}💳 Billing
+        {% elif tab == 'api-keys' %}🔑 API Keys
         {% endif %}
       </h1>
     </div>
@@ -1861,6 +1863,247 @@ setTimeout(refreshMonitor, 500);
     .catch(function() { alert('Network error'); });
   }
   </script>
+  
+  {% elif tab == 'api-keys' %}
+  <!-- API Keys Tab -->
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+      <div>
+        <p class="text-sm text-[#7a7a8e]">Generate API keys for AI agents to access your Diazites account programmatically.</p>
+      </div>
+      <button onclick="toggleNewKeyForm()" class="btn-primary text-sm px-5 py-2.5 flex items-center gap-2" style="white-space:nowrap">
+        <span>+</span> Generate New Key
+      </button>
+    </div>
+
+    <!-- Generate Key Form (hidden by default) -->
+    <div id="newKeyForm" class="hidden" style="background:rgba(18,18,26,0.5);border:1px solid rgba(37,37,51,0.5);border-radius:12px;padding:20px">
+      <h3 class="font-semibold mb-4">🔑 Generate New API Key</h3>
+      <div class="grid sm:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="text-xs text-[#7a7a8e] block mb-1">Key Name *</label>
+          <input type="text" id="newKeyName" class="form-input text-sm" placeholder="e.g. My AI Agent" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5">
+        </div>
+        <div>
+          <label class="text-xs text-[#7a7a8e] block mb-1">Description (optional)</label>
+          <input type="text" id="newKeyDesc" class="form-input text-sm" placeholder="e.g. For my auto-responder bot" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5">
+        </div>
+      </div>
+      <div class="flex gap-3">
+        <button onclick="generateApiKey()" class="btn-primary text-sm px-6 py-2.5">Generate Key</button>
+        <button onclick="toggleNewKeyForm()" class="text-sm px-4 py-2.5" style="color:#7a7a8e">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Key Generated Success Message -->
+    <div id="keyGeneratedMessage" class="hidden" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:12px;padding:20px">
+      <div class="flex items-start gap-3">
+        <span class="text-2xl">🔑</span>
+        <div class="flex-1">
+          <h3 class="font-semibold text-green-400 mb-1">API Key Generated!</h3>
+          <p class="text-xs text-[#7a7a8e] mb-3">Copy this key now. For security reasons, it will not be shown again.</p>
+          <div id="newKeyValue" class="font-mono text-sm p-3 rounded-lg" style="background:#0c0c18;border:1px solid #252533;word-break:break-all;color:#a855f7;margin-bottom:12px"></div>
+          <button onclick="copyKey()" class="btn-primary text-xs px-4 py-2">📋 Copy Key</button>
+        </div>
+        <button onclick="closeKeyMessage()" class="text-[#7a7a8e] hover:text-white">&times;</button>
+      </div>
+    </div>
+
+    <!-- Keys List -->
+    <div id="apiKeysContainer">
+      <div class="text-center py-12 text-[#7a7a8e]">
+        <div class="text-4xl mb-3">🔑</div>
+        <p>Loading your API keys...</p>
+      </div>
+    </div>
+
+    <!-- API Documentation -->
+    <div style="background:rgba(18,18,26,0.5);border:1px solid rgba(37,37,51,0.5);border-radius:12px;padding:20px;margin-top:12px">
+      <h3 class="font-semibold mb-4">📖 API Documentation</h3>
+      <p class="text-xs text-[#7a7a8e] mb-4">Use your API key to access your Diazites data programmatically.</p>
+      
+      <div class="space-y-4">
+        <div>
+          <h4 class="text-sm font-semibold text-[#a855f7] mb-2">Authentication</h4>
+          <div class="font-mono text-xs p-3 rounded-lg" style="background:#0c0c18;border:1px solid #252533;word-break:break-all">
+            Authorization: Bearer &lt;your_api_key&gt;
+          </div>
+        </div>
+
+        <div>
+          <h4 class="text-sm font-semibold text-[#a855f7] mb-2">Base URL</h4>
+          <div class="font-mono text-xs p-3 rounded-lg" style="background:#0c0c18;border:1px solid #252533">
+            https://diazites.online/api/v1
+          </div>
+        </div>
+
+        <div>
+          <h4 class="text-sm font-semibold text-[#a855f7] mb-2">Endpoints</h4>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead>
+                <tr style="border-bottom:1px solid #252533">
+                  <th class="text-left py-2 pr-4 text-[#7a7a8e]">Method</th>
+                  <th class="text-left py-2 pr-4 text-[#7a7a8e]">Endpoint</th>
+                  <th class="text-left py-2 text-[#7a7a8e]">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom:1px solid #1a1a2e"><td class="py-2 pr-4"><span class="text-green-400">GET</span></td><td class="py-2 pr-4 font-mono">/me/business</td><td class="py-2 text-[#7a7a8e]">Get your business info</td></tr>
+                <tr style="border-bottom:1px solid #1a1a2e"><td class="py-2 pr-4"><span class="text-yellow-400">PUT</span></td><td class="py-2 pr-4 font-mono">/me/business</td><td class="py-2 text-[#7a7a8e]">Update business settings</td></tr>
+                <tr style="border-bottom:1px solid #1a1a2e"><td class="py-2 pr-4"><span class="text-green-400">GET</span></td><td class="py-2 pr-4 font-mono">/me/leads</td><td class="py-2 text-[#7a7a8e]">List your leads</td></tr>
+                <tr style="border-bottom:1px solid #1a1a2e"><td class="py-2 pr-4"><span class="text-green-400">GET</span></td><td class="py-2 pr-4 font-mono">/me/calls</td><td class="py-2 text-[#7a7a8e]">View call history</td></tr>
+                <tr style="border-bottom:1px solid #1a1a2e"><td class="py-2 pr-4"><span class="text-green-400">GET</span></td><td class="py-2 pr-4 font-mono">/me/settings</td><td class="py-2 text-[#7a7a8e]">Get plan &amp; minutes info</td></tr>
+                <tr style="border-bottom:1px solid #1a1a2e"><td class="py-2 pr-4"><span class="text-green-400">GET</span></td><td class="py-2 pr-4 font-mono">/businesses</td><td class="py-2 text-[#7a7a8e]">List all businesses (admin)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="text-sm font-semibold text-[#a855f7] mb-2">Example (cURL)</h4>
+          <div class="font-mono text-xs p-3 rounded-lg" style="background:#0c0c18;border:1px solid #252533;word-break:break-all">
+            curl -H "Authorization: Bearer dz_xxx" \<br>
+            &nbsp;&nbsp;https://diazites.online/api/v1/me/business
+          </div>
+        </div>
+
+        <div>
+          <h4 class="text-sm font-semibold text-[#a855f7] mb-2">Example (Python)</h4>
+          <div class="font-mono text-xs p-3 rounded-lg" style="background:#0c0c18;border:1px solid #252533;word-break:break-all">
+            import requests<br>
+            headers = {"Authorization": "Bearer dz_xxx"}<br>
+            r = requests.get("https://diazites.online/api/v1/me/business", headers=headers)<br>
+            print(r.json())
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  var apiKeysLoaded = false;
+  function toggleNewKeyForm() {
+    var f = document.getElementById('newKeyForm');
+    f.classList.toggle('hidden');
+    if (!f.classList.contains('hidden')) document.getElementById('newKeyName').focus();
+  }
+  function closeKeyMessage() {
+    document.getElementById('keyGeneratedMessage').classList.add('hidden');
+  }
+  function copyKey() {
+    var el = document.getElementById('newKeyValue');
+    var text = el.textContent;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function() {
+        el.style.color = '#4ade80';
+        setTimeout(function(){ el.style.color = '#a855f7'; }, 2000);
+      });
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+  }
+  function generateApiKey() {
+    var name = document.getElementById('newKeyName').value.trim();
+    if (!name) { alert('Please enter a key name'); return; }
+    var desc = document.getElementById('newKeyDesc').value.trim();
+    var btn = document.querySelector('#newKeyForm .btn-primary');
+    btn.disabled = true; btn.textContent = '⏳ Generating...';
+    fetch('/api/me/keys/generate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name: name, description: desc})
+    }).then(function(r){return r.json()}).then(function(d){
+      btn.disabled = false; btn.textContent = 'Generate Key';
+      if (d.success) {
+        document.getElementById('newKeyValue').textContent = d.api_key;
+        document.getElementById('keyGeneratedMessage').classList.remove('hidden');
+        document.getElementById('newKeyForm').classList.add('hidden');
+        document.getElementById('newKeyName').value = '';
+        document.getElementById('newKeyDesc').value = '';
+        loadApiKeys();
+      } else {
+        alert(d.error || 'Failed to generate key');
+      }
+    }).catch(function(){
+      btn.disabled = false; btn.textContent = 'Generate Key';
+      alert('Network error');
+    });
+  }
+  function loadApiKeys() {
+    var container = document.getElementById('apiKeysContainer');
+    container.innerHTML = '<div class="text-center py-8 text-[#7a7a8e]"><p>Loading...</p></div>';
+    fetch('/api/me/keys').then(function(r){return r.json()}).then(function(d){
+      if (!d.keys || d.keys.length === 0) {
+        container.innerHTML = '<div class="text-center py-12 text-[#7a7a8e]"><div class="text-4xl mb-3">🔑</div><p class="mb-2">No API keys yet.</p><p class="text-xs">Generate one to let AI agents access your account.</p></div>';
+        return;
+      }
+      var html = '<div style="overflow-x:auto"><table class="w-full text-sm"><thead><tr style="border-bottom:1px solid #252533">' +
+        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Name</th>' +
+        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Key</th>' +
+        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Created</th>' +
+        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Last Used</th>' +
+        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Status</th>' +
+        '<th class="text-right py-3 text-[#7a7a8e] text-xs">Actions</th>' +
+        '</tr></thead><tbody>';
+      d.keys.forEach(function(k){
+        var status = k.active ? '<span class="text-green-400">● Active</span>' : '<span class="text-red-400">● Revoked</span>';
+        var lastUsed = k.last_used_at ? k.last_used_at.slice(0,10) : 'Never';
+        var created = k.created_at ? k.created_at.slice(0,10) : '-';
+        var actions = '';
+        if (k.active) {
+          actions = '<button onclick="revokeKey(\''+k.id+'\')" class="text-xs text-red-400 hover:text-red-300 mr-2">Revoke</button>';
+        } else {
+          actions = '<button onclick="reactivateKey(\''+k.id+'\')" class="text-xs text-green-400 hover:text-green-300 mr-2">Activate</button>';
+        }
+        actions += '<button onclick="deleteKey(\''+k.id+'\')" class="text-xs text-[#7a7a8e] hover:text-red-400">Delete</button>';
+        html += '<tr style="border-bottom:1px solid #1a1a2e">' +
+          '<td class="py-3 pr-3 font-medium">' + (k.name || 'Unnamed') + '</td>' +
+          '<td class="py-3 pr-3 font-mono text-xs text-[#7a7a8e]">' + (k.raw_prefix || 'dz_...') + '</td>' +
+          '<td class="py-3 pr-3 text-xs text-[#7a7a8e]">' + created + '</td>' +
+          '<td class="py-3 pr-3 text-xs text-[#7a7a8e]">' + lastUsed + '</td>' +
+          '<td class="py-3 pr-3 text-xs">' + status + '</td>' +
+          '<td class="py-3 text-xs text-right">' + actions + '</td>' +
+          '</tr>';
+      });
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    }).catch(function(){
+      container.innerHTML = '<div class="text-center py-8 text-red-400"><p>Failed to load API keys.</p></div>';
+    });
+  }
+  function revokeKey(id) {
+    if (!confirm('Revoke this API key? Agents using it will lose access.')) return;
+    fetch('/api/me/keys/' + id + '/revoke', {method: 'POST'})
+    .then(function(r){return r.json()}).then(function(d){
+      if (d.success) loadApiKeys();
+      else alert(d.error || 'Failed');
+    }).catch(function(){alert('Network error');});
+  }
+  function reactivateKey(id) {
+    fetch('/api/me/keys/' + id + '/reactivate', {method: 'POST'})
+    .then(function(r){return r.json()}).then(function(d){
+      if (d.success) loadApiKeys();
+    }).catch(function(){});
+  }
+  function deleteKey(id) {
+    if (!confirm('Permanently delete this API key? This cannot be undone.')) return;
+    fetch('/api/me/keys/' + id + '/delete', {method: 'DELETE'})
+    .then(function(r){return r.json()}).then(function(d){
+      if (d.success) loadApiKeys();
+      else alert(d.error || 'Failed');
+    }).catch(function(){alert('Network error');});
+  }
+  // Load keys on tab show
+  if (window.location.search.indexOf('tab=api-keys') !== -1) {
+    document.addEventListener('DOMContentLoaded', loadApiKeys);
+  }
+  </script>
+
   <style>.feature-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 8px;border-radius:6px;background:#1a1a28;color:#cbd5e1;margin:2px}.feature-badge.active{background:#22c55e15;border:1px solid #22c55e30;color:#4ade80}
 /* ── MOBILE RESPONSIVE ── */
 

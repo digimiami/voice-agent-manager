@@ -31,6 +31,20 @@ import secrets
 from diazites_prompt import build_diazites_prompt
 from landing_page_route import INDUSTRY_DATA, get_industry_data, FALLBACK_FAQ, FALLBACK_TESTIMONIALS, FALLBACK_FEATURES
 
+# ── Helper: Git auto-commit ──
+def git_auto_commit(message):
+    """Auto-commit and push changes to GitHub."""
+    try:
+        subprocess.run(["git", "-C", "/root/voice-agent-manager", "add", "-A"],
+                       capture_output=True, timeout=10)
+        subprocess.run(["git", "-C", "/root/voice-agent-manager", "commit",
+                       "-m", f"api: {message[:80]}"],
+                       capture_output=True, timeout=10)
+        subprocess.run(["git", "-C", "/root/voice-agent-manager", "push", "origin", "main"],
+                       capture_output=True, timeout=30)
+    except:
+        pass  # don't break if git fails
+
 DB_PATH = "/root/voice-agent-businesses.db"
 VAPI_API_KEY = os.environ.get("VAPI_API_KEY", "")
 CAL_COM_API_KEY = os.environ.get("CAL_COM_API_KEY", "")
@@ -7576,6 +7590,130 @@ def stripe_product_webhook():
             db.close()
     
     return jsonify({'received': True})
+
+# ── USER API KEY MANAGEMENT (for dashboard users) ──
+def init_user_api_keys_table():
+    """Ensure the api_keys table exists (used by dashboard users)."""
+    db = get_db()
+    c = db.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS user_api_keys (
+            id TEXT PRIMARY KEY,
+            key_hash TEXT UNIQUE NOT NULL,
+            raw_prefix TEXT NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            permissions TEXT DEFAULT 'read,write',
+            created_at TEXT DEFAULT (datetime('now')),
+            last_used_at TEXT,
+            expires_at TEXT,
+            active INTEGER DEFAULT 1,
+            business_id TEXT NOT NULL
+        )
+    """)
+    db.commit()
+    db.close()
+
+init_user_api_keys_table()
+
+@app.route('/api/me/keys', methods=['GET'])
+def api_me_list_keys():
+    """List API keys for the logged-in user's business."""
+    bid = session.get('business_id')
+    if not bid:
+        return jsonify({'error': 'Not logged in'}), 401
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    c = db.cursor()
+    c.execute("""SELECT id, name, description, permissions, created_at, 
+                 last_used_at, expires_at, active, raw_prefix
+                 FROM user_api_keys WHERE business_id=? ORDER BY created_at DESC""", (bid,))
+    keys = [dict(r) for r in c.fetchall()]
+    db.close()
+    return jsonify({'keys': keys, 'total': len(keys)})
+
+@app.route('/api/me/keys/generate', methods=['POST'])
+def api_me_generate_key():
+    """Generate a new API key for the logged-in user's business."""
+    bid = session.get('business_id')
+    if not bid:
+        return jsonify({'error': 'Not logged in'}), 401
+    data = request.get_json(silent=True) or {}
+    name = data.get('name', 'My API Key').strip()
+    description = data.get('description', '')
+    if not name:
+        return jsonify({'error': 'Key name is required'}), 400
+    
+    import uuid, hashlib
+    raw_key = f"dz_{uuid.uuid4().hex}_{uuid.uuid4().hex[:16]}"
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    key_id = f"key_{uuid.uuid4().hex[:12]}"
+    raw_prefix = raw_key[:16] + '...'
+    
+    db = get_db()
+    c = db.cursor()
+    c.execute("""INSERT INTO user_api_keys (id, key_hash, raw_prefix, name, description, permissions, business_id)
+                 VALUES (?, ?, ?, ?, ?, 'read,write', ?)""",
+              (key_id, key_hash, raw_prefix, name, description, bid))
+    db.commit()
+    db.close()
+    
+    git_auto_commit(f'user generated API key {name}')
+    return jsonify({
+        'success': True, 'key_id': key_id, 'api_key': raw_key,
+        'name': name, 'raw_prefix': raw_prefix,
+        'warning': 'Save this key now — it will not be shown again!'
+    })
+
+@app.route('/api/me/keys/<key_id>/revoke', methods=['POST'])
+def api_me_revoke_key(key_id):
+    """Revoke an API key."""
+    bid = session.get('business_id')
+    if not bid:
+        return jsonify({'error': 'Not logged in'}), 401
+    db = get_db()
+    c = db.cursor()
+    c.execute("UPDATE user_api_keys SET active=0 WHERE id=? AND business_id=?", (key_id, bid))
+    db.commit()
+    affected = c.rowcount
+    db.close()
+    if affected == 0:
+        return jsonify({'error': 'Key not found'}), 404
+    git_auto_commit(f'revoked API key {key_id}')
+    return jsonify({'success': True, 'message': 'Key revoked'})
+
+@app.route('/api/me/keys/<key_id>/delete', methods=['DELETE'])
+def api_me_delete_key(key_id):
+    """Permanently delete an API key."""
+    bid = session.get('business_id')
+    if not bid:
+        return jsonify({'error': 'Not logged in'}), 401
+    db = get_db()
+    c = db.cursor()
+    c.execute("DELETE FROM user_api_keys WHERE id=? AND business_id=?", (key_id, bid))
+    db.commit()
+    affected = c.rowcount
+    db.close()
+    if affected == 0:
+        return jsonify({'error': 'Key not found'}), 404
+    git_auto_commit(f'deleted API key {key_id}')
+    return jsonify({'success': True, 'message': 'Key permanently deleted'})
+
+@app.route('/api/me/keys/<key_id>/reactivate', methods=['POST'])
+def api_me_reactivate_key(key_id):
+    """Reactivate a revoked API key."""
+    bid = session.get('business_id')
+    if not bid:
+        return jsonify({'error': 'Not logged in'}), 401
+    db = get_db()
+    c = db.cursor()
+    c.execute("UPDATE user_api_keys SET active=1 WHERE id=? AND business_id=?", (key_id, bid))
+    db.commit()
+    affected = c.rowcount
+    db.close()
+    if affected == 0:
+        return jsonify({'error': 'Key not found'}), 404
+    return jsonify({'success': True, 'message': 'Key reactivated'})
 
 threading.Thread(target=campaign_scheduler, daemon=True).start()
 
