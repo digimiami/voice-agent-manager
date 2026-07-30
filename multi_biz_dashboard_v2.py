@@ -5067,7 +5067,9 @@ def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
                 "variableValues": {
                     "business_name": biz['name'],
                     "industry": biz['industry'] or '',
-                    "prospect_business": lead['business_name'] or 'your business'
+                    "prospect_business": lead['business_name'] or 'your business',
+                    "prospect_name": lead['name'] or '',
+                    "prospect_notes": (lead.get('notes') or '').strip()
                 },
                 "maxDurationSeconds": int(biz.get('max_duration_seconds') or 300),
                 "silenceTimeoutSeconds": int(biz.get('silence_timeout') or 10),
@@ -5100,6 +5102,19 @@ def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
                 script=agent_prompt or script,
                 knowledge_base=kb
             )
+            # Append lead-specific knowledge if available
+            lead_notes = (lead.get('notes') or '').strip()
+            lead_name = lead.get('name') or ''
+            lead_biz = lead.get('business_name') or ''
+            if lead_notes or lead_name or lead_biz:
+                extra_knowledge = []
+                if lead_name:
+                    extra_knowledge.append(f"Contact's name: {lead_name}")
+                if lead_biz:
+                    extra_knowledge.append(f"Contact's business: {lead_biz}")
+                if lead_notes:
+                    extra_knowledge.append(f"Additional context about this contact: {lead_notes}")
+                full_prompt += f"\n\n[CALL-SPECIFIC KNOWLEDGE]\n{' | '.join(extra_knowledge)}\nUse this information about the person you're calling to personalize the conversation."
             payload["assistantOverrides"]["model"] = {
                 "maxTokens": max_tokens if max_tokens else 200,
                 "provider": model_provider,
@@ -5536,10 +5551,12 @@ def add_lead():
         phone = data.get('phone', '').strip()
         name = data.get('name', '')
         business_name = data.get('business_name', '')
+        notes = data.get('notes', '')
     else:
         phone = request.form.get('phone', '').strip()
         name = request.form.get('name', '')
         business_name = request.form.get('business_name', '')
+        notes = request.form.get('notes', '')
     
     if not phone:
         return jsonify({'success': False, 'message': 'Phone number required'}), 400
@@ -5547,8 +5564,8 @@ def add_lead():
     db = get_db()
     c = db.cursor()
     lid = hashlib.md5((phone + bid + str(time.time())).encode()).hexdigest()[:12]
-    c.execute("INSERT INTO leads (id, business_id, phone, name, business_name, state) VALUES (?,?,?,?,?,'NEW')",
-        (lid, bid, phone, name, business_name))
+    c.execute("INSERT INTO leads (id, business_id, phone, name, business_name, notes, state) VALUES (?,?,?,?,?,?,'NEW')",
+        (lid, bid, phone, name, business_name, notes))
     c.execute("UPDATE campaigns SET leads_imported = COALESCE(leads_imported,0) + 1 WHERE business_id = ?", (bid,))
     db.commit()
     
@@ -5687,15 +5704,32 @@ def call_lead(lead_id):
     biz = c.fetchone()
     
     if biz['vapi_assistant_id'] and biz['vapi_phone_id']:
+        # Build call payload with lead knowledge
+        call_payload = {
+            "assistantId": biz['vapi_assistant_id'],
+            "phoneNumberId": biz['vapi_phone_id'],
+            "customer": {"number": lead['phone']},
+            "assistantOverrides": {"model": {"maxTokens": 200, "provider": "xai", "model": "grok-4.3"}}
+        }
+        # Inject lead knowledge into the AI's context
+        knowledge_parts = []
+        if lead.get('business_name'):
+            knowledge_parts.append(f"Business: {lead['business_name']}")
+        if lead.get('name'):
+            knowledge_parts.append(f"Contact Name: {lead['name']}")
+        if lead.get('notes', '').strip():
+            knowledge_parts.append(f"Context: {lead['notes'].strip()}")
+        if knowledge_parts:
+            call_payload["assistantOverrides"]["model"]["messages"] = [
+                {
+                    "role": "system",
+                    "content": f"[LEAD KNOWLEDGE]\n{' | '.join(knowledge_parts)}\nUse this information to personalize the conversation."
+                }
+            ]
         subprocess.run(["curl","-s","-X","POST",f"{VAPI_BASE}/call",
             "-H",f"Authorization: Bearer {VAPI_API_KEY}",
             "-H","Content-Type: application/json",
-            "-d",json.dumps({
-                "assistantId": biz['vapi_assistant_id'],
-                "phoneNumberId": biz['vapi_phone_id'],
-                "customer": {"number": lead['phone']},
-                "assistantOverrides": {"model": {"maxTokens": 200, "provider": "xai", "model": "grok-4.3"}}
-            })])
+            "-d",json.dumps(call_payload)])
         c.execute("UPDATE leads SET state = 'CALLING', last_called_at = datetime('now') WHERE id = ?", (lead_id,))
         c.execute("UPDATE campaigns SET calls_made = calls_made + 1 WHERE business_id = ?", (bid,))
         db.commit()
@@ -5716,12 +5750,13 @@ def delete_lead(lead_id):
 @app.route('/lead/update', methods=['POST'])
 @login_required
 def update_lead():
-    """Update a lead's name, phone, or business_name."""
+    """Update a lead's name, phone, business_name, or notes."""
     bid = session['business_id']
     lead_id = request.form.get('id', '')
     name = request.form.get('name', '').strip()
     phone = request.form.get('phone', '').strip()
     business_name = request.form.get('business_name', '').strip()
+    notes = request.form.get('notes', '').strip()
     
     if not lead_id or not phone:
         if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -5731,8 +5766,8 @@ def update_lead():
     
     db = get_db()
     c = db.cursor()
-    c.execute("UPDATE leads SET name=?, phone=?, business_name=? WHERE id=? AND business_id=?",
-              (name, phone, business_name, lead_id, bid))
+    c.execute("UPDATE leads SET name=?, phone=?, business_name=?, notes=? WHERE id=? AND business_id=?",
+              (name, phone, business_name, notes, lead_id, bid))
     db.commit()
     
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
