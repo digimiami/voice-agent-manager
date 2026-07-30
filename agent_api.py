@@ -111,9 +111,20 @@ def validate_api_key(raw_key):
     db = sqlite3.connect(DB_PATH)
     db.row_factory = sqlite3.Row
     c = db.cursor()
+    # Check admin-generated keys first
     c.execute("SELECT * FROM agent_api_keys WHERE key_hash = ? AND active = 1", (key_hash,))
     row = c.fetchone()
     if not row:
+        # Check user-generated keys (from dashboard)
+        c.execute("SELECT * FROM user_api_keys WHERE key_hash = ? AND active = 1", (key_hash,))
+        row = c.fetchone()
+        if row:
+            # Update last_used_at in user_api_keys
+            c.execute("UPDATE user_api_keys SET last_used_at = datetime('now') WHERE id = ?", (row['id'],))
+            db.commit()
+            data = dict(row)
+            db.close()
+            return data
         db.close()
         return None
     # Check expiry
@@ -121,7 +132,7 @@ def validate_api_key(raw_key):
     if expires_at and expires_at < datetime.now().isoformat():
         db.close()
         return None
-    # Update last_used_at
+    # Update last_used_at for admin keys
     c.execute("UPDATE agent_api_keys SET last_used_at = datetime('now') WHERE id = ?", (row['id'],))
     db.commit()
     db.close()
