@@ -13,17 +13,17 @@ SENT_URL = "https://api.sent.dm/v3/messages"
 import smsgate_sms
 
 
-def send_sms(to_phone, message):
+def send_sms(to_phone, message, business_id=None, lead_id=None):
     """Send SMS — primary: sms-gate.app, fallback: Sent.dm."""
     if smsgate_sms.is_configured():
-        return smsgate_sms.send_sms(to_phone, message)
+        return smsgate_sms.send_sms(to_phone, message, business_id, lead_id)
     return _sentdm_fallback(to_phone, message)
 
 
 def send_welcome_sms(phone, name, bid, host_url):
     """Send welcome SMS with Business ID."""
     msg = f"🎉 Welcome to Diazites, {name}! ✅ Your Business ID: {bid}. Login at {host_url}. 3-day free trial started!"
-    return send_sms(phone, msg)
+    return send_sms(phone, msg, business_id=bid)
 
 
 def _sentdm_fallback(to_phone, message):

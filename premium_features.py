@@ -286,6 +286,16 @@ def send_sms_followup(business_id, lead_phone, prospect_name, outcome):
     db.close()
     
     if should_send and msg:
+        # Route through sms-gate.app (fallback to Sent.dm shim) with business context
+        try:
+            from smsgate_sms import send_sms as smsgate_send
+            ok = smsgate_send(lead_phone, msg, business_id=business_id)
+            if ok:
+                print(f"📱 SMS sent to {lead_phone[-4:]} via sms-gate")
+                return True
+        except Exception as e:
+            print(f"❌ SMS via sms-gate failed: {e}")
+        # Legacy Twilio fallback
         cfg_path = "/root/voice-agent-manager/twilio_config.json"
         try:
             with open(cfg_path) as f:

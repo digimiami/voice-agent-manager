@@ -7776,20 +7776,31 @@ def sms_gate_webhook():
             msg_id = data.get('id', '')
             received_at = data.get('createdAt', datetime.now().isoformat())
 
-        # Match to a business by recipient (their device number) — store unassigned otherwise
+        # Match to a business: FIRST try the outgoing-SMS log (reply to a message WE sent),
+        # then fall back to recipient matching.
         bid = None
         lead_id = None
         db = get_db()
         db.row_factory = sqlite3.Row
         c = db.cursor()
-        if recipient:
+        if sender:
+            # Reply-matching: find the most recent SMS we sent to this sender
+            c.execute("""SELECT business_id, lead_id FROM outgoing_sms 
+                         WHERE phone = ? AND business_id IS NOT NULL
+                         ORDER BY sent_at DESC LIMIT 1""", (sender,))
+            row = c.fetchone()
+            if row:
+                bid = row['business_id']
+                lead_id = row['lead_id']
+        # Fallback: match by recipient (their device number)
+        if not bid and recipient:
             c.execute("SELECT id FROM businesses WHERE phone_number = ? OR vapi_phone_id = ? LIMIT 1",
                       (recipient, recipient))
             row = c.fetchone()
             if row:
                 bid = row['id']
-        # Try to match sender to an existing lead for this business
-        if bid and sender:
+        # Fallback: try to match sender to an existing lead
+        if not lead_id and bid and sender:
             c.execute("SELECT id FROM leads WHERE business_id = ? AND phone = ? LIMIT 1", (bid, sender))
             row = c.fetchone()
             if row:
@@ -7809,14 +7820,14 @@ def sms_gate_webhook():
 
 @app.route('/api/inbox', methods=['GET'])
 def api_inbox():
-    """List incoming SMS for the logged-in business."""
+    """List incoming SMS for the logged-in business only (reply-matched)."""
     bid = session.get('business_id')
     if not bid:
         return jsonify({'error': 'Not logged in'}), 401
     db = get_db()
     db.row_factory = sqlite3.Row
     c = db.cursor()
-    c.execute("""SELECT * FROM incoming_sms WHERE business_id = ? OR business_id IS NULL
+    c.execute("""SELECT * FROM incoming_sms WHERE business_id = ?
                  ORDER BY received_at DESC LIMIT 100""", (bid,))
     rows = [dict(r) for r in c.fetchall()]
     db.close()

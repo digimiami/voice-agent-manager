@@ -77,8 +77,15 @@ def save_twilio_config(config):
     with open(cfg_path, 'w') as f:
         json.dump(config, f)
 
-def send_sms(to_number, message):
-    """Send SMS via Twilio."""
+def send_sms(to_number, message, business_id=None, lead_id=None):
+    """Send SMS via sms-gate.app (fallback: Twilio)."""
+    try:
+        from smsgate_sms import send_sms as smsgate_send
+        if smsgate_send(to_number, message, business_id=business_id, lead_id=lead_id):
+            return True
+    except Exception as e:
+        print(f"❌ sms-gate failed in calendar_sms: {e}")
+    # Legacy Twilio fallback
     cfg = load_twilio_config()
     if not cfg.get('enabled') or not cfg.get('account_sid') or not cfg.get('auth_token'):
         print("📵 SMS not configured")
@@ -106,7 +113,7 @@ SMS_TEMPLATES = {
     'thank_you': "Thanks for booking with {business_name}! We look forward to speaking with you on {appointment_time}.",
 }
 
-def send_appointment_sms(phone, prospect_name, appointment_time, business_name, template_key='thank_you'):
+def send_appointment_sms(phone, prospect_name, appointment_time, business_name, template_key='thank_you', business_id=None, lead_id=None):
     """Send an appointment-related SMS."""
     if not phone: return False
     tmpl = SMS_TEMPLATES.get(template_key, SMS_TEMPLATES['thank_you'])
@@ -117,4 +124,4 @@ def send_appointment_sms(phone, prospect_name, appointment_time, business_name, 
         business_phone='',
         booking_link=''
     )
-    return send_sms(phone, msg)
+    return send_sms(phone, msg, business_id=business_id, lead_id=lead_id)

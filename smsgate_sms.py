@@ -9,7 +9,7 @@ API (https://docs.sms-gate.app/):
   GET  /3rdparty/v1/messages     — Message status
   POST /3rdparty/v1/webhooks     — Register webhook (sms:received, sms:delivered...)
 """
-import json, os, time, threading
+import json, os, time, threading, sqlite3
 from datetime import datetime
 
 import requests
@@ -26,6 +26,8 @@ def _load_env():
                     os.environ.setdefault(k.strip(), v.strip())
 
 _load_env()
+
+DB_PATH = os.environ.get("VOICE_AGENT_DB", "/root/voice-agent-businesses.db")
 
 BASE_URL = "https://api.sms-gate.app"
 USERNAME = os.environ.get("SMSGATE_USERNAME", "E4BDEN")
@@ -82,8 +84,9 @@ def _headers():
     }
 
 
-def send_sms(to_phone, message):
-    """Send an SMS via sms-gate.app. Returns True on success (202)."""
+def send_sms(to_phone, message, business_id=None, lead_id=None):
+    """Send an SMS via sms-gate.app. Returns True on success (202).
+    business_id/lead_id are logged so inbound replies can be matched back."""
     if not to_phone or not message:
         print("❌ send_sms: missing phone or message")
         return False
@@ -114,12 +117,41 @@ def send_sms(to_phone, message):
             data = resp.json()
             mid = data.get("id", "?")
             print(f"✅ SMS queued to {cleaned} — ID: {mid}")
+            # Log outgoing SMS for reply-matching
+            _log_outgoing(cleaned, message, business_id, lead_id, mid)
             return True
         print(f"❌ SMS failed ({resp.status_code}): {resp.text[:300]}")
         return False
     except Exception as e:
         print(f"❌ SMS error: {e}")
         return False
+
+
+def _log_outgoing(phone, body, business_id, lead_id, message_id):
+    """Record an outgoing SMS so inbound replies can be routed to the right business."""
+    try:
+        db = sqlite3.connect(DB_PATH)
+        c = db.cursor()
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS outgoing_sms (
+                id TEXT PRIMARY KEY,
+                business_id TEXT,
+                lead_id TEXT,
+                phone TEXT,
+                body TEXT,
+                message_id TEXT,
+                sent_at TEXT
+            )
+        """)
+        c.execute(
+            "INSERT INTO outgoing_sms (id, business_id, lead_id, phone, body, message_id, sent_at) VALUES (?,?,?,?,?,?,?)",
+            (str(message_id) or str(time.time()), business_id, lead_id, phone, body, message_id,
+             datetime.now().isoformat())
+        )
+        db.commit()
+        db.close()
+    except Exception as e:
+        print(f"⚠️ outgoing log failed: {e}")
 
 
 def send_welcome_sms(phone, name, bid, host_url):
