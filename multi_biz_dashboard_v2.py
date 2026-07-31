@@ -7747,17 +7747,34 @@ init_incoming_sms_table()
 def sms_gate_webhook():
     """Receive incoming SMS from sms-gate.app webhook (event: sms:received)."""
     try:
+        raw = request.get_data(as_text=True)
+        # Log raw payload for debugging
+        with open('/tmp/smsgate_webhook_last.json', 'w') as f:
+            f.write(raw)
         data = request.get_json(silent=True) or {}
         # Handle both direct object and {data: {...}} / {message: {...}} wrappers
         if 'data' in data and isinstance(data['data'], dict):
             data = data['data']
-        sender = data.get('sender', '')
-        recipient = data.get('recipient', '')
-        body = data.get('contentPreview', data.get('body', data.get('text', '')))
-        msg_type = data.get('type', 'SMS')
-        sim = data.get('simNumber')
-        msg_id = data.get('id', '')
-        received_at = data.get('createdAt', datetime.now().isoformat())
+        if 'message' in data and isinstance(data['message'], dict):
+            data = data['message']
+        # sms-gate.app real webhook shape: {event, id, webhookId, deviceId, payload: {message, sender, ...}}
+        if 'payload' in data and isinstance(data['payload'], dict):
+            payload = data['payload']
+            sender = payload.get('sender', payload.get('phoneNumber', ''))
+            recipient = payload.get('recipient', '')
+            body = payload.get('message', payload.get('contentPreview', payload.get('text', '')))
+            msg_type = payload.get('type', 'SMS')
+            sim = payload.get('simNumber')
+            msg_id = payload.get('messageId', data.get('id', ''))
+            received_at = payload.get('receivedAt', data.get('createdAt', datetime.now().isoformat()))
+        else:
+            sender = data.get('sender', data.get('from', ''))
+            recipient = data.get('recipient', data.get('to', ''))
+            body = data.get('contentPreview', data.get('body', data.get('text', data.get('content', ''))))
+            msg_type = data.get('type', 'SMS')
+            sim = data.get('simNumber')
+            msg_id = data.get('id', '')
+            received_at = data.get('createdAt', datetime.now().isoformat())
 
         # Match to a business by recipient (their device number) — store unassigned otherwise
         bid = None
