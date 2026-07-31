@@ -98,7 +98,6 @@ def send_sms(to_phone, message):
 
     payload = {
         "phoneNumbers": [cleaned],
-        "message": message,  # deprecated but widely supported
         "textMessage": {"text": message},
         "deviceId": DEVICE_ID,
         "priority": 0,
