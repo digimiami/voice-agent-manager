@@ -29,6 +29,29 @@ RATE_LIMIT_SECONDS = 25
 HISTORY_LIMIT = 8
 OPT_OUT_KEYWORDS = ("STOP", "UNSUBSCRIBE", "STOPALL", "UNSUB")
 HELP_KEYWORDS = ("HELP", "INFO")
+DEDUP_SECONDS = 60
+
+# In-memory processed-message cache: {(bid, sender, body) -> epoch}. Guards against
+# sms-gate webhook redeliveries of the SAME message. Unlike a reply-rate limit this
+# never blocks a real human texting a fast conversation.
+_processed_lock = threading.Lock()
+_processed = {}
+
+
+def _mark_processed(bid, sender, body):
+    """True if this exact message was already handled within DEDUP_SECONDS."""
+    global _processed
+    key = (bid, sender, body)
+    now = time.time()
+    with _processed_lock:
+        if _processed.get(key, 0) > now - DEDUP_SECONDS:
+            return False
+        _processed[key] = now
+        # prune old entries
+        cutoff = now - 300
+        for k in [k for k, v in _processed.items() if v < cutoff]:
+            del _processed[k]
+        return True
 
 
 def _get_db():
@@ -60,22 +83,6 @@ def build_history(bid, sender, limit=HISTORY_LIMIT):
              [("assistant", dict(r)["body"], dict(r)["ts"]) for r in out]
     merged.sort(key=lambda x: x[2] or "")
     return [{"role": role, "content": body} for role, body, _ in merged[-limit:]]
-
-
-def last_reply_seconds_ago(bid, sender):
-    conn = _get_db()
-    row = conn.execute(
-        "SELECT sent_at FROM outgoing_sms WHERE business_id = ? AND phone = ? "
-        "ORDER BY sent_at DESC LIMIT 1", (bid, sender)).fetchone()
-    conn.close()
-    if not row or not row["sent_at"]:
-        return 9999
-    try:
-        from datetime import datetime
-        ts = datetime.fromisoformat(row["sent_at"])
-        return (datetime.now() - ts).total_seconds()
-    except Exception:
-        return 9999
 
 
 def build_sms_prompt(biz, current_appt=None):
@@ -224,8 +231,9 @@ def handle_inbound_sms(bid, sender, body, lead_id=None):
             print(f"🚫 AI SMS: opt-out keyword from {sender}, no reply")
             return None
 
-        if last_reply_seconds_ago(bid, sender) < RATE_LIMIT_SECONDS:
-            print(f"⏳ AI SMS: rate-limited for {sender}, skipping")
+        # Dedup: skip only webhook REDELIVERIES of the same message (not fast human replies)
+        if not _mark_processed(bid, sender, body):
+            print(f"🔄 AI SMS: duplicate delivery of same message from {sender}, skipping")
             return None
 
         history = build_history(bid, sender)
