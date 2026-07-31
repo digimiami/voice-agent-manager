@@ -14,6 +14,7 @@ Safety rails:
     the customer has confirmed a specific time; engine saves the appointment and
     strips the protocol line before sending.
 """
+import datetime
 import json
 import os
 import re
@@ -245,6 +246,27 @@ def trigger_call_back(biz, phone):
             data = json.loads(resp.read().decode())
         cid = data.get("id")
         print(f"📞 Callback call placed: {cid} -> {phone}")
+        if cid:
+            # Log the call so the webhook can match business_id (reply routing)
+            # and fall back to the lead's name in confirmations.
+            try:
+                import sqlite3 as _cl_db
+                import uuid as _cl_uid
+                _c = _cl_db.connect("/root/voice-agent-businesses.db")
+                _lead = _c.execute(
+                    "SELECT id, name FROM leads WHERE phone=? AND business_id=? "
+                    "ORDER BY created_at DESC LIMIT 1", (phone, biz.get("id"))).fetchone()
+                _c.execute(
+                    "INSERT INTO call_log (id, vapi_call_id, business_id, lead_id, status, outcome, created_at) "
+                    "VALUES (?,?,?,?,?,?,?)",
+                    ("cl_" + _cl_uid.uuid4().hex[:10], cid, biz.get("id"),
+                     _lead[0] if _lead else "", "in-progress", "called",
+                     datetime.datetime.utcnow().isoformat()))
+                _c.commit()
+                _c.close()
+                print(f"📝 callback call_log row created (lead: {_lead[1] if _lead else 'unknown'})")
+            except Exception as _le:
+                print(f"⚠️ callback call_log insert failed: {_le}")
         return cid
     except Exception as e:
         print(f"❌ Callback call failed: {e}")
