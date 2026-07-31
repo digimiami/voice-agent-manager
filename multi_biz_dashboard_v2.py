@@ -54,6 +54,8 @@ CAL_COM_USERNAME = os.environ.get("CAL_COM_USERNAME", "pablo-d-i2xmhr")
 VAPI_API_KEY = os.environ.get("VAPI_API_KEY") or "d9486ec8-b862-460b-97ba-64bbb639f234"
 VAPI_BASE = "https://api.vapi.ai"
 app = Flask(__name__)
+# Accept both /affiliate and /affiliate/ (trailing-slash tolerant)
+app.url_map.strict_slashes = False
 app.secret_key = os.environ.get("DIAZITES_SECRET_KEY") or secrets.token_hex(32)
 
 # Track active campaign threads so we can detect stale ones
