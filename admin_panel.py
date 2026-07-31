@@ -882,35 +882,56 @@ ADMIN_HTML = """<!DOCTYPE html>
         <!-- BULK SMS SENDER (admin only) -->
         <div class="max-w-2xl card mb-6 mt-6">
             <h3 class="font-bold mb-3">📢 Bulk SMS Sender <span class="text-[10px] text-[#fbbf24] bg-yellow-500/10 px-2 py-0.5 rounded-full ml-1">ADMIN ONLY</span></h3>
-            <p class="text-xs text-[#64748b] mb-4">Send one message to many numbers: all leads, one business's leads, or an uploaded phone list. Sent via sms-gate.app.</p>
+            <p class="text-xs text-[#64748b] mb-4">Send one message to many numbers: all leads, one business's leads, business owners, an uploaded list, or numbers you paste in. Sent via sms-gate.app.</p>
 
-            <form method="POST" action="/admin/bulk-sms" enctype="multipart/form-data">
-                <label class="text-xs text-[#64748b] block mb-1">📝 Message</label>
-                <textarea name="message" rows="3" placeholder="Type the message to send to everyone..." class="mb-3" required></textarea>
+            <form method="POST" action="/admin/bulk-sms" enctype="multipart/form-data" id="bulkSmsForm">
+                <label class="text-xs text-[#64748b] block mb-1">📝 Message <span class="text-[10px]">(use <code>{name}</code> and <code>{business}</code> for personalization)</span></label>
+                <textarea name="message" id="bulkMessage" rows="3" placeholder="Hi {name}, this is a message from Diazites..." class="mb-1" required></textarea>
+                <div class="flex justify-between items-center mb-3">
+                    <div class="flex gap-1 flex-wrap">
+                        <button type="button" onclick="insertVar('{name}')" class="btn-secondary text-[10px] px-2 py-1" style="padding:2px 8px">+{name}</button>
+                        <button type="button" onclick="insertVar('{business}')" class="btn-secondary text-[10px] px-2 py-1" style="padding:2px 8px">+{business}</button>
+                    </div>
+                    <span id="charCount" class="text-[10px] text-[#64748b]">0 chars · 0 SMS</span>
+                </div>
 
                 <label class="text-xs text-[#64748b] block mb-1">🎯 Recipients</label>
                 <select name="target" id="bulkTarget" class="mb-3" onchange="toggleBulkTarget()">
                     <option value="all">🌎 All leads (every business)</option>
                     <option value="business">🏢 A specific business's leads</option>
+                    <option value="owners">👤 All business owners (dashboard users)</option>
+                    <option value="paste">⌨️ Type / paste phone numbers</option>
                     <option value="upload">📄 Upload a phone number list (CSV/txt)</option>
                 </select>
 
                 <div id="bulkBusinessRow" style="display:none" class="mb-3">
                     <label class="text-xs text-[#64748b] block mb-1">🏢 Business</label>
-                    <select name="business_id" class="mb-1">
+                    <select name="business_id" id="bulkBusinessId" class="mb-1">
                         {% for b in businesses %}
                         <option value="{{ b.id }}">{{ b.name }} ({{ b.id[:8] }})</option>
                         {% endfor %}
                     </select>
                 </div>
 
-                <div id="bulkUploadRow" style="display:none" class="mb-3">
-                    <label class="text-xs text-[#64748b] block mb-1">📄 Phone list file</label>
-                    <input type="file" name="phone_file" accept=".csv,.txt" class="mb-1">
-                    <p class="text-xs text-[#5c5c70]">One number per line, or CSV with a phone column. Formats accepted: 7867846192, +17867846192, (786) 784-6192</p>
+                <div id="bulkPasteRow" style="display:none" class="mb-3">
+                    <label class="text-xs text-[#64748b] block mb-1">⌨️ Phone numbers <span class="text-[10px]">(one per line, or CSV: phone,name)</span></label>
+                    <textarea name="pasted_numbers" id="bulkPasted" rows="4" placeholder="7867846192
++17865551234
+(786) 555-1234, John" class="mb-1"></textarea>
                 </div>
 
-                <button type="submit" class="btn-primary text-sm" onclick="return confirm('Send this SMS to all selected recipients?')"><i class="fas fa-paper-plane mr-1"></i> Send Bulk SMS</button>
+                <div id="bulkUploadRow" style="display:none" class="mb-3">
+                    <label class="text-xs text-[#64748b] block mb-1">📄 Phone list file</label>
+                    <input type="file" name="phone_file" id="bulkFile" accept=".csv,.txt" class="mb-1">
+                    <p class="text-xs text-[#5c5c70]">One number per line, or CSV: phone,name. Formats: 7867846192, +17867846192, (786) 784-6192</p>
+                </div>
+
+                <div class="flex items-center gap-3 mb-4">
+                    <button type="button" onclick="previewBulk()" class="btn-secondary text-sm"><i class="fas fa-eye mr-1"></i> Preview Count</button>
+                    <span id="previewResult" class="text-xs text-[#64748b]"></span>
+                </div>
+
+                <button type="submit" class="btn-primary text-sm" id="bulkSendBtn" onclick="return confirmBulkSend()"><i class="fas fa-paper-plane mr-1"></i> Send Bulk SMS</button>
             </form>
         </div>
 
@@ -918,7 +939,38 @@ ADMIN_HTML = """<!DOCTYPE html>
         function toggleBulkTarget() {
             var t = document.getElementById('bulkTarget').value;
             document.getElementById('bulkBusinessRow').style.display = t === 'business' ? 'block' : 'none';
+            document.getElementById('bulkPasteRow').style.display = t === 'paste' ? 'block' : 'none';
             document.getElementById('bulkUploadRow').style.display = t === 'upload' ? 'block' : 'none';
+            document.getElementById('previewResult').textContent = '';
+        }
+        function insertVar(v) {
+            var ta = document.getElementById('bulkMessage');
+            ta.value += v;
+            updateCharCount();
+            ta.focus();
+        }
+        function updateCharCount() {
+            var len = document.getElementById('bulkMessage').value.length;
+            var segs = Math.max(1, Math.ceil(len / 160));
+            document.getElementById('charCount').textContent = len + ' chars · ' + segs + ' SMS' + (segs > 1 ? ' (multi-part)' : '');
+        }
+        document.getElementById('bulkMessage').addEventListener('input', updateCharCount);
+        function previewBulk() {
+            var fd = new FormData(document.getElementById('bulkSmsForm'));
+            var span = document.getElementById('previewResult');
+            span.textContent = '⏳ Counting...';
+            fetch('/admin/bulk-sms-preview', { method: 'POST', body: fd })
+                .then(function(r){ return r.json(); })
+                .then(function(d){
+                    var s = d.sample && d.sample.length ? ' · e.g. ' + d.sample.join(', ') : '';
+                    span.textContent = '👥 ' + d.count + ' recipients will receive this SMS' + s;
+                })
+                .catch(function(){ span.textContent = '❌ Preview failed'; });
+        }
+        function confirmBulkSend() {
+            var msg = document.getElementById('bulkMessage').value.trim();
+            if (!msg) { alert('Type a message first'); return false; }
+            return confirm('Send this SMS to the selected recipients?');
         }
         </script>
 
@@ -2270,7 +2322,7 @@ def load_twilio_config():
 @app.route('/admin/bulk-sms', methods=['POST'])
 @admin_required
 def admin_bulk_sms():
-    """Send bulk SMS from admin: all leads, one business's leads, or uploaded phone list."""
+    """Send bulk SMS from admin: all leads, one business's leads, uploaded phone list, pasted numbers, or business owners."""
     message = (request.form.get('message', '') or '').strip()
     target = request.form.get('target', 'all')
     if not message:
@@ -2281,17 +2333,34 @@ def admin_bulk_sms():
 
     db = get_db()
     c = db.cursor()
-    recipients = []  # list of (phone, business_id, lead_id)
+    recipients = []  # list of (phone, business_id, lead_id, name)
 
     if target == 'all':
-        c.execute("SELECT id, phone, business_id FROM leads WHERE phone IS NOT NULL AND phone != ''")
+        c.execute("SELECT id, phone, business_id, name FROM leads WHERE phone IS NOT NULL AND phone != ''")
         for r in c.fetchall():
-            recipients.append((r[1], r[2], r[0]))
+            recipients.append((r[1], r[2], r[0], r[3]))
     elif target == 'business':
         bid = request.form.get('business_id', '')
-        c.execute("SELECT id, phone, business_id FROM leads WHERE business_id = ? AND phone IS NOT NULL AND phone != ''", (bid,))
+        c.execute("SELECT id, phone, business_id, name FROM leads WHERE business_id = ? AND phone IS NOT NULL AND phone != ''", (bid,))
         for r in c.fetchall():
-            recipients.append((r[1], r[2], r[0]))
+            recipients.append((r[1], r[2], r[0], r[3]))
+    elif target == 'owners':
+        c.execute("SELECT id, name, phone_number FROM businesses WHERE phone_number IS NOT NULL AND phone_number != ''")
+        for r in c.fetchall():
+            recipients.append((r[2], r[0], None, r[1]))
+    elif target == 'paste':
+        pasted = (request.form.get('pasted_numbers', '') or '')
+        for line in pasted.replace('\r\n', '\n').replace('\r', '\n').split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+            if line.lower().startswith('phone') or line.lower().startswith('number'):
+                continue
+            parts = [p.strip() for p in line.split(',')]
+            cleaned = _clean_phone(parts[0])
+            if cleaned:
+                name = parts[1] if len(parts) > 1 else None
+                recipients.append((cleaned, None, None, name))
     elif target == 'upload':
         f = request.files.get('phone_file')
         if not f or not f.filename:
@@ -2299,40 +2368,57 @@ def admin_bulk_sms():
             return redirect('/admin?tab=sms')
         content = f.read().decode('utf-8', errors='ignore')
         lines = content.replace('\r\n', '\n').replace('\r', '\n').split('\n')
-        # If CSV with header, find phone-ish column
         for line in lines:
             line = line.strip()
             if not line:
                 continue
             if line.lower().startswith('phone') or line.lower().startswith('number'):
                 continue
-            # Take first field that looks like a number
             parts = [p.strip() for p in line.split(',')]
             phone = parts[0]
             cleaned = _clean_phone(phone)
             if cleaned:
-                recipients.append((cleaned, None, None))
+                name = parts[1] if len(parts) > 1 else None
+                recipients.append((cleaned, None, None, name))
 
-    # Dedupe by phone
+    # Dedupe by phone (keep first name found)
     seen = set()
     deduped = []
-    for phone, bid, lid in recipients:
+    for phone, bid, lid, name in recipients:
         cleaned = _clean_phone(phone)
         if cleaned and cleaned not in seen:
             seen.add(cleaned)
-            deduped.append((cleaned, bid, lid))
+            deduped.append((cleaned, bid, lid, name))
     db.close()
 
     if not deduped:
         flash('❌ No valid phone numbers found', 'danger')
         return redirect('/admin?tab=sms')
 
+    # Personalization: replace {name} / {business} per recipient
+    def personalize(msg, name, bid):
+        m = msg.replace('{name}', (name or 'there').strip() or 'there')
+        if '{business}' in m:
+            biz_name = ''
+            if bid:
+                try:
+                    bdb = sqlite3.connect('/root/voice-agent-businesses.db')
+                    row = bdb.execute("SELECT name FROM businesses WHERE id = ?", (bid,)).fetchone()
+                    if row:
+                        biz_name = row[0] or ''
+                    bdb.close()
+                except:
+                    pass
+            m = m.replace('{business}', biz_name or 'your business')
+        return m
+
     # Send with small delay between messages
     sent, failed = 0, 0
     errors = []
-    for i, (phone, bid, lid) in enumerate(deduped):
+    for i, (phone, bid, lid, name) in enumerate(deduped):
         try:
-            ok = send_sms(phone, message, business_id=bid, lead_id=lid)
+            final_msg = personalize(message, name, bid)
+            ok = send_sms(phone, final_msg, business_id=bid, lead_id=lid)
             if ok:
                 sent += 1
             else:
@@ -2349,6 +2435,60 @@ def admin_bulk_sms():
     else:
         flash(f'✅ Sent {sent} SMS to all {len(deduped)} recipients!', 'success')
     return redirect('/admin?tab=sms')
+
+@app.route('/admin/bulk-sms-preview', methods=['POST'])
+@admin_required
+def admin_bulk_sms_preview():
+    """Count recipients for a bulk SMS target WITHOUT sending (JS preview)."""
+    target = request.form.get('target', 'all')
+    from smsgate_sms import _clean_phone
+    db = get_db()
+    c = db.cursor()
+    numbers = []
+
+    if target == 'all':
+        c.execute("SELECT phone FROM leads WHERE phone IS NOT NULL AND phone != ''")
+        numbers = [r[0] for r in c.fetchall()]
+    elif target == 'business':
+        bid = request.form.get('business_id', '')
+        c.execute("SELECT phone FROM leads WHERE business_id = ? AND phone IS NOT NULL AND phone != ''", (bid,))
+        numbers = [r[0] for r in c.fetchall()]
+    elif target == 'owners':
+        c.execute("SELECT phone_number FROM businesses WHERE phone_number IS NOT NULL AND phone_number != ''")
+        numbers = [r[0] for r in c.fetchall()]
+    elif target == 'paste':
+        pasted = (request.form.get('pasted_numbers', '') or '')
+        for line in pasted.replace('\r\n', '\n').replace('\r', '\n').split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+            parts = [p.strip() for p in line.split(',')]
+            cleaned = _clean_phone(parts[0])
+            if cleaned:
+                numbers.append(cleaned)
+    elif target == 'upload':
+        f = request.files.get('phone_file')
+        if f and f.filename:
+            content = f.read().decode('utf-8', errors='ignore')
+            for line in content.replace('\r\n', '\n').replace('\r', '\n').split('\n'):
+                line = line.strip()
+                if not line or line.lower().startswith(('phone', 'number')):
+                    continue
+                cleaned = _clean_phone(line.split(',')[0].strip())
+                if cleaned:
+                    numbers.append(cleaned)
+    db.close()
+
+    # Dedupe + validate
+    seen = set()
+    valid = []
+    for n in numbers:
+        cleaned = _clean_phone(n)
+        if cleaned and cleaned not in seen:
+            seen.add(cleaned)
+            valid.append(cleaned)
+
+    return jsonify({'count': len(valid), 'sample': valid[:5]})
 
 @app.route('/admin/update-stripe', methods=['POST'])
 @admin_required
