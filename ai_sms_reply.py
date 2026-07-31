@@ -117,6 +117,8 @@ def build_sms_prompt(biz, current_appt=None):
         "\n- CANCEL: if the customer asks to CANCEL their appointment, end your reply with exactly: CANCEL|"
         "\n- MOVE: if the customer wants to RESCHEDULE and agrees on a new day+time, "
         "end your reply with exactly: MOVE|<day> <time>"
+        "\n- CALLME: if the customer asks to be CALLED BACK or wants to talk to a person "
+        "on the phone, end your reply with exactly: CALLME|"
         "\nOnly emit one protocol per reply. Do not output any protocol in any other situation."
         "\n\nOpt-out: if the customer says STOP/UNSUBSCRIBE, reply just 'You are "
         "unsubscribed. Text HELP for help.' and nothing else."
@@ -213,6 +215,42 @@ def move_appointment(appt_id, new_time):
     print(f"🔄 Appointment moved: {appt_id} -> {new_time}")
 
 
+def trigger_call_back(biz, phone):
+    """Place a VAPI call from the business to the customer (SMS 'call me back')."""
+    if not phone.startswith("+"):
+        phone = "+" + phone
+    payload = {
+        "assistantId": biz.get("vapi_assistant_id"),
+        "phoneNumberId": biz.get("vapi_phone_id"),
+        "customer": {"number": phone},
+        "assistantOverrides": {
+            "variableValues": {
+                "business_name": biz.get("name") or "",
+                "industry": biz.get("industry") or "",
+            }
+        },
+    }
+    req = urllib.request.Request(
+        f"{VAPI_BASE}/call",
+        data=json.dumps(payload).encode(),
+        headers={
+            "Authorization": f"Bearer {VAPI_API_KEY}",
+            "Content-Type": "application/json",
+            "User-Agent": "curl/8.0",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode())
+        cid = data.get("id")
+        print(f"📞 Callback call placed: {cid} -> {phone}")
+        return cid
+    except Exception as e:
+        print(f"❌ Callback call failed: {e}")
+        return None
+
+
 def handle_inbound_sms(bid, sender, body, lead_id=None):
     """Main entry — called from the sms-gate webhook (background thread)."""
     try:
@@ -247,12 +285,13 @@ def handle_inbound_sms(bid, sender, body, lead_id=None):
         # ── Protocol parsing: BOOK| / MOVE| / CANCEL| (own line OR mid-line) ──
         import re as _proto_re
         msg_text = _proto_re.sub(
-            r'(BOOK|MOVE|CANCEL)\|[A-Za-z0-9 ,:./-]*', '', reply, flags=_proto_re.IGNORECASE)
+            r'(BOOK|MOVE|CANCEL|CALLME)\|[A-Za-z0-9 ,:./-]*', '', reply, flags=_proto_re.IGNORECASE)
         msg_text = msg_text.replace('  ', ' ').strip(' ,.;:-') or reply
 
         m_book = _proto_re.search(r'BOOK\|([A-Za-z0-9 ,:./-]+)', reply, _proto_re.IGNORECASE)
         m_move = _proto_re.search(r'MOVE\|([A-Za-z0-9 ,:./-]+)', reply, _proto_re.IGNORECASE)
         m_cancel = _proto_re.search(r'CANCEL\|', reply, _proto_re.IGNORECASE)
+        m_callme = _proto_re.search(r'CALLME\|', reply, _proto_re.IGNORECASE)
 
         if m_book:
             book_line = m_book.group(1).strip()
@@ -272,6 +311,9 @@ def handle_inbound_sms(bid, sender, body, lead_id=None):
                 cancel_appointment(current_appt["id"])
             else:
                 print("⚠️ CANCEL requested but no current appointment found")
+        elif m_callme:
+            print("📞 CALLME detected — placing callback call")
+            trigger_call_back(biz, sender)
 
         # Send via sms-gate (logs to outgoing_sms → reply matching)
         import sys
