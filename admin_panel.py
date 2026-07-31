@@ -180,7 +180,8 @@ ADMIN_HTML = """<!DOCTYPE html>
                 ('calendar', 'calendar-alt', 'Calendar'),
                 ('stripe', 'credit-card', 'Stripe'),
                 ('agent-tars', 'robot', 'Agent TARS'),
-                ('agent-api', 'key', 'Agent API')
+                ('agent-api', 'key', 'Agent API'),
+                ('affiliates', 'hand-holding-usd', 'Affiliates')
             ] %}
             {% for key, icon, label in admin_tabs %}
             <a href="?tab={{ key }}" class="sidebar-item flex items-center gap-2 {% if tab == key %}active{% endif %}">
@@ -1792,6 +1793,61 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
             loadApiKeys();
         });
         </script>
+        {% elif tab == 'affiliates' %}
+        <h2 class="text-xl font-bold mb-6">💸 Affiliates — Commission Tracking</h2>
+        <p class="text-sm text-[#64748b] mb-6">Sales people earn a flat commission per business signup through their affiliate link. Mark signups as <b>paid</b> when you send the money.</p>
+        <div class="card mb-6">
+            <h3 class="font-bold mb-4">👥 Affiliates ({{ affiliates|length }})</h3>
+            <table class="w-full text-sm">
+                <tr class="text-left text-[#64748b]"><th>Name</th><th>Code</th><th>Email</th><th>Rate</th><th>Status</th><th>Created</th><th>Actions</th></tr>
+                {% for a in affiliates %}
+                <tr class="border-t border-[#1a1a2e]">
+                    <td class="py-2">{{ a.name }}</td>
+                    <td><code>{{ a.code }}</code></td>
+                    <td>{{ a.email }}</td>
+                    <td>
+                        <form method="POST" action="/admin/affiliates/rate" class="flex items-center gap-1" style="display:inline-flex">
+                            <input type="hidden" name="affiliate_id" value="{{ a.id }}">
+                            <input type="number" name="rate" value="{{ a.commission_per_signup }}" min="0" step="5" style="width:70px;padding:4px 6px;font-size:12px" class="input">
+                            <button class="btn-primary text-xs" style="padding:4px 10px">Set</button>
+                        </form>
+                    </td>
+                    <td><span class="badge {{ 'badge-green' if a.status=='active' else 'badge-red' }}">{{ a.status }}</span></td>
+                    <td class="text-xs text-[#64748b]">{{ (a.created_at or '')[:10] }}</td>
+                    <td>
+                        <form method="POST" action="/admin/affiliates/toggle" style="display:inline">
+                            <input type="hidden" name="affiliate_id" value="{{ a.id }}">
+                            <button class="btn-secondary text-xs" style="padding:4px 10px">{{ '⏸ Disable' if a.status=='active' else '▶ Enable' }}</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        <div class="card">
+            <h3 class="font-bold mb-4">📊 Commission Events ({{ affiliate_events|length }})</h3>
+            <table class="w-full text-sm">
+                <tr class="text-left text-[#64748b]"><th>Affiliate</th><th>Type</th><th>Business</th><th>Commission</th><th>Status</th><th>Date</th><th></th></tr>
+                {% for e in affiliate_events %}
+                <tr class="border-t border-[#1a1a2e]">
+                    <td class="py-2">{{ e.affiliate_name or '—' }}</td>
+                    <td>{{ '🚀' if e.event_type=='signup' else '👆' }} {{ e.event_type }}</td>
+                    <td>{{ e.business_name or '—' }}</td>
+                    <td>${{ '%.0f' % (e.commission or 0) }}</td>
+                    <td><span class="badge {{ 'badge-green' if e.status=='paid' else 'badge-yellow' }}">{{ e.status }}</span></td>
+                    <td class="text-xs text-[#64748b]">{{ (e.created_at or '')[:16] }}</td>
+                    <td>
+                        {% if e.event_type=='signup' and e.status=='pending' %}
+                        <form method="POST" action="/admin/affiliates/pay" style="display:inline">
+                            <input type="hidden" name="event_id" value="{{ e.id }}">
+                            <button class="btn-primary text-xs" style="padding:4px 10px">💰 Mark Paid</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
         {% elif tab == 'calendar' %}
         <h2 class="text-xl font-bold mb-6">📅 All Appointments</h2>
 
@@ -3181,6 +3237,13 @@ def admin_dashboard():
     """)
     all_appointments = [dict(r) for r in c.fetchall()]
     
+    # Affiliates tab data
+    c.execute("SELECT * FROM affiliates ORDER BY created_at DESC")
+    affiliates = [dict(r) for r in c.fetchall()]
+    c.execute("SELECT e.*, a.name as affiliate_name FROM affiliate_events e "
+              "LEFT JOIN affiliates a ON e.affiliate_id = a.id ORDER BY e.created_at DESC LIMIT 200")
+    affiliate_events = [dict(r) for r in c.fetchall()]
+
     return render_template_string(ADMIN_HTML,
         session=session, tab=tab, businesses=businesses,
         industries=INDUSTRY_PRESETS, tiers=PRICING_TIERS,
@@ -3188,6 +3251,7 @@ def admin_dashboard():
         vapi_numbers=vapi_numbers, vapi_assistant_count=vapi_assistant_count,
         chatbot_provider=chatbot_provider, chatbot_model=chatbot_model, chatbot_api_key=chatbot_api_key,
         all_appointments=all_appointments,
+        affiliates=affiliates, affiliate_events=affiliate_events,
         tars_result=json.load(open('/dev/shm/tars_result.json'))['result'] if os.path.exists('/dev/shm/tars_result.json') else None,
         tars_status=json.load(open('/dev/shm/tars_status.json')) if os.path.exists('/dev/shm/tars_status.json') else None,
         last_task=session.get('tars_last_task', ''),
@@ -3204,6 +3268,52 @@ def admin_dashboard():
         smtp_config=load_smtp_config(),
         twilio_config=load_twilio_config(),
         stripe_config=load_stripe_config())
+
+@app.route('/admin/affiliates/pay', methods=['POST'])
+@admin_required
+def admin_affiliate_pay():
+    event_id = request.form.get('event_id', '')
+    db = get_db()
+    c = db.cursor()
+    c.execute("UPDATE affiliate_events SET status='paid', paid_at=datetime('now') WHERE id=? AND event_type='signup'", (event_id,))
+    db.commit()
+    db.close()
+    flash('💰 Commission marked as paid!', 'success')
+    return redirect('/admin?tab=affiliates')
+
+
+@app.route('/admin/affiliates/rate', methods=['POST'])
+@admin_required
+def admin_affiliate_rate():
+    aid = request.form.get('affiliate_id', '')
+    try:
+        rate = float(request.form.get('rate', 50))
+    except (TypeError, ValueError):
+        rate = 50
+    db = get_db()
+    c = db.cursor()
+    c.execute("UPDATE affiliates SET commission_per_signup=? WHERE id=?", (rate, aid))
+    db.commit()
+    db.close()
+    flash(f'✅ Commission rate set to ${rate:.0f}', 'success')
+    return redirect('/admin?tab=affiliates')
+
+
+@app.route('/admin/affiliates/toggle', methods=['POST'])
+@admin_required
+def admin_affiliate_toggle():
+    aid = request.form.get('affiliate_id', '')
+    db = get_db()
+    c = db.cursor()
+    row = c.execute("SELECT status FROM affiliates WHERE id=?", (aid,)).fetchone()
+    if row:
+        new_status = 'inactive' if row[0] == 'active' else 'active'
+        c.execute("UPDATE affiliates SET status=? WHERE id=?", (new_status, aid))
+        db.commit()
+    db.close()
+    flash('✅ Affiliate status updated', 'success')
+    return redirect('/admin?tab=affiliates')
+
 
 @app.route('/admin/update-chatbot', methods=['POST'])
 @admin_required

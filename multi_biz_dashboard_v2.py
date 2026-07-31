@@ -25,7 +25,7 @@ import os, sys, json, sqlite3, csv, io, hashlib, time, threading, subprocess, hm
 import requests
 from datetime import datetime, date, timedelta
 from pathlib import Path
-from flask import Flask, render_template_string, jsonify, request, redirect, session, url_for, send_file, flash
+from flask import Flask, render_template_string, jsonify, request, redirect, session, url_for, send_file, flash, make_response
 from functools import wraps
 import secrets
 from diazites_prompt import build_diazites_prompt
@@ -1316,6 +1316,7 @@ p.play().then(function(){document.getElementById('voice-status-'+s).textContent=
 <div class="flex items-center justify-center gap-2 mb-3"><div class="text-lg">🎙️</div><span class="text-sm gradient-text font-bold">Diazites</span></div>
 <div class="flex justify-center gap-4 mb-3 text-xs">
 <a href="/signup" class="text-[#818cf8] hover:text-[#a855f7] font-medium">Start Free Trial</a>
+<a href="/affiliate" class="text-[#818cf8] hover:text-[#a855f7] font-medium">💸 Affiliates — Earn $50/Signup</a>
 <a href="/privacy" class="hover:text-[#c084fc]">Privacy Policy</a>
 <a href="/terms" class="hover:text-[#c084fc]">Terms of Service</a>
 <a href="/refund" class="hover:text-[#c084fc]">Refund Policy</a>
@@ -1557,6 +1558,23 @@ def admin_required(f):
 def index():
     if 'business_id' in session:
         return dashboard()
+    # Affiliate tracking: ?ref=CODE sets a 30-day cookie + records a click
+    ref = request.args.get('ref', '')
+    aff = get_affiliate_by_code(ref) if ref else None
+    if aff:
+        resp = make_response(render_template_string(LANDING_PAGE))
+        resp.set_cookie('diazites_ref', aff['code'], max_age=60 * 60 * 24 * 30, samesite='Lax')
+        try:
+            db = get_db()
+            c = db.cursor()
+            if request.cookies.get('diazites_ref', '') != aff['code']:
+                c.execute("INSERT INTO affiliate_events (id, affiliate_id, event_type, created_at) VALUES (?,?,?,datetime('now'))",
+                          (uuid.uuid4().hex[:16], aff['id'], 'click'))
+                db.commit()
+            db.close()
+        except Exception:
+            pass
+        return resp
     return render_template_string(LANDING_PAGE)
 
 
@@ -1639,6 +1657,7 @@ body{{background:#0a0a0f;color:#f1f1f5;overflow-x:hidden}}
 <footer class="border-t border-[#252533] py-8 text-center text-xs text-[#5c5c70]">
 <div class="flex justify-center gap-4 mb-3 text-xs">
 <a href="/signup" class="text-[#818cf8] hover:text-[#a855f7] font-medium">Start Free Trial</a>
+<a href="/affiliate" class="text-[#818cf8] hover:text-[#a855f7] font-medium">💸 Affiliates — Earn $50/Signup</a>
 <a href="/privacy" class="hover:text-[#c084fc]">Privacy Policy</a>
 <a href="/terms" class="hover:text-[#c084fc]">Terms of Service</a>
 <a href="/refund" class="hover:text-[#c084fc]">Refund Policy</a>
@@ -1722,6 +1741,19 @@ def api_signup():
          plan, price, email))
     
     c.execute("""INSERT INTO campaigns (id, business_id, status) VALUES (?, ?, 'idle')""", (cid, bid))
+    
+    # Affiliate attribution: if the visitor came through an affiliate link,
+    # credit the signup with a commission
+    try:
+        ref = request.cookies.get('diazites_ref', '')
+        aff = get_affiliate_by_code(ref) if ref else None
+        if aff:
+            c.execute(
+                "INSERT INTO affiliate_events (id, affiliate_id, event_type, business_id, business_name, "
+                "commission, status, created_at) VALUES (?,?,?,?,?,?, 'pending', datetime('now'))",
+                (uuid.uuid4().hex[:16], aff['id'], 'signup', bid, name, aff['commission_per_signup']))
+    except Exception:
+        pass
     db.commit()
     
     # Try to send email
@@ -7933,6 +7965,274 @@ def delete_kb_document():
     db.commit()
     db.close()
     return jsonify({'success': True})
+
+# ── AFFILIATE PROGRAM (sales people earn commission per signup) ──
+def init_affiliates_table():
+    """Ensure affiliates + affiliate_events tables exist."""
+    db = get_db()
+    c = db.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS affiliates (
+            id TEXT PRIMARY KEY,
+            code TEXT UNIQUE,
+            name TEXT,
+            email TEXT,
+            phone TEXT,
+            commission_per_signup REAL DEFAULT 50,
+            status TEXT DEFAULT 'active',
+            created_at TEXT
+        )
+    """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS affiliate_events (
+            id TEXT PRIMARY KEY,
+            affiliate_id TEXT,
+            event_type TEXT,
+            business_id TEXT,
+            business_name TEXT,
+            commission REAL DEFAULT 0,
+            status TEXT DEFAULT 'pending',
+            created_at TEXT,
+            paid_at TEXT
+        )
+    """)
+    db.commit()
+    db.close()
+
+init_affiliates_table()
+
+
+def get_affiliate_by_code(code):
+    if not code:
+        return None
+    db = get_db()
+    c = db.cursor()
+    row = c.execute("SELECT * FROM affiliates WHERE code=? AND status='active'",
+                    (str(code).strip().upper(),)).fetchone()
+    db.close()
+    return dict(row) if row else None
+
+
+def gen_affiliate_code(cursor):
+    import random as _r
+    import string as _s
+    for _ in range(50):
+        code = ''.join(_r.choices(_s.ascii_uppercase + _s.digits, k=8))
+        if not cursor.execute("SELECT 1 FROM affiliates WHERE code=?", (code,)).fetchone():
+            return code
+    return 'AF' + str(int(time.time()))[-6:]
+
+
+AFFILIATE_LANDING = """<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diazites Affiliates — Earn $50 Per Signup</title>
+<style>body{font-family:system-ui,-apple-system,sans-serif;background:#0a0a16;color:#f1f1f5;margin:0}
+.wrap{max-width:860px;margin:0 auto;padding:48px 20px}
+.card{background:#12121f;border:1px solid #252533;border-radius:16px;padding:28px;margin-bottom:20px}
+.gradient-text{background:linear-gradient(90deg,#818cf8,#a855f7);-webkit-background-clip:text;background-clip:text;color:transparent}
+h1{font-size:34px;margin:0 0 8px}h2{font-size:22px;margin:0 0 12px}
+p{color:#a1a1b5;line-height:1.6}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:20px 0}
+.step{background:#1a1a26;border:1px solid #252533;border-radius:12px;padding:16px}
+.btn{display:inline-block;background:linear-gradient(90deg,#818cf8,#a855f7);color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:600;border:none;cursor:pointer;font-size:14px}
+input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:14px;box-sizing:border-box;margin-bottom:10px}
+label{font-size:12px;color:#7a7a8e;display:block;margin-bottom:4px}
+.err{color:#f87171;font-size:13px;margin-bottom:10px}
+.top{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #1a1a2e}
+.top a{color:#818cf8;text-decoration:none;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid #1a1a2e}
+.badge{padding:2px 10px;border-radius:999px;font-size:11px}
+.badge.green{background:rgba(74,222,128,.15);color:#4ade80}.badge.yellow{background:rgba(250,204,21,.15);color:#facc15}
+.linkbox{background:#0c0c18;border:1px dashed #252533;border-radius:10px;padding:12px;font-size:14px;word-break:break-all;color:#818cf8;margin:12px 0}
+.stat{display:inline-block;margin-right:28px}
+.stat b{font-size:26px;display:block;color:#f1f1f5}</style></head><body>
+<div class="top"><div><span style="font-weight:700">🎙️ Diazites</span> <span style="color:#7a7a8e;font-size:12px">Affiliate Program</span></div>
+<div><a href="/affiliate/login">Affiliate Login</a> &nbsp; <a href="/">← Back to site</a></div></div>
+<div class="wrap">
+<div class="card"><h1>Earn <span class="gradient-text">$50</span> for every business you bring in</h1>
+<p>Diazites gives local businesses AI voice agents that answer calls, book appointments, and never miss a lead. When a business signs up through your link, you earn <b>$50</b> — as many signups as you can bring.</p>
+<div class="steps">
+<div class="step"><b>1. Get your link</b><p style="font-size:13px;margin:6px 0 0">Sign up free and get your personal tracking link in seconds.</p></div>
+<div class="step"><b>2. Share it</b><p style="font-size:13px;margin:6px 0 0">Share on social, with your network, or with local businesses.</p></div>
+<div class="step"><b>3. Get paid</b><p style="font-size:13px;margin:6px 0 0">$50 per qualified signup. Track everything in your dashboard.</p></div>
+</div>
+<a class="btn" href="/affiliate/signup">🚀 Become an Affiliate</a> &nbsp; <a href="/affiliate/login" style="color:#818cf8;font-size:14px">Already have a code? Log in →</a>
+</div>
+<div class="card"><h2>Why Diazites</h2>
+<p>Businesses pay $97–$497/mo for AI voice agents that answer every call, book appointments, and qualify leads — while they focus on their work. High-value product, high-converting offer, recurring revenue for us — and a flat $50 commission for you per signup.</p></div>
+</div></body></html>"""
+
+AFFILIATE_SIGNUP = """<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Affiliate Signup — Diazites</title><style>
+body{font-family:system-ui,sans-serif;background:#0a0a16;color:#f1f1f5;margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh}
+.card{background:#12121f;border:1px solid #252533;border-radius:16px;padding:32px;width:380px;max-width:92vw}
+.gradient-text{background:linear-gradient(90deg,#818cf8,#a855f7);-webkit-background-clip:text;background-clip:text;color:transparent}
+.btn{width:100%;background:linear-gradient(90deg,#818cf8,#a855f7);color:#fff;padding:12px;border-radius:10px;border:none;cursor:pointer;font-size:14px;font-weight:600}
+input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:14px;box-sizing:border-box;margin-bottom:10px}
+label{font-size:12px;color:#7a7a8e;display:block;margin-bottom:4px}
+.err{color:#f87171;font-size:13px;margin-bottom:10px}
+a{color:#818cf8;text-decoration:none;font-size:13px}</style></head><body>
+<div class="card"><h1 style="font-size:26px;margin:0 0 6px">Become an <span class="gradient-text">Affiliate</span></h1>
+<p style="color:#a1a1b5;font-size:14px;margin:0 0 20px">Earn <b>$50</b> per business signup. Your personal link + live tracking dashboard included.</p>
+<div class="err">{{ error }}</div>
+<form method="POST">
+<label>Full Name</label><input name="name" value="{{ values.get('name','') }}" required>
+<label>Email</label><input type="email" name="email" value="{{ values.get('email','') }}" required>
+<label>Phone (optional)</label><input name="phone" value="{{ values.get('phone','') }}">
+<button class="btn">Create My Affiliate Link</button>
+</form>
+<p style="margin-top:14px"><a href="/affiliate/login">Already have a code? Log in →</a></p></div></body></html>"""
+
+AFFILIATE_LOGIN = """<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Affiliate Login — Diazites</title><style>
+body{font-family:system-ui,sans-serif;background:#0a0a16;color:#f1f1f5;margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh}
+.card{background:#12121f;border:1px solid #252533;border-radius:16px;padding:32px;width:360px;max-width:92vw}
+.btn{width:100%;background:linear-gradient(90deg,#818cf8,#a855f7);color:#fff;padding:12px;border-radius:10px;border:none;cursor:pointer;font-size:14px;font-weight:600}
+input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:14px;box-sizing:border-box;margin-bottom:10px}
+label{font-size:12px;color:#7a7a8e;display:block;margin-bottom:4px}
+.err{color:#f87171;font-size:13px;margin-bottom:10px}
+a{color:#818cf8;text-decoration:none;font-size:13px}</style></head><body>
+<div class="card"><h1 style="font-size:24px;margin:0 0 6px">Affiliate Login</h1>
+<p style="color:#a1a1b5;font-size:14px;margin:0 0 20px">Enter your affiliate code</p>
+<div class="err">{{ error }}</div>
+<form method="POST">
+<label>Affiliate Code</label><input name="code" placeholder="e.g. AB12CD34" required style="text-transform:uppercase">
+<button class="btn">View My Dashboard</button>
+</form>
+<p style="margin-top:14px"><a href="/affiliate/signup">No code? Become an affiliate →</a></p></div></body></html>"""
+
+AFFILIATE_DASHBOARD = """<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Affiliate Dashboard — Diazites</title><style>
+body{font-family:system-ui,sans-serif;background:#0a0a16;color:#f1f1f5;margin:0}
+.wrap{max-width:900px;margin:0 auto;padding:32px 20px}
+.card{background:#12121f;border:1px solid #252533;border-radius:16px;padding:24px;margin-bottom:18px}
+.gradient-text{background:linear-gradient(90deg,#818cf8,#a855f7);-webkit-background-clip:text;background-clip:text;color:transparent}
+.linkbox{background:#0c0c18;border:1px dashed #252533;border-radius:10px;padding:12px;font-size:14px;word-break:break-all;color:#818cf8;margin:12px 0}
+.btn{display:inline-block;background:linear-gradient(90deg,#818cf8,#a855f7);color:#fff;text-decoration:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;border:none;cursor:pointer}
+.stat{display:inline-block;margin-right:32px}.stat b{font-size:28px;display:block}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid #1a1a2e}
+.badge{padding:2px 10px;border-radius:999px;font-size:11px}
+.badge.green{background:rgba(74,222,128,.15);color:#4ade80}.badge.yellow{background:rgba(250,204,21,.15);color:#facc15}
+.top{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid #1a1a2e}
+.top a{color:#818cf8;text-decoration:none;font-size:13px}
+.copy{font-size:12px;color:#4ade80;display:none}
+</style></head><body>
+<div class="top"><div><span style="font-weight:700">🎙️ Diazites</span> <span style="color:#7a7a8e;font-size:12px">Affiliate Dashboard</span></div>
+<div><a href="/affiliate/logout">Logout</a></div></div>
+<div class="wrap">
+<div class="card"><h2 style="margin:0 0 4px">Hi, {{ aff.name }} 👋</h2>
+<p style="color:#a1a1b5;font-size:14px;margin:0">Your affiliate code: <b>{{ aff.code }}</b></p>
+<div class="linkbox">🔗 {{ link }}</div>
+<button class="btn" onclick="copyLink()">📋 Copy Link</button> <span id="copied" class="copy">Copied!</span></div>
+<div class="card">
+<div class="stat"><b>{{ clicks }}</b>Link Clicks</div>
+<div class="stat"><b style="color:#facc15">${{ '%.0f' % total_pending }}</b>Pending</div>
+<div class="stat"><b style="color:#4ade80">${{ '%.0f' % total_paid }}</b>Paid</div>
+</div>
+<div class="card"><h2>Signups &amp; Commissions</h2>
+{% if signups %}
+<table><tr><th>Business</th><th>Commission</th><th>Status</th><th>Date</th></tr>
+{% for s in signups %}
+<tr><td>{{ s['business_name'] or '—' }}</td><td>${{ '%.0f' % s['commission'] }}</td>
+<td><span class="badge {{ 'green' if s['status']=='paid' else 'yellow' }}">{{ s['status'].upper() }}</span></td>
+<td>{{ (s['created_at'] or '')[:10] }}</td></tr>
+{% endfor %}</table>
+{% else %}<p style="color:#7a7a8e;font-size:14px">No signups yet — share your link to start earning! 🚀</p>{% endif %}
+</div>
+<div class="card"><h2>How it works</h2>
+<p style="font-size:13px;color:#a1a1b5">When someone clicks your link and signs up, the signup is automatically tracked to you and ${{ '%.0f' % aff.commission_per_signup }} is added as <b>Pending</b>. Commissions are paid out after review. One commission per new business.</p></div>
+</div>
+<script>function copyLink(){var t=document.createElement('textarea');t.value='{{ link }}';document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);document.getElementById('copied').style.display='inline';setTimeout(function(){document.getElementById('copied').style.display='none'},1500);}</script>
+</body></html>"""
+
+
+@app.route('/affiliate')
+def affiliate_landing():
+    ref = request.args.get('ref', '')
+    aff = get_affiliate_by_code(ref) if ref else None
+    if aff:
+        resp = make_response(render_template_string(AFFILIATE_LANDING, ref=ref))
+        resp.set_cookie('diazites_ref', aff['code'], max_age=60 * 60 * 24 * 30, samesite='Lax')
+        try:
+            db = get_db()
+            c = db.cursor()
+            if request.cookies.get('diazites_ref', '') != aff['code']:
+                c.execute("INSERT INTO affiliate_events (id, affiliate_id, event_type, created_at) VALUES (?,?,?,datetime('now'))",
+                          (uuid.uuid4().hex[:16], aff['id'], 'click'))
+                db.commit()
+            db.close()
+        except Exception:
+            pass
+        return resp
+    return render_template_string(AFFILIATE_LANDING, ref=ref or '')
+
+
+@app.route('/affiliate/signup', methods=['GET', 'POST'])
+def affiliate_signup():
+    if request.method == 'POST':
+        name = (request.form.get('name') or '').strip()
+        email = (request.form.get('email') or '').strip()
+        phone = (request.form.get('phone') or '').strip()
+        if not name or not email:
+            return render_template_string(AFFILIATE_SIGNUP, error='Name and email are required', values=request.form)
+        db = get_db()
+        c = db.cursor()
+        code = gen_affiliate_code(c)
+        aid = uuid.uuid4().hex[:12]
+        c.execute("INSERT INTO affiliates (id, code, name, email, phone, created_at) VALUES (?,?,?,?,?,datetime('now'))",
+                  (aid, code, name, email, phone))
+        db.commit()
+        db.close()
+        session['affiliate_id'] = aid
+        return redirect('/affiliate/dashboard')
+    return render_template_string(AFFILIATE_SIGNUP, error='', values={})
+
+
+@app.route('/affiliate/login', methods=['GET', 'POST'])
+def affiliate_login():
+    if request.method == 'POST':
+        code = (request.form.get('code') or '').strip().upper()
+        aff = get_affiliate_by_code(code)
+        if aff:
+            session['affiliate_id'] = aff['id']
+            return redirect('/affiliate/dashboard')
+        return render_template_string(AFFILIATE_LOGIN, error='Invalid affiliate code')
+    return render_template_string(AFFILIATE_LOGIN, error='')
+
+
+@app.route('/affiliate/dashboard')
+def affiliate_dashboard():
+    aid = session.get('affiliate_id')
+    if not aid:
+        return redirect('/affiliate/login')
+    db = get_db()
+    c = db.cursor()
+    aff = c.execute("SELECT * FROM affiliates WHERE id=?", (aid,)).fetchone()
+    if not aff:
+        db.close()
+        session.pop('affiliate_id', None)
+        return redirect('/affiliate/login')
+    clicks = c.execute("SELECT COUNT(*) FROM affiliate_events WHERE affiliate_id=? AND event_type='click'",
+                       (aid,)).fetchone()[0]
+    signups = c.execute("SELECT * FROM affiliate_events WHERE affiliate_id=? AND event_type='signup' ORDER BY created_at DESC",
+                        (aid,)).fetchall()
+    total_pending = sum(r['commission'] for r in signups if r['status'] == 'pending')
+    total_paid = sum(r['commission'] for r in signups if r['status'] == 'paid')
+    db.close()
+    link = request.host_url.rstrip('/') + '/?ref=' + aff['code']
+    return render_template_string(AFFILIATE_DASHBOARD, aff=dict(aff), link=link, clicks=clicks,
+                                  signups=signups, total_pending=total_pending, total_paid=total_paid)
+
+
+@app.route('/affiliate/logout')
+def affiliate_logout():
+    session.pop('affiliate_id', None)
+    return redirect('/affiliate')
 
 @app.route('/sms-gate-webhook', methods=['POST'])
 def sms_gate_webhook():
