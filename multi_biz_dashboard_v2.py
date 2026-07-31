@@ -23,6 +23,7 @@ PRICES = {500: 15000, 1000: 29000, 5000: 49000}
 
 import os, sys, json, sqlite3, csv, io, hashlib, time, threading, subprocess, hmac, uuid
 import requests
+import urllib.request
 from datetime import datetime, date, timedelta
 from pathlib import Path
 from flask import Flask, render_template_string, jsonify, request, redirect, session, url_for, send_file, flash, make_response
@@ -7996,10 +7997,91 @@ def init_affiliates_table():
             paid_at TEXT
         )
     """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS affiliate_payouts (
+            id TEXT PRIMARY KEY,
+            affiliate_id TEXT,
+            amount REAL,
+            status TEXT DEFAULT 'pending',
+            created_at TEXT,
+            paid_at TEXT
+        )
+    """)
     db.commit()
     db.close()
 
 init_affiliates_table()
+
+
+def _agentmail_key():
+    """AGENTMAIL_API_KEY from env, then /root/.env (export syntax), then .env."""
+    key = os.environ.get("AGENTMAIL_API_KEY", "")
+    if not key:
+        for p in ("/root/.env", os.path.join(os.path.dirname(__file__), ".env")):
+            try:
+                with open(p) as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.startswith("AGENTMAIL_API_KEY="):
+                            key = line.split("=", 1)[1].strip().strip('"').strip("'")
+                            break
+            except Exception:
+                continue
+            if key:
+                break
+    return key
+
+
+def send_email_via_smtp(to, subject, body):
+    """Send email — AgentMail first (verified working), Resend SMTP fallback."""
+    # 1) AgentMail (proven: appointment confirmations use this path)
+    try:
+        key = _agentmail_key()
+        if key:
+            payload = {"to": to, "subject": subject, "text": body}
+            req = urllib.request.Request(
+                "https://api.agentmail.to/v0/inboxes/aiworkers@agentmail.to/messages/send",
+                data=json.dumps(payload).encode(),
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
+                         "User-Agent": "DiazitesAffiliate/1.0"},
+                method="POST")
+            urllib.request.urlopen(req, timeout=15)
+            return True
+    except Exception:
+        pass
+    # 2) Resend SMTP fallback
+    try:
+        from smtplib import SMTP
+        from email.mime.text import MIMEText
+        cfg_path = '/root/voice-agent-manager/smtp_config.json'
+        if not os.path.exists(cfg_path):
+            return False
+        with open(cfg_path) as f:
+            cfg = json.load(f)
+        if not cfg.get('host') or not cfg.get('email'):
+            return False
+        msg = MIMEText(body)
+        msg['Subject'] = subject
+        msg['From'] = cfg['email']
+        msg['To'] = to
+        with SMTP(cfg['host'], int(cfg.get('port', 587)), timeout=15) as server:
+            if cfg.get('tls') != '0':
+                server.starttls()
+            if cfg.get('password'):
+                smtp_user = 'resend' if 'resend' in cfg.get('host', '') else cfg['email']
+                server.login(smtp_user, cfg['password'])
+            server.send_message(msg)
+        return True
+    except Exception:
+        return False
+
+
+def site_base():
+    """Public site base URL (real domain even when testing on localhost)."""
+    base = request.host_url.rstrip('/')
+    if '127.0.0.1' in base or 'localhost' in base:
+        return 'https://diazites.online'
+    return base
 
 
 def get_affiliate_by_code(code):
@@ -8125,6 +8207,11 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid #1a1a2e}
 <div class="top"><div><span style="font-weight:700">🎙️ Diazites</span> <span style="color:#7a7a8e;font-size:12px">Affiliate Dashboard</span></div>
 <div><a href="/affiliate/logout">Logout</a></div></div>
 <div class="wrap">
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for cat, m in messages %}
+<div style="padding:12px 16px;border-radius:10px;margin-bottom:16px;font-size:14px;background:{{ 'rgba(74,222,128,.1)' if cat=='success' else 'rgba(248,113,113,.1)' }};border:1px solid {{ '#4ade80' if cat=='success' else '#f87171' }};color:{{ '#4ade80' if cat=='success' else '#f87171' }}">{{ m }}</div>
+{% endfor %}
+{% endwith %}
 <div class="card"><h2 style="margin:0 0 4px">Hi, {{ aff.name }} 👋</h2>
 <p style="color:#a1a1b5;font-size:14px;margin:0">Your affiliate code: <b>{{ aff.code }}</b></p>
 <div class="linkbox">🔗 {{ link }}</div>
@@ -8133,6 +8220,27 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid #1a1a2e}
 <div class="stat"><b>{{ clicks }}</b>Link Clicks</div>
 <div class="stat"><b style="color:#facc15">${{ '%.0f' % total_pending }}</b>Pending</div>
 <div class="stat"><b style="color:#4ade80">${{ '%.0f' % total_paid }}</b>Paid</div>
+</div>
+<div class="card"><h2>💰 Payouts</h2>
+{% set has_open = payouts and payouts[0]['status'] == 'pending' %}
+{% if total_pending > 0 and not has_open %}
+<form method="POST" action="/affiliate/request-payout" style="margin-bottom:12px">
+<button class="btn">💰 Request Payout (${{ '%.0f' % total_pending }})</button>
+</form>
+{% elif has_open %}
+<p style="color:#facc15;font-size:13px">⏳ Payout request in progress — you'll be notified when it's paid.</p>
+{% endif %}
+{% if payouts %}
+<table><tr><th>Amount</th><th>Status</th><th>Requested</th><th>Paid</th></tr>
+{% for p in payouts %}
+<tr><td>${{ '%.0f' % p['amount'] }}</td>
+<td><span class="badge {{ 'green' if p['status']=='paid' else 'yellow' }}">{{ p['status'].upper() }}</span></td>
+<td>{{ (p['created_at'] or '')[:10] }}</td>
+<td>{{ (p['paid_at'] or '—')[:10] }}</td></tr>
+{% endfor %}</table>
+{% else %}
+<p style="color:#7a7a8e;font-size:13px">No payout requests yet. Once you have pending commissions, request a payout here.</p>
+{% endif %}
 </div>
 <div class="card"><h2>Signups &amp; Commissions</h2>
 {% if signups %}
@@ -8189,6 +8297,33 @@ def affiliate_signup():
         db.commit()
         db.close()
         session['affiliate_id'] = aid
+        # Email the affiliate their credentials + tracking link
+        if email:
+            link = f"{site_base()}/?ref={code}"
+            try:
+                send_email_via_smtp(email, '🎉 Welcome to the Diazites Affiliate Program!', f"""Hi {name},
+
+Your affiliate account is ready — start earning $50 per business signup!
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+🔗 YOUR AFFILIATE LINK
+{link}
+━━━━━━━━━━━━━━━━━━━━━━━━
+🔐 Your affiliate code: {code}
+
+Dashboard: {site_base()}/affiliate/login
+
+How it works:
+1. Share your link anywhere (social, networking, local businesses)
+2. When a business signs up through it, you earn $50 per signup
+3. Track clicks, signups and earnings in your dashboard
+
+Questions? Just reply to this email.
+
+— Diazites Team
+""")
+            except Exception:
+                pass
         return redirect('/affiliate/dashboard')
     return render_template_string(AFFILIATE_SIGNUP, error='', values={})
 
@@ -8223,10 +8358,55 @@ def affiliate_dashboard():
                         (aid,)).fetchall()
     total_pending = sum(r['commission'] for r in signups if r['status'] == 'pending')
     total_paid = sum(r['commission'] for r in signups if r['status'] == 'paid')
+    payouts = c.execute("SELECT * FROM affiliate_payouts WHERE affiliate_id=? ORDER BY created_at DESC",
+                        (aid,)).fetchall()
     db.close()
-    link = request.host_url.rstrip('/') + '/?ref=' + aff['code']
+    link = site_base() + '/?ref=' + aff['code']
     return render_template_string(AFFILIATE_DASHBOARD, aff=dict(aff), link=link, clicks=clicks,
-                                  signups=signups, total_pending=total_pending, total_paid=total_paid)
+                                  signups=signups, total_pending=total_pending, total_paid=total_paid,
+                                  payouts=payouts)
+
+
+@app.route('/affiliate/request-payout', methods=['POST'])
+def affiliate_request_payout():
+    aid = session.get('affiliate_id')
+    if not aid:
+        return redirect('/affiliate/login')
+    db = get_db()
+    c = db.cursor()
+    aff = c.execute("SELECT * FROM affiliates WHERE id=?", (aid,)).fetchone()
+    if not aff:
+        db.close()
+        return redirect('/affiliate/login')
+    pending = c.execute(
+        "SELECT COALESCE(SUM(commission),0) FROM affiliate_events WHERE affiliate_id=? AND event_type='signup' AND status='pending'",
+        (aid,)).fetchone()[0]
+    open_req = c.execute("SELECT 1 FROM affiliate_payouts WHERE affiliate_id=? AND status='pending'",
+                         (aid,)).fetchone()
+    if float(pending) <= 0:
+        db.close()
+        flash('No pending commissions to request yet!', 'error')
+        return redirect('/affiliate/dashboard')
+    if open_req:
+        db.close()
+        flash('You already have a payout request in progress!', 'error')
+        return redirect('/affiliate/dashboard')
+    pid = uuid.uuid4().hex[:16]
+    c.execute("INSERT INTO affiliate_payouts (id, affiliate_id, amount, status, created_at) "
+              "VALUES (?,?,?, 'pending', datetime('now'))", (pid, aid, float(pending)))
+    db.commit()
+    admin_email = os.environ.get('ADMIN_NOTIFY_EMAIL', 'digimiami@gmail.com')
+    try:
+        send_email_via_smtp(
+            admin_email,
+            f'💰 Payout Request: {aff["name"]} — ${float(pending):.0f}',
+            f'Affiliate {aff["name"]} ({aff["email"] or "no email on file"}) requested a payout of ${float(pending):.0f}.\n\n'
+            f'Approve here: {site_base()}/admin?tab=affiliates')
+    except Exception:
+        pass
+    db.close()
+    flash('💰 Payout requested! We\'ll process it shortly.', 'success')
+    return redirect('/affiliate/dashboard')
 
 
 @app.route('/affiliate/logout')

@@ -1824,6 +1824,31 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                 {% endfor %}
             </table>
         </div>
+        <div class="card mb-6">
+            <h3 class="font-bold mb-4">💰 Payout Requests ({{ affiliate_payouts|length }})</h3>
+            <table class="w-full text-sm">
+                <tr class="text-left text-[#64748b]"><th>Affiliate</th><th>Amount</th><th>Status</th><th>Requested</th><th>Paid</th><th></th></tr>
+                {% for p in affiliate_payouts %}
+                <tr class="border-t border-[#1a1a2e]">
+                    <td class="py-2">{{ p.affiliate_name or '—' }}</td>
+                    <td><b>${{ '%.0f' % (p.amount or 0) }}</b></td>
+                    <td><span class="badge {{ 'badge-green' if p.status=='paid' else 'badge-yellow' }}">{{ p.status }}</span></td>
+                    <td class="text-xs text-[#64748b]">{{ (p.created_at or '')[:16] }}</td>
+                    <td class="text-xs text-[#64748b]">{{ (p.paid_at or '—')[:16] }}</td>
+                    <td>
+                        {% if p.status=='pending' %}
+                        <form method="POST" action="/admin/affiliates/payout-pay" style="display:inline">
+                            <input type="hidden" name="payout_id" value="{{ p.id }}">
+                            <button class="btn-primary text-xs" style="padding:4px 10px">💸 Settle ${{ '%.0f' % (p.amount or 0) }}</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-[#64748b] py-2">No payout requests yet.</td></tr>
+                {% endfor %}
+            </table>
+        </div>
         <div class="card">
             <h3 class="font-bold mb-4">📊 Commission Events ({{ affiliate_events|length }})</h3>
             <table class="w-full text-sm">
@@ -3243,6 +3268,9 @@ def admin_dashboard():
     c.execute("SELECT e.*, a.name as affiliate_name FROM affiliate_events e "
               "LEFT JOIN affiliates a ON e.affiliate_id = a.id ORDER BY e.created_at DESC LIMIT 200")
     affiliate_events = [dict(r) for r in c.fetchall()]
+    c.execute("SELECT p.*, a.name as affiliate_name FROM affiliate_payouts p "
+              "LEFT JOIN affiliates a ON p.affiliate_id = a.id ORDER BY p.created_at DESC")
+    affiliate_payouts = [dict(r) for r in c.fetchall()]
 
     return render_template_string(ADMIN_HTML,
         session=session, tab=tab, businesses=businesses,
@@ -3251,7 +3279,7 @@ def admin_dashboard():
         vapi_numbers=vapi_numbers, vapi_assistant_count=vapi_assistant_count,
         chatbot_provider=chatbot_provider, chatbot_model=chatbot_model, chatbot_api_key=chatbot_api_key,
         all_appointments=all_appointments,
-        affiliates=affiliates, affiliate_events=affiliate_events,
+        affiliates=affiliates, affiliate_events=affiliate_events, affiliate_payouts=affiliate_payouts,
         tars_result=json.load(open('/dev/shm/tars_result.json'))['result'] if os.path.exists('/dev/shm/tars_result.json') else None,
         tars_status=json.load(open('/dev/shm/tars_status.json')) if os.path.exists('/dev/shm/tars_status.json') else None,
         last_task=session.get('tars_last_task', ''),
@@ -3312,6 +3340,25 @@ def admin_affiliate_toggle():
         db.commit()
     db.close()
     flash('✅ Affiliate status updated', 'success')
+    return redirect('/admin?tab=affiliates')
+
+
+@app.route('/admin/affiliates/payout-pay', methods=['POST'])
+@admin_required
+def admin_affiliate_payout_pay():
+    payout_id = request.form.get('payout_id', '')
+    db = get_db()
+    c = db.cursor()
+    row = c.execute("SELECT affiliate_id, amount FROM affiliate_payouts WHERE id=?", (payout_id,)).fetchone()
+    if row:
+        c.execute("UPDATE affiliate_payouts SET status='paid', paid_at=datetime('now') WHERE id=?", (payout_id,))
+        c.execute("UPDATE affiliate_events SET status='paid', paid_at=datetime('now') "
+                  "WHERE affiliate_id=? AND event_type='signup' AND status='pending'", (row[0],))
+        db.commit()
+        flash(f'💸 Payout of ${float(row[1]):.0f} settled — commissions marked paid!', 'success')
+    else:
+        flash('Payout not found', 'error')
+    db.close()
     return redirect('/admin?tab=affiliates')
 
 
