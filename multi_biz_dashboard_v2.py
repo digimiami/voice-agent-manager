@@ -7719,6 +7719,92 @@ def stripe_product_webhook():
     
     return jsonify({'received': True})
 
+# ── SMS-GATE.APP INCOMING SMS (webhook + inbox) ──
+def init_incoming_sms_table():
+    """Ensure incoming_sms table exists."""
+    db = get_db()
+    c = db.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS incoming_sms (
+            id TEXT PRIMARY KEY,
+            business_id TEXT,
+            sender TEXT,
+            recipient TEXT,
+            body TEXT,
+            msg_type TEXT DEFAULT 'SMS',
+            sim_number INTEGER,
+            received_at TEXT,
+            lead_id TEXT,
+            processed INTEGER DEFAULT 0
+        )
+    """)
+    db.commit()
+    db.close()
+
+init_incoming_sms_table()
+
+@app.route('/sms-gate-webhook', methods=['POST'])
+def sms_gate_webhook():
+    """Receive incoming SMS from sms-gate.app webhook (event: sms:received)."""
+    try:
+        data = request.get_json(silent=True) or {}
+        # Handle both direct object and {data: {...}} / {message: {...}} wrappers
+        if 'data' in data and isinstance(data['data'], dict):
+            data = data['data']
+        sender = data.get('sender', '')
+        recipient = data.get('recipient', '')
+        body = data.get('contentPreview', data.get('body', data.get('text', '')))
+        msg_type = data.get('type', 'SMS')
+        sim = data.get('simNumber')
+        msg_id = data.get('id', '')
+        received_at = data.get('createdAt', datetime.now().isoformat())
+
+        # Match to a business by recipient (their device number) — store unassigned otherwise
+        bid = None
+        lead_id = None
+        db = get_db()
+        db.row_factory = sqlite3.Row
+        c = db.cursor()
+        if recipient:
+            c.execute("SELECT id FROM businesses WHERE phone_number = ? OR vapi_phone_id = ? LIMIT 1",
+                      (recipient, recipient))
+            row = c.fetchone()
+            if row:
+                bid = row['id']
+        # Try to match sender to an existing lead for this business
+        if bid and sender:
+            c.execute("SELECT id FROM leads WHERE business_id = ? AND phone = ? LIMIT 1", (bid, sender))
+            row = c.fetchone()
+            if row:
+                lead_id = row['id']
+        # Insert
+        c.execute("""INSERT OR IGNORE INTO incoming_sms 
+                     (id, business_id, sender, recipient, body, msg_type, sim_number, received_at, lead_id)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                  (msg_id or f"inc_{hashlib.md5((sender+body+received_at).encode()).hexdigest()[:12]}",
+                   bid, sender, recipient, body, msg_type, sim, received_at, lead_id))
+        db.commit()
+        db.close()
+        return jsonify({'success': True, 'received': True})
+    except Exception as e:
+        print(f"❌ sms-gate webhook error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/inbox', methods=['GET'])
+def api_inbox():
+    """List incoming SMS for the logged-in business."""
+    bid = session.get('business_id')
+    if not bid:
+        return jsonify({'error': 'Not logged in'}), 401
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    c = db.cursor()
+    c.execute("""SELECT * FROM incoming_sms WHERE business_id = ? OR business_id IS NULL
+                 ORDER BY received_at DESC LIMIT 100""", (bid,))
+    rows = [dict(r) for r in c.fetchall()]
+    db.close()
+    return jsonify({'messages': rows, 'total': len(rows)})
+
 # ── USER API KEY MANAGEMENT (for dashboard users) ──
 def init_user_api_keys_table():
     """Ensure the api_keys table exists (used by dashboard users)."""

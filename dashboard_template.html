@@ -227,6 +227,7 @@ document.querySelectorAll(".sidebar a").forEach(function(a) {
   <nav class="space-y-1">
     <a href="/?tab=overview" class="nav-item {% if tab == 'overview' %}active{% endif %}"><span>📊</span> Overview</a>
     <a href="/?tab=leads" class="nav-item {% if tab == 'leads' %}active{% endif %}"><span>📋</span> Leads</a>
+    <a href="/?tab=sms" class="nav-item {% if tab == 'sms' %}active{% endif %}"><span>💬</span> SMS Inbox</a>
     <a href="/?tab=calls" class="nav-item {% if tab == 'calls' %}active{% endif %}"><span>📞</span> Call History</a>
     <a href="/?tab=followups" class="nav-item {% if tab == 'followups' %}active{% endif %}"><span>🔄</span> Follow-ups</a>
     <a href="/?tab=numbers" class="nav-item {% if tab == 'numbers' %}active{% endif %}"><span>📱</span> Phone Numbers</a>
@@ -252,6 +253,7 @@ document.querySelectorAll(".sidebar a").forEach(function(a) {
       <h1 class="text-2xl font-bold">
         {% if tab == 'overview' %}📊 Overview
         {% elif tab == 'leads' %}📋 Leads
+        {% elif tab == 'sms' %}💬 SMS Inbox
         {% elif tab == 'calls' %}📞 Call History
         {% elif tab == 'followups' %}🔄 Follow-ups
         {% elif tab == 'numbers' %}📱 Phone Numbers
@@ -691,6 +693,68 @@ document.addEventListener('visibilitychange', function() {
 // Refresh immediately on page load
 setTimeout(refreshMonitor, 500);
 </script>
+
+  <!-- ======== TAB: SMS INBOX ======== -->
+  {% elif tab == 'sms' %}
+  <div class="space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div>
+        <h3 class="font-bold">💬 Incoming Messages</h3>
+        <p class="text-xs text-[#7a7a8e]">SMS received on your device via sms-gate.app. Auto-refreshes.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="refreshInbox()" class="btn-secondary text-xs" style="padding:6px 14px">🔄 Refresh</button>
+        <span id="inboxStatus" class="text-xs text-[#7a7a8e]"></span>
+      </div>
+    </div>
+    <div class="card" id="smsInboxCard">
+      <div class="text-center py-12 text-[#7a7a8e]">
+        <div class="text-4xl mb-3">💬</div>
+        <p>Loading SMS inbox...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  var inboxInterval = null;
+  function refreshInbox() {
+    var card = document.getElementById('smsInboxCard');
+    var status = document.getElementById('inboxStatus');
+    fetch('/api/inbox').then(function(r){ return r.json(); }).then(function(d){
+      if (!d.messages || d.messages.length === 0) {
+        card.innerHTML = '<div class="text-center py-12 text-[#7a7a8e]"><div class="text-4xl mb-3">📭</div><p class="mb-2">No incoming SMS yet.</p><p class="text-xs">Messages sent to your Diazites number will appear here.</p></div>';
+        if (status) status.textContent = '';
+        return;
+      }
+      var html = '<div style="overflow-x:auto"><table class="w-full text-sm"><thead><tr style="border-bottom:1px solid #252533">' +
+        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">From</th>' +
+        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Message</th>' +
+        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Received</th>' +
+        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Type</th>' +
+        '</tr></thead><tbody>';
+      d.messages.forEach(function(m){
+        var time = (m.received_at || '').replace('T', ' ').slice(0, 16);
+        html += '<tr style="border-bottom:1px solid #1a1a2e">' +
+          '<td class="py-3 pr-3 font-mono text-xs">' + (m.sender || '-') + '</td>' +
+          '<td class="py-3 pr-3 text-sm max-w-md" style="word-break:break-word">' + (m.body || '') + '</td>' +
+          '<td class="py-3 pr-3 text-xs text-[#7a7a8e]">' + time + '</td>' +
+          '<td class="py-3 pr-3"><span class="badge">' + (m.msg_type || 'SMS') + '</span></td>' +
+          '</tr>';
+      });
+      html += '</tbody></table></div>';
+      card.innerHTML = html;
+      if (status) status.textContent = d.total + ' messages';
+    }).catch(function(){
+      card.innerHTML = '<div class="text-center py-8 text-red-400"><p>Failed to load inbox.</p></div>';
+    });
+  }
+  if (window.location.search.indexOf('tab=sms') !== -1) {
+    document.addEventListener('DOMContentLoaded', function(){
+      refreshInbox();
+      inboxInterval = setInterval(refreshInbox, 15000);
+    });
+  }
+  </script>
 
   <!-- ======== TAB: CALL HISTORY ======== -->
   {% elif tab == 'calls' %}
