@@ -6332,6 +6332,19 @@ def update_forwarding():
     flash('✅ Call forwarding updated!', 'success')
     return redirect('/?tab=forwarding')
 
+@app.route('/update-sms-ai', methods=['POST'])
+@login_required
+def update_sms_ai():
+    """Toggle AI SMS auto-replies for the logged-in business."""
+    bid = session['business_id']
+    enabled = 1 if request.form.get('sms_ai_enabled') == '1' else 0
+    db = get_db()
+    db.execute("UPDATE businesses SET sms_ai_enabled = ? WHERE id = ?", (enabled, bid))
+    db.commit()
+    db.close()
+    flash(f'AI SMS replies {"enabled" if enabled else "disabled"}')
+    return redirect('/?tab=settings')
+
 @app.route('/update-voicemail-settings', methods=['POST'])
 @login_required
 def update_voicemail_settings():
@@ -7822,6 +7835,13 @@ def sms_gate_webhook():
                    bid, sender, recipient, body, msg_type, sim, received_at, lead_id))
         db.commit()
         db.close()
+        # AI SMS replies — auto-respond with the business knowledge base (background)
+        if bid and body:
+            try:
+                from ai_sms_reply import run_in_background
+                run_in_background(bid, sender, body, lead_id)
+            except Exception as ai_e:
+                print(f"⚠️ AI SMS trigger error: {ai_e}")
         return jsonify({'success': True, 'received': True})
     except Exception as e:
         print(f"❌ sms-gate webhook error: {e}")

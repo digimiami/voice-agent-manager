@@ -1384,6 +1384,17 @@ setTimeout(refreshMonitor, 500);
       </form>
     </div>
     <div class="card">
+      <h3 class="font-bold mb-3">🤖 AI SMS Replies</h3>
+      <form method="POST" action="/update-sms-ai">
+        <p class="text-xs text-[#7a7a8e] mb-3">When a customer texts this number, the AI replies automatically using your knowledge base — answers questions, schedules appointments, and sends confirmations.</p>
+        <label class="flex items-center gap-2 cursor-pointer" style="padding:10px 14px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
+          <input type="checkbox" name="sms_ai_enabled" value="1" {% if biz_info.sms_ai_enabled %}checked{% endif %} style="width:18px;height:18px;accent-color:#c084fc">
+          <span class="text-sm">Enable AI auto-replies to SMS</span>
+        </label>
+        <button type="submit" class="btn-primary text-xs mt-3" style="padding:6px 20px">💾 Save</button>
+      </form>
+    </div>
+    <div class="card">
       <h3 class="font-bold mb-3">🗣️ AI Voice</h3>
       <form method="POST" action="/update-voice">
         <p class="text-xs text-[#7a7a8e] mb-3">Click ▶️ to preview. Select active voice, language, and speed.</p>
