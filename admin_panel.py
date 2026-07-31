@@ -890,6 +890,50 @@ ADMIN_HTML = """<!DOCTYPE html>
             <p class="text-xs text-[#5c5c70] mt-3">No additional setup needed — works automatically.</p>
         </div>
 
+        <!-- BULK SMS SENDER (admin only) -->
+        <div class="max-w-2xl card mb-6 mt-6">
+            <h3 class="font-bold mb-3">📢 Bulk SMS Sender <span class="text-[10px] text-[#fbbf24] bg-yellow-500/10 px-2 py-0.5 rounded-full ml-1">ADMIN ONLY</span></h3>
+            <p class="text-xs text-[#64748b] mb-4">Send one message to many numbers: all leads, one business's leads, or an uploaded phone list. Sent via sms-gate.app.</p>
+
+            <form method="POST" action="/admin/bulk-sms" enctype="multipart/form-data">
+                <label class="text-xs text-[#64748b] block mb-1">📝 Message</label>
+                <textarea name="message" rows="3" placeholder="Type the message to send to everyone..." class="mb-3" required></textarea>
+
+                <label class="text-xs text-[#64748b] block mb-1">🎯 Recipients</label>
+                <select name="target" id="bulkTarget" class="mb-3" onchange="toggleBulkTarget()">
+                    <option value="all">🌎 All leads (every business)</option>
+                    <option value="business">🏢 A specific business's leads</option>
+                    <option value="upload">📄 Upload a phone number list (CSV/txt)</option>
+                </select>
+
+                <div id="bulkBusinessRow" style="display:none" class="mb-3">
+                    <label class="text-xs text-[#64748b] block mb-1">🏢 Business</label>
+                    <select name="business_id" class="mb-1">
+                        {% for b in businesses %}
+                        <option value="{{ b.id }}">{{ b.name }} ({{ b.id[:8] }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div id="bulkUploadRow" style="display:none" class="mb-3">
+                    <label class="text-xs text-[#64748b] block mb-1">📄 Phone list file</label>
+                    <input type="file" name="phone_file" accept=".csv,.txt" class="mb-1">
+                    <p class="text-xs text-[#5c5c70]">One number per line, or CSV with a phone column. Formats accepted: 7867846192, +17867846192, (786) 784-6192</p>
+                </div>
+
+                <button type="submit" class="btn-primary text-sm" onclick="return confirm('Send this SMS to all selected recipients?')"><i class="fas fa-paper-plane mr-1"></i> Send Bulk SMS</button>
+            </form>
+        </div>
+
+        <script>
+        function toggleBulkTarget() {
+            var t = document.getElementById('bulkTarget').value;
+            document.getElementById('bulkBusinessRow').style.display = t === 'business' ? 'block' : 'none';
+            document.getElementById('bulkUploadRow').style.display = t === 'upload' ? 'block' : 'none';
+        }
+        </script>
+
+
         <!-- TAB: STRIPE -->
         {% elif tab == 'stripe' %}
         <h2 class="text-xl font-bold mb-6">💳 Stripe Payment Settings</h2>
@@ -2220,6 +2264,89 @@ def load_twilio_config():
             return json.load(f)
     except:
         return {'account_sid': '', 'auth_token': '', 'from_number': '', 'enabled': False}
+
+@app.route('/admin/bulk-sms', methods=['POST'])
+@admin_required
+def admin_bulk_sms():
+    """Send bulk SMS from admin: all leads, one business's leads, or uploaded phone list."""
+    message = (request.form.get('message', '') or '').strip()
+    target = request.form.get('target', 'all')
+    if not message:
+        flash('❌ Message is required', 'danger')
+        return redirect('/admin?tab=sms')
+
+    from smsgate_sms import send_sms, _clean_phone
+
+    db = get_db()
+    c = db.cursor()
+    recipients = []  # list of (phone, business_id, lead_id)
+
+    if target == 'all':
+        c.execute("SELECT id, phone, business_id FROM leads WHERE phone IS NOT NULL AND phone != ''")
+        for r in c.fetchall():
+            recipients.append((r[1], r[2], r[0]))
+    elif target == 'business':
+        bid = request.form.get('business_id', '')
+        c.execute("SELECT id, phone, business_id FROM leads WHERE business_id = ? AND phone IS NOT NULL AND phone != ''", (bid,))
+        for r in c.fetchall():
+            recipients.append((r[1], r[2], r[0]))
+    elif target == 'upload':
+        f = request.files.get('phone_file')
+        if not f or not f.filename:
+            flash('❌ Please upload a phone list file', 'danger')
+            return redirect('/admin?tab=sms')
+        content = f.read().decode('utf-8', errors='ignore')
+        lines = content.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+        # If CSV with header, find phone-ish column
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            if line.lower().startswith('phone') or line.lower().startswith('number'):
+                continue
+            # Take first field that looks like a number
+            parts = [p.strip() for p in line.split(',')]
+            phone = parts[0]
+            cleaned = _clean_phone(phone)
+            if cleaned:
+                recipients.append((cleaned, None, None))
+
+    # Dedupe by phone
+    seen = set()
+    deduped = []
+    for phone, bid, lid in recipients:
+        cleaned = _clean_phone(phone)
+        if cleaned and cleaned not in seen:
+            seen.add(cleaned)
+            deduped.append((cleaned, bid, lid))
+    db.close()
+
+    if not deduped:
+        flash('❌ No valid phone numbers found', 'danger')
+        return redirect('/admin?tab=sms')
+
+    # Send with small delay between messages
+    sent, failed = 0, 0
+    errors = []
+    for i, (phone, bid, lid) in enumerate(deduped):
+        try:
+            ok = send_sms(phone, message, business_id=bid, lead_id=lid)
+            if ok:
+                sent += 1
+            else:
+                failed += 1
+                errors.append(phone)
+        except Exception as e:
+            failed += 1
+            errors.append(phone)
+        if i < len(deduped) - 1:
+            time.sleep(1)  # rate-limit: ~1 msg/sec
+
+    if failed:
+        flash(f'✅ Sent {sent} / {len(deduped)} SMS. {failed} failed.', 'success')
+    else:
+        flash(f'✅ Sent {sent} SMS to all {len(deduped)} recipients!', 'success')
+    return redirect('/admin?tab=sms')
 
 @app.route('/admin/update-stripe', methods=['POST'])
 @admin_required
