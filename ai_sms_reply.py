@@ -16,6 +16,7 @@ Safety rails:
 """
 import json
 import os
+import re
 import sqlite3
 import threading
 import time
@@ -26,7 +27,7 @@ VAPI_BASE = "https://api.vapi.ai"
 VAPI_API_KEY = os.environ.get("VAPI_API_KEY", "d9486ec8-b862-460b-97ba-64bbb639f234")
 RATE_LIMIT_SECONDS = 25
 HISTORY_LIMIT = 8
-OPT_OUT_KEYWORDS = ("STOP", "UNSUBSCRIBE", "CANCEL", "END", "QUIT", "STOPALL")
+OPT_OUT_KEYWORDS = ("STOP", "UNSUBSCRIBE", "STOPALL", "UNSUB")
 HELP_KEYWORDS = ("HELP", "INFO")
 
 
@@ -77,8 +78,10 @@ def last_reply_seconds_ago(bid, sender):
         return 9999
 
 
-def build_sms_prompt(biz):
-    """SMS-styled system prompt grounded in the business KB + script."""
+def build_sms_prompt(biz, current_appt=None):
+    """SMS-styled system prompt grounded in the business KB + script.
+    current_appt: dict from appointments (or None) so the AI knows what to
+    cancel/reschedule."""
     name = biz.get("name") or "this business"
     kb = (biz.get("knowledge_base") or "").strip()
     script = (biz.get("script_template") or "").strip()
@@ -86,6 +89,12 @@ def build_sms_prompt(biz):
 
     kb_block = f"\nKnowledge base:\n{kb}" if kb else ""
     script_block = f"\nRelevant business script/summary:\n{script[:800]}" if script else ""
+    appt_block = ""
+    if current_appt and current_appt.get("appointment_time"):
+        appt_block = (
+            f"\n\nThis customer's CURRENT appointment: {current_appt['appointment_time']} "
+            f"(status: {current_appt.get('status')}). Only cancel/reschedule THIS one."
+        )
 
     return (
         f"You are the SMS texting assistant for {name}, a {industry} business. "
@@ -93,12 +102,15 @@ def build_sms_prompt(biz):
         "friendly, no emojis unless natural, no markdown, no phone-script phrasing. "
         "Use ONLY the knowledge base below — never invent prices, hours, or services. "
         "If you don't know something, say you'll have the team follow up."
-        f"{kb_block}{script_block}"
-        "\n\nBooking protocol: if the customer wants to book, propose specific "
-        "day+time options from the knowledge base. Once the customer CONFIRMS a "
-        "specific day and time, end your reply with exactly one line: "
-        'BOOK|<day> <time>  (e.g. BOOK|tomorrow at 3 PM). Then add a short confirmation '
-        "sentence BEFORE that line. Do not output BOOK| in any other situation."
+        f"{kb_block}{script_block}{appt_block}"
+        "\n\nProtocols (these control the system — NEVER show the protocol text to the customer, "
+        "always write a normal confirmation sentence too):"
+        "\n- BOOK: if the customer wants a NEW appointment and CONFIRMS a specific day+time, "
+        "end your reply with exactly: BOOK|<day> <time>  (e.g. BOOK|tomorrow at 3 PM)"
+        "\n- CANCEL: if the customer asks to CANCEL their appointment, end your reply with exactly: CANCEL|"
+        "\n- MOVE: if the customer wants to RESCHEDULE and agrees on a new day+time, "
+        "end your reply with exactly: MOVE|<day> <time>"
+        "\nOnly emit one protocol per reply. Do not output any protocol in any other situation."
         "\n\nOpt-out: if the customer says STOP/UNSUBSCRIBE, reply just 'You are "
         "unsubscribed. Text HELP for help.' and nothing else."
     )
@@ -168,6 +180,32 @@ def save_appointment(biz_id, lead_id, sender, appointment_time, notes=""):
         return None
 
 
+def find_current_appointment(biz_id, phone):
+    """Most recent booked appointment for this phone."""
+    conn = _get_db()
+    row = conn.execute(
+        "SELECT * FROM appointments WHERE business_id=? AND phone=? AND status='booked' "
+        "ORDER BY created_at DESC LIMIT 1", (biz_id, phone)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def cancel_appointment(appt_id):
+    conn = _get_db()
+    conn.execute("UPDATE appointments SET status='cancelled' WHERE id=?", (appt_id,))
+    conn.commit()
+    conn.close()
+    print(f"🚫 Appointment cancelled: {appt_id}")
+
+
+def move_appointment(appt_id, new_time):
+    conn = _get_db()
+    conn.execute("UPDATE appointments SET appointment_time=? WHERE id=?", (new_time, appt_id))
+    conn.commit()
+    conn.close()
+    print(f"🔄 Appointment moved: {appt_id} -> {new_time}")
+
+
 def handle_inbound_sms(bid, sender, body, lead_id=None):
     """Main entry — called from the sms-gate webhook (background thread)."""
     try:
@@ -181,7 +219,8 @@ def handle_inbound_sms(bid, sender, body, lead_id=None):
             return None
 
         up = (body or "").upper()
-        if any(k in up for k in OPT_OUT_KEYWORDS):
+        # Word-boundary opt-out: bare STOP/UNSUBSCRIBE — NOT "cancel my appointment"
+        if any(re.search(rf"\b{k}\b", up) for k in OPT_OUT_KEYWORDS):
             print(f"🚫 AI SMS: opt-out keyword from {sender}, no reply")
             return None
 
@@ -190,25 +229,41 @@ def handle_inbound_sms(bid, sender, body, lead_id=None):
             return None
 
         history = build_history(bid, sender)
-        prompt = build_sms_prompt(biz)
+        current_appt = find_current_appointment(bid, sender)
+        prompt = build_sms_prompt(biz, current_appt)
         reply = call_vapi_chat(biz["vapi_assistant_id"], prompt, history, body)
         if not reply:
             print(f"❌ AI SMS: no reply from VAPI chat for {sender}")
             return None
 
-        # Booking protocol: strip "BOOK|<time>" (own line OR mid-line) and save the appointment
-        msg_text = reply
-        book_line = None
-        import re as _book_re
-        m = _book_re.search(r'BOOK\|([A-Za-z0-9 ,:./-]+)', reply, _book_re.IGNORECASE)
-        if m:
-            book_line = m.group(1).strip()
-            msg_text = _book_re.sub(r'BOOK\|[A-Za-z0-9 ,:./-]+', '', reply, flags=_book_re.IGNORECASE).strip()
-            msg_text = msg_text.replace('  ', ' ').strip(' ,.;:-')
-            print(f"📅 BOOK detected: {book_line}")
+        # ── Protocol parsing: BOOK| / MOVE| / CANCEL| (own line OR mid-line) ──
+        import re as _proto_re
+        msg_text = _proto_re.sub(
+            r'(BOOK|MOVE|CANCEL)\|[A-Za-z0-9 ,:./-]*', '', reply, flags=_proto_re.IGNORECASE)
+        msg_text = msg_text.replace('  ', ' ').strip(' ,.;:-') or reply
 
-        if book_line:
-            save_appointment(bid, lead_id, sender, book_line, notes=f"Booked via SMS AI. Original: {body[:100]}")
+        m_book = _proto_re.search(r'BOOK\|([A-Za-z0-9 ,:./-]+)', reply, _proto_re.IGNORECASE)
+        m_move = _proto_re.search(r'MOVE\|([A-Za-z0-9 ,:./-]+)', reply, _proto_re.IGNORECASE)
+        m_cancel = _proto_re.search(r'CANCEL\|', reply, _proto_re.IGNORECASE)
+
+        if m_book:
+            book_line = m_book.group(1).strip()
+            print(f"📅 BOOK detected: {book_line}")
+            save_appointment(bid, lead_id, sender, book_line,
+                             notes=f"Booked via SMS AI. Original: {body[:100]}")
+        elif m_move:
+            move_line = m_move.group(1).strip()
+            print(f"🔄 MOVE detected: {move_line}")
+            if current_appt:
+                move_appointment(current_appt["id"], move_line)
+            else:
+                print("⚠️ MOVE requested but no current appointment found")
+        elif m_cancel:
+            print("🚫 CANCEL detected")
+            if current_appt:
+                cancel_appointment(current_appt["id"])
+            else:
+                print("⚠️ CANCEL requested but no current appointment found")
 
         # Send via sms-gate (logs to outgoing_sms → reply matching)
         import sys
