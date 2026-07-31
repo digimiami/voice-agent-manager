@@ -975,6 +975,122 @@ ADMIN_HTML = """<!DOCTYPE html>
         </script>
 
 
+        <!-- ADMIN REPLY CENTER -->
+        <div class="max-w-3xl card mt-6">
+            <h3 class="font-bold mb-3">📥 Reply Center <span class="text-[10px] text-[#fbbf24] bg-yellow-500/10 px-2 py-0.5 rounded-full ml-1">ADMIN ONLY</span></h3>
+            <p class="text-xs text-[#64748b] mb-4">Every incoming reply across all businesses, plus everything sent. Reply to any number from here — auto-refreshes every 20s.</p>
+            <div class="flex items-center gap-2 mb-3">
+                <button onclick="refreshAdminInbox()" class="btn-secondary text-xs" style="padding:4px 12px">🔄 Refresh</button>
+                <input type="text" id="adminInboxSearch" placeholder="🔍 Search number or message..." class="text-xs max-w-xs" oninput="renderAdminInbox()" style="padding:6px 10px">
+                <span id="adminInboxStatus" class="text-xs text-[#64748b]"></span>
+            </div>
+            <div id="adminInboxCard">
+                <div class="text-center py-8 text-[#64748b] text-sm">Loading replies...</div>
+            </div>
+        </div>
+
+        <!-- Admin reply modal -->
+        <div class="modal-overlay" id="adminReplyModal">
+            <div class="modal">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="font-bold text-sm" id="adminReplyTitle">↩️ Reply</h4>
+                    <button onclick="closeAdminReply()" class="text-[#64748b] hover:text-white" style="background:none;border:none;cursor:pointer;font-size:16px">✕</button>
+                </div>
+                <label class="text-xs text-[#64748b] block mb-1">📱 To</label>
+                <input type="text" id="adminReplyTo" class="mb-3 font-mono text-xs" readonly>
+                <label class="text-xs text-[#64748b] block mb-1">🏢 Business</label>
+                <input type="text" id="adminReplyBiz" class="mb-3 text-xs" readonly>
+                <label class="text-xs text-[#64748b] block mb-1">💬 Message</label>
+                <textarea id="adminReplyBody" rows="3" class="mb-3" placeholder="Type your reply..."></textarea>
+                <div class="flex items-center gap-2 justify-end">
+                    <span id="adminReplyStatus" class="text-xs"></span>
+                    <button onclick="sendAdminReply()" class="btn-primary text-sm"><i class="fas fa-paper-plane mr-1"></i> Send Reply</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        var adminInbox = [];
+        function refreshAdminInbox() {
+            fetch('/admin/sms-inbox').then(function(r){ return r.json(); }).then(function(d){
+                adminInbox = d.messages || [];
+                renderAdminInbox();
+            }).catch(function(){
+                document.getElementById('adminInboxCard').innerHTML = '<div class="text-center py-6 text-red-400 text-sm">Failed to load replies</div>';
+            });
+        }
+        function renderAdminInbox() {
+            var card = document.getElementById('adminInboxCard');
+            var status = document.getElementById('adminInboxStatus');
+            var q = (document.getElementById('adminInboxSearch').value || '').toLowerCase();
+            var msgs = adminInbox;
+            if (q) msgs = msgs.filter(function(m){ return (m.number + ' ' + m.body + ' ' + m.biz).toLowerCase().indexOf(q) !== -1; });
+            if (!msgs.length) {
+                card.innerHTML = '<div class="text-center py-8 text-[#64748b] text-sm">📭 No SMS yet. Send a bulk campaign and replies will appear here.</div>';
+                if (status) status.textContent = '0 messages';
+                return;
+            }
+            var html = '<div style="overflow-x:auto"><table class="w-full text-sm"><thead><tr><th>Dir</th><th>Number</th><th>Message</th><th>Business</th><th>Time</th><th></th></tr></thead><tbody>';
+            msgs.forEach(function(m){
+                var time = (m.time || '').replace('T', ' ').slice(0, 16);
+                var badge = m.direction === 'IN'
+                    ? '<span class="badge badge-active">IN</span>'
+                    : '<span class="badge badge-inactive">OUT</span>';
+                html += '<tr>' +
+                    '<td>' + badge + '</td>' +
+                    '<td class="font-mono text-xs">' + (m.number || '-') + '</td>' +
+                    '<td class="max-w-sm" style="word-break:break-word">' + (m.body || '') + '</td>' +
+                    '<td class="text-xs">' + (m.biz || '—') + '</td>' +
+                    '<td class="text-xs text-[#64748b]">' + time + '</td>' +
+                    '<td><button onclick="openAdminReply(\'' + m.number.replace(/'/g, "\\'") + '\',\'' + (m.biz || '').replace(/'/g, "\\'") + '\')" class="btn-primary text-xs" style="padding:4px 10px">↩️ Reply</button></td>' +
+                    '</tr>';
+            });
+            html += '</tbody></table></div>';
+            card.innerHTML = html;
+            if (status) status.textContent = msgs.length + ' messages';
+        }
+        function openAdminReply(number, biz) {
+            document.getElementById('adminReplyTo').value = number;
+            document.getElementById('adminReplyBiz').value = biz || '';
+            document.getElementById('adminReplyBody').value = '';
+            document.getElementById('adminReplyStatus').textContent = '';
+            document.getElementById('adminReplyModal').classList.add('show');
+            document.getElementById('adminReplyBody').focus();
+        }
+        function closeAdminReply() {
+            document.getElementById('adminReplyModal').classList.remove('show');
+        }
+        function sendAdminReply() {
+            var to = document.getElementById('adminReplyTo').value.trim();
+            var body = document.getElementById('adminReplyBody').value.trim();
+            var status = document.getElementById('adminReplyStatus');
+            if (!to || !body) { status.textContent = '⚠️ Number + message required'; status.style.color = '#fbbf24'; return; }
+            status.textContent = '⏳ Sending...'; status.style.color = '#818cf8';
+            var fd = new FormData();
+            fd.append('to', to);
+            fd.append('message', body);
+            fetch('/admin/sms-reply', { method: 'POST', body: fd })
+                .then(function(r){ return r.json(); })
+                .then(function(d){
+                    if (d.success) {
+                        status.textContent = '✅ Sent!'; status.style.color = '#4ade80';
+                        setTimeout(closeAdminReply, 700);
+                        setTimeout(refreshAdminInbox, 1000);
+                    } else {
+                        status.textContent = '❌ ' + (d.error || 'Failed'); status.style.color = '#f87171';
+                    }
+                })
+                .catch(function(){ status.textContent = '❌ Network error'; status.style.color = '#f87171'; });
+        }
+        // Auto-refresh reply center while on the SMS tab
+        var adminInboxTimer = setInterval(function(){
+            if (document.querySelector('a[href="?tab=sms"]') && document.querySelector('a[href="?tab=sms"]').classList.contains('active')) {
+                refreshAdminInbox();
+            }
+        }, 20000);
+        setTimeout(refreshAdminInbox, 500);
+        </script>
+
         <!-- TAB: STRIPE -->
         {% elif tab == 'stripe' %}
         <h2 class="text-xl font-bold mb-6">💳 Stripe Payment Settings</h2>
@@ -2489,6 +2605,80 @@ def admin_bulk_sms_preview():
             valid.append(cleaned)
 
     return jsonify({'count': len(valid), 'sample': valid[:5]})
+
+@app.route('/admin/sms-inbox', methods=['GET'])
+@admin_required
+def admin_sms_inbox():
+    """Admin view: ALL incoming + outgoing SMS across every business (reply center)."""
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    c = db.cursor()
+    inc = []
+    try:
+        c.execute("""SELECT i.*, b.name as biz_name FROM incoming_sms i
+                     LEFT JOIN businesses b ON i.business_id = b.id
+                     ORDER BY i.received_at DESC LIMIT 200""")
+        inc = [dict(r) for r in c.fetchall()]
+    except Exception:
+        inc = []
+    out = []
+    try:
+        c.execute("""SELECT o.*, b.name as biz_name FROM outgoing_sms o
+                     LEFT JOIN businesses b ON o.business_id = b.id
+                     ORDER BY o.sent_at DESC LIMIT 200""")
+        out = [dict(r) for r in c.fetchall()]
+    except Exception:
+        out = []
+    db.close()
+
+    merged = []
+    for m in inc:
+        merged.append({'id': m['id'], 'direction': 'IN', 'which': 'in',
+                       'number': m.get('sender') or m.get('recipient') or '',
+                       'body': m.get('body') or '', 'time': m.get('received_at') or '',
+                       'biz': m.get('biz_name') or m.get('business_id') or '—',
+                       'lead_id': m.get('lead_id'), 'saved': m.get('saved', 0)})
+    for m in out:
+        merged.append({'id': m['id'], 'direction': 'OUT', 'which': 'out',
+                       'number': m.get('phone') or m.get('recipient') or '',
+                       'body': m.get('body') or '', 'time': m.get('sent_at') or '',
+                       'biz': m.get('biz_name') or m.get('business_id') or '—',
+                       'lead_id': m.get('lead_id'), 'saved': m.get('saved', 0)})
+    merged.sort(key=lambda x: x['time'] or '', reverse=True)
+    return jsonify({'messages': merged[:200], 'total': len(merged)})
+
+@app.route('/admin/sms-reply', methods=['POST'])
+@admin_required
+def admin_sms_reply():
+    """Admin replies to any SMS thread. Sends via sms-gate.app, logged to outgoing_sms."""
+    to_phone = (request.form.get('to', '') or '').strip()
+    message = (request.form.get('message', '') or '').strip()
+    business_id = (request.form.get('business_id', '') or '').strip() or None
+    if not to_phone or not message:
+        return jsonify({'success': False, 'error': 'to and message required'}), 400
+    from smsgate_sms import send_sms, _clean_phone
+    cleaned = _clean_phone(to_phone)
+    # Try to attach a lead if this is a known number for that business
+    lead_id = None
+    if business_id:
+        try:
+            db = get_db()
+            db.row_factory = sqlite3.Row
+            c = db.cursor()
+            c.execute("SELECT id FROM leads WHERE business_id = ? AND phone = ? LIMIT 1", (business_id, cleaned))
+            row = c.fetchone()
+            if row:
+                lead_id = row['id']
+            db.close()
+        except Exception:
+            pass
+    try:
+        ok = send_sms(cleaned, message, business_id=business_id, lead_id=lead_id)
+        if ok:
+            return jsonify({'success': True, 'message': 'Reply sent'})
+        return jsonify({'success': False, 'error': 'SMS provider failed to queue reply'}), 502
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/admin/update-stripe', methods=['POST'])
 @admin_required
