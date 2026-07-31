@@ -176,7 +176,7 @@ ADMIN_HTML = """<!DOCTYPE html>
                 ('chatbot', 'robot', 'Chatbot'),
                 ('industries', 'industry', 'Industries'),
                 ('email', 'envelope', 'Email Config'),
-                ('sms', 'message', 'SMS/Calendar'),
+                ('sms', 'message', 'SMS'),
                 ('calendar', 'calendar-alt', 'Calendar'),
                 ('stripe', 'credit-card', 'Stripe'),
                 ('agent-tars', 'robot', 'Agent TARS'),
@@ -858,9 +858,9 @@ ADMIN_HTML = """<!DOCTYPE html>
             </form>
         </div>
 
-        <!-- TAB: SMS/CALENDAR CONFIG -->
+        <!-- TAB: SMS CONFIG -->
         {% elif tab == 'sms' %}
-        <h2 class="text-xl font-bold mb-6">📱 SMS & Calendar Configuration</h2>
+        <h2 class="text-xl font-bold mb-6">📱 SMS Settings</h2>
         <div class="max-w-xl card mb-6">
             <h3 class="font-bold mb-3">Twilio SMS Settings</h3>
             <p class="text-xs text-[#64748b] mb-4">Configure SMS for auto follow-ups after calls and appointment reminders.</p>
@@ -874,20 +874,9 @@ ADMIN_HTML = """<!DOCTYPE html>
                 <label class="text-xs text-[#64748b] block mb-1">Twilio Auth Token</label>
                 <input type="password" name="auth_token" value="{{ twilio_config.auth_token or '' }}" placeholder="********" class="mb-3 font-mono text-xs">
                 <label class="text-xs text-[#64748b] block mb-1">Twilio From Number</label>
-                <input type="text" name="from_number" value="{{ twilio_config.from_number or '' }}" placeholder="+1234567890" class="mb-4">
+                <input type="text" name="from_number" value="{{ twilio_config.from_number or '' }}" placeholder="+17861234567" class="mb-4">
                 <button type="submit" class="btn-primary text-sm"><i class="fas fa-save mr-1"></i> Save SMS Config</button>
             </form>
-        </div>
-        <div class="max-w-xl card">
-            <h3 class="font-bold mb-3">📅 Calendar Sync</h3>
-            <p class="text-xs text-[#64748b] mb-3">When an appointment is booked via AI, clients can download an .ics calendar file.</p>
-            <div class="bg-[#1a1a28] rounded-lg p-3 text-sm">
-                <div class="flex items-center gap-2">
-                    <span class="text-[#4ade80]">✅</span>
-                    <span>ICS calendar files are auto-generated for every booked appointment</span>
-                </div>
-            </div>
-            <p class="text-xs text-[#5c5c70] mt-3">No additional setup needed — works automatically.</p>
         </div>
 
         <!-- BULK SMS SENDER (admin only) -->
@@ -1637,6 +1626,19 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
         </script>
         {% elif tab == 'calendar' %}
         <h2 class="text-xl font-bold mb-6">📅 All Appointments</h2>
+
+        <!-- Calendar Sync info -->
+        <div class="max-w-2xl card mb-6">
+            <h3 class="font-bold mb-3">📅 Calendar Sync</h3>
+            <p class="text-xs text-[#64748b] mb-3">When an appointment is booked via AI, clients can download an .ics calendar file.</p>
+            <div class="bg-[#1a1a28] rounded-lg p-3 text-sm">
+                <div class="flex items-center gap-2">
+                    <span class="text-[#4ade80]">✅</span>
+                    <span>ICS calendar files are auto-generated for every booked appointment</span>
+                </div>
+            </div>
+            <p class="text-xs text-[#5c5c70] mt-3">No additional setup needed — works automatically.</p>
+        </div>
 
         <!-- Stats -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
