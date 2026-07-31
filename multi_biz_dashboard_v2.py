@@ -7833,7 +7833,7 @@ def api_inbox():
     inc = [dict(r) for r in c.fetchall()]
     # Outgoing messages (from the reply-matching log)
     try:
-        c.execute("""SELECT id, business_id, lead_id, phone, body, message_id, sent_at
+        c.execute("""SELECT id, business_id, lead_id, phone, body, message_id, sent_at, saved
                      FROM outgoing_sms WHERE business_id = ?
                      ORDER BY sent_at DESC LIMIT 100""", (bid,))
         out = [dict(r) for r in c.fetchall()]
@@ -7844,10 +7844,12 @@ def api_inbox():
     merged = []
     for m in inc:
         merged.append({'id': m['id'], 'sender': m['sender'], 'recipient': m['recipient'],
-                       'body': m['body'], 'received_at': m['received_at'], 'direction': 'IN'})
+                       'body': m['body'], 'received_at': m['received_at'], 'direction': 'IN',
+                       'which': 'in', 'saved': m.get('saved', 0)})
     for m in out:
         merged.append({'id': m['id'], 'phone': m['phone'], 'body': m['body'],
-                       'sent_at': m['sent_at'], 'direction': 'OUT'})
+                       'sent_at': m['sent_at'], 'direction': 'OUT',
+                       'which': 'out', 'saved': m.get('saved', 0)})
     merged.sort(key=lambda x: x.get('received_at') or x.get('sent_at') or '', reverse=True)
     return jsonify({'messages': merged[:100], 'total': len(merged)})
 
@@ -7877,6 +7879,72 @@ def api_sms_send():
         ok = send_sms(cleaned, message, business_id=bid, lead_id=lead_id)
         if ok:
             return jsonify({'success': True, 'message': 'SMS sent'})
+        return jsonify({'success': False, 'error': 'SMS provider failed to queue message'}), 502
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/sms/delete', methods=['POST'])
+@login_required
+def api_sms_delete():
+    """Delete an SMS (incoming or outgoing) belonging to this business."""
+    bid = session['business_id']
+    msg_id = (request.form.get('id', '') or '').strip()
+    which = (request.form.get('which', '') or '').strip()  # 'in' or 'out'
+    if not msg_id or which not in ('in', 'out'):
+        return jsonify({'success': False, 'error': 'id and which (in|out) required'}), 400
+    table = 'incoming_sms' if which == 'in' else 'outgoing_sms'
+    db = get_db()
+    c = db.cursor()
+    c.execute(f"DELETE FROM {table} WHERE id = ? AND business_id = ?", (msg_id, bid))
+    db.commit()
+    deleted = c.rowcount
+    db.close()
+    return jsonify({'success': deleted > 0, 'deleted': deleted})
+
+@app.route('/api/sms/save', methods=['POST'])
+@login_required
+def api_sms_save():
+    """Toggle saved flag on an SMS (incoming or outgoing)."""
+    bid = session['business_id']
+    msg_id = (request.form.get('id', '') or '').strip()
+    which = (request.form.get('which', '') or '').strip()
+    saved = 1 if (request.form.get('saved', '') == '1') else 0
+    if not msg_id or which not in ('in', 'out'):
+        return jsonify({'success': False, 'error': 'id and which (in|out) required'}), 400
+    table = 'incoming_sms' if which == 'in' else 'outgoing_sms'
+    db = get_db()
+    c = db.cursor()
+    c.execute(f"UPDATE {table} SET saved = ? WHERE id = ? AND business_id = ?", (saved, msg_id, bid))
+    db.commit()
+    updated = c.rowcount
+    db.close()
+    return jsonify({'success': updated > 0, 'saved': saved})
+
+@app.route('/api/sms/forward', methods=['POST'])
+@login_required
+def api_sms_forward():
+    """Forward an SMS to another number."""
+    bid = session['business_id']
+    to_phone = (request.form.get('to', '') or '').strip()
+    body = (request.form.get('body', '') or '').strip()
+    if not to_phone or not body:
+        return jsonify({'success': False, 'error': 'to and body required'}), 400
+    from smsgate_sms import _clean_phone
+    cleaned = _clean_phone(to_phone)
+    # Try to match a lead for this business
+    lead_id = None
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT id FROM leads WHERE business_id = ? AND phone = ? LIMIT 1", (bid, cleaned))
+    row = c.fetchone()
+    if row:
+        lead_id = row['id']
+    db.close()
+    try:
+        from smsgate_sms import send_sms
+        ok = send_sms(cleaned, body, business_id=bid, lead_id=lead_id)
+        if ok:
+            return jsonify({'success': True, 'message': 'SMS forwarded'})
         return jsonify({'success': False, 'error': 'SMS provider failed to queue message'}), 502
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

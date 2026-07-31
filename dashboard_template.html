@@ -703,6 +703,7 @@ setTimeout(refreshMonitor, 500);
         <p class="text-xs text-[#7a7a8e]">Incoming + outgoing messages for your business. Reply or compose right here.</p>
       </div>
       <div class="flex items-center gap-2">
+        <button onclick="toggleSavedFilter()" id="savedFilterBtn" class="btn-secondary text-xs" style="padding:6px 14px">⭐ Saved</button>
         <button onclick="openCompose('')" class="btn-primary text-xs" style="padding:6px 14px">✏️ New Message</button>
         <button onclick="refreshInbox()" class="btn-secondary text-xs" style="padding:6px 14px">🔄 Refresh</button>
         <span id="inboxStatus" class="text-xs text-[#7a7a8e]"></span>
@@ -736,6 +737,14 @@ setTimeout(refreshMonitor, 500);
 
   <script>
   var inboxInterval = null;
+  var savedFilter = false;
+  var inboxCache = [];
+  function toggleSavedFilter() {
+    savedFilter = !savedFilter;
+    var btn = document.getElementById('savedFilterBtn');
+    if (btn) btn.style.outline = savedFilter ? '2px solid #c084fc' : 'none';
+    renderInbox(inboxCache);
+  }
   function openCompose(phone) {
     document.getElementById('smsComposePhone').value = phone || '';
     document.getElementById('smsComposeBody').value = '';
@@ -770,44 +779,89 @@ setTimeout(refreshMonitor, 500);
       })
       .catch(function(){ status.textContent = '❌ Network error'; status.style.color = '#f87171'; });
   }
-  function refreshInbox() {
+  function renderInbox(list) {
     var card = document.getElementById('smsInboxCard');
     var status = document.getElementById('inboxStatus');
-    fetch('/api/inbox').then(function(r){ return r.json(); }).then(function(d){
-      if (!d.messages || d.messages.length === 0) {
-        card.innerHTML = '<div class="text-center py-12 text-[#7a7a8e]"><div class="text-4xl mb-3">📭</div><p class="mb-2">No SMS yet.</p><p class="text-xs">Messages to/from your leads appear here. Send one with ✏️ New Message.</p></div>';
-        if (status) status.textContent = '';
-        return;
-      }
-      var html = '<div style="overflow-x:auto"><table class="w-full text-sm"><thead><tr style="border-bottom:1px solid #252533">' +
-        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">From / To</th>' +
-        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Message</th>' +
-        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Time</th>' +
-        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Direction</th>' +
-        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Actions</th>' +
-        '</tr></thead><tbody>';
-      d.messages.forEach(function(m){
-        var time = (m.received_at || m.sent_at || '').replace('T', ' ').slice(0, 16);
-        var isIn = !!m.sender;
-        var fromTo = isIn ? (m.sender || '-') : ('→ ' + (m.phone || m.recipient || '-'));
-        var badge = isIn
-          ? '<span class="badge badge-success">IN</span>'
-          : '<span class="badge">OUT</span>';
-        var number = isIn ? (m.sender || '') : (m.phone || m.recipient || '');
-        html += '<tr style="border-bottom:1px solid #1a1a2e">' +
-          '<td class="py-3 pr-3 font-mono text-xs">' + (fromTo || '-') + '</td>' +
-          '<td class="py-3 pr-3 text-sm max-w-md" style="word-break:break-word">' + (m.body || m.message || '') + '</td>' +
-          '<td class="py-3 pr-3 text-xs text-[#7a7a8e]">' + time + '</td>' +
-          '<td class="py-3 pr-3">' + badge + '</td>' +
-          '<td class="py-3 pr-3"><button onclick="openCompose(\'' + number + '\')" class="btn-secondary text-xs" style="padding:4px 10px">↩️ Reply</button></td>' +
-          '</tr>';
-      });
-      html += '</tbody></table></div>';
-      card.innerHTML = html;
-      if (status) status.textContent = d.total + ' messages';
-    }).catch(function(){
-      card.innerHTML = '<div class="text-center py-8 text-red-400"><p>Failed to load inbox.</p></div>';
+    var msgs = list || [];
+    if (savedFilter) msgs = msgs.filter(function(m){ return m.saved == 1; });
+    if (!msgs.length) {
+      var hint = savedFilter ? 'No saved messages. Tap ⭐ on a message to save it.' : 'No SMS yet. Messages to/from your leads appear here. Send one with ✏️ New Message.';
+      card.innerHTML = '<div class="text-center py-12 text-[#7a7a8e]"><div class="text-4xl mb-3">📭</div><p class="mb-2">' + (savedFilter ? 'No saved messages.' : 'No SMS yet.') + '</p><p class="text-xs">' + hint + '</p></div>';
+      if (status) status.textContent = msgs.length + ' messages';
+      return;
+    }
+    var html = '<div style="overflow-x:auto"><table class="w-full text-sm"><thead><tr style="border-bottom:1px solid #252533">' +
+      '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">From / To</th>' +
+      '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Message</th>' +
+      '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Time</th>' +
+      '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Direction</th>' +
+      '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Actions</th>' +
+      '</tr></thead><tbody>';
+    msgs.forEach(function(m){
+      var time = (m.received_at || m.sent_at || '').replace('T', ' ').slice(0, 16);
+      var isIn = m.direction === 'IN';
+      var fromTo = isIn ? (m.sender || '-') : ('→ ' + (m.phone || m.recipient || '-'));
+      var badge = isIn
+        ? '<span class="badge badge-success">IN</span>'
+        : '<span class="badge">OUT</span>';
+      var number = isIn ? (m.sender || '') : (m.phone || m.recipient || '');
+      var body = m.body || m.message || '';
+      var safeId = (m.id || '').replace(/'/g, "\\'");
+      var star = m.saved == 1 ? '⭐' : '☆';
+      html += '<tr style="border-bottom:1px solid #1a1a2e"' + (m.saved == 1 ? ' class="bg-yellow-500/5"' : '') + '>' +
+        '<td class="py-3 pr-3 font-mono text-xs">' + (fromTo || '-') + '</td>' +
+        '<td class="py-3 pr-3 text-sm max-w-md" style="word-break:break-word">' + body + '</td>' +
+        '<td class="py-3 pr-3 text-xs text-[#7a7a8e]">' + time + '</td>' +
+        '<td class="py-3 pr-3">' + badge + '</td>' +
+        '<td class="py-3 pr-3 whitespace-nowrap">' +
+          '<button onclick="openCompose(\'' + number.replace(/'/g, "\\'") + '\')" class="btn-secondary text-xs" style="padding:3px 8px;margin-right:4px">↩️</button>' +
+          '<button onclick="toggleSave(\'' + safeId + '\',\'' + m.which + '\',' + (m.saved == 1 ? 0 : 1) + ')" title="Save/Unsave" style="background:none;border:none;cursor:pointer;font-size:14px">' + star + '</button> ' +
+          '<button onclick="forwardSms(\'' + safeId + '\',\'' + m.which + '\')" title="Forward" style="background:none;border:none;cursor:pointer;font-size:14px">↪️</button> ' +
+          '<button onclick="deleteSms(\'' + safeId + '\',\'' + m.which + '\')" title="Delete" style="background:none;border:none;cursor:pointer;font-size:14px">🗑️</button>' +
+        '</td>' +
+        '</tr>';
     });
+    html += '</tbody></table></div>';
+    card.innerHTML = html;
+    if (status) status.textContent = msgs.length + ' messages';
+  }
+  function refreshInbox() {
+    fetch('/api/inbox').then(function(r){ return r.json(); }).then(function(d){
+      inboxCache = d.messages || [];
+      renderInbox(inboxCache);
+    }).catch(function(){
+      document.getElementById('smsInboxCard').innerHTML = '<div class="text-center py-8 text-red-400"><p>Failed to load inbox.</p></div>';
+    });
+  }
+  function toggleSave(id, which, saved) {
+    var fd = new FormData();
+    fd.append('id', id);
+    fd.append('which', which);
+    fd.append('saved', saved);
+    fetch('/api/sms/save', { method: 'POST', body: fd })
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if (d.success) refreshInbox(); });
+  }
+  function deleteSms(id, which) {
+    if (!confirm('Delete this message?')) return;
+    var fd = new FormData();
+    fd.append('id', id);
+    fd.append('which', which);
+    fetch('/api/sms/delete', { method: 'POST', body: fd })
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if (d.success) refreshInbox(); });
+  }
+  function forwardSms(id, which) {
+    var found = null;
+    inboxCache.forEach(function(m){ if (m.id === id && m.which === which) found = m; });
+    if (!found) { refreshInbox(); return; }
+    var body = found.body || found.message || '';
+    openCompose('');
+    document.getElementById('smsComposeTitle').textContent = '↪️ Forward message';
+    document.getElementById('smsComposeBody').value = body;
+    document.getElementById('smsComposePhone').value = '';
+    document.getElementById('smsComposePhone').placeholder = 'Forward to...';
+    document.getElementById('smsComposeBody').focus();
   }
   if (window.location.search.indexOf('tab=sms') !== -1) {
     document.addEventListener('DOMContentLoaded', function(){
