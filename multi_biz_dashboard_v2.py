@@ -6700,22 +6700,13 @@ def api_messages_send():
     
     init_messages_table()
     
-    # Load Twilio config
-    twilio_config = load_twilio_config()
-    if not twilio_config.get('enabled') or not twilio_config.get('account_sid'):
-        return jsonify({'success': False, 'error': 'Twilio not configured. Contact admin.'}), 400
-    
-    from_number = twilio_config.get('from_number', '')
-    
-    # Send via Twilio
+    # Send via sms-gate.app (primary SMS provider)
     try:
-        from twilio.rest import Client
-        client = Client(twilio_config['account_sid'], twilio_config['auth_token'])
-        twilio_msg = client.messages.create(
-            body=body,
-            from_=from_number,
-            to=to_number
-        )
+        from smsgate_sms import send_sms as smsgate_send
+        ok = smsgate_send(to_number, body, business_id=bid)
+        if not ok:
+            return jsonify({'success': False, 'error': 'sms-gate.app send failed'}), 500
+        from_number = "sms-gate"
         
         # Store outbound message
         db = get_db()
@@ -6733,10 +6724,10 @@ def api_messages_send():
             'message': 'SMS sent!',
             'msg_id': msg_id,
             'thread_id': thread_id,
-            'twilio_sid': twilio_msg.sid
+            'provider': 'sms-gate'
         })
     except Exception as e:
-        return jsonify({'success': False, 'error': f'Twilio error: {str(e)}'}), 500
+        return jsonify({'success': False, 'error': f'sms-gate error: {str(e)}'}), 500
 
 @app.route('/api/messages/webhook', methods=['POST'])
 def api_messages_webhook():
