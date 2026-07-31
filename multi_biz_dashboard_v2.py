@@ -7820,18 +7820,66 @@ def sms_gate_webhook():
 
 @app.route('/api/inbox', methods=['GET'])
 def api_inbox():
-    """List incoming SMS for the logged-in business only (reply-matched)."""
+    """List incoming + outgoing SMS for the logged-in business only (reply-matched)."""
     bid = session.get('business_id')
     if not bid:
         return jsonify({'error': 'Not logged in'}), 401
     db = get_db()
     db.row_factory = sqlite3.Row
     c = db.cursor()
+    # Incoming messages
     c.execute("""SELECT * FROM incoming_sms WHERE business_id = ?
                  ORDER BY received_at DESC LIMIT 100""", (bid,))
-    rows = [dict(r) for r in c.fetchall()]
+    inc = [dict(r) for r in c.fetchall()]
+    # Outgoing messages (from the reply-matching log)
+    try:
+        c.execute("""SELECT id, business_id, lead_id, phone, body, message_id, sent_at
+                     FROM outgoing_sms WHERE business_id = ?
+                     ORDER BY sent_at DESC LIMIT 100""", (bid,))
+        out = [dict(r) for r in c.fetchall()]
+    except Exception:
+        out = []
     db.close()
-    return jsonify({'messages': rows, 'total': len(rows)})
+    # Merge, newest first
+    merged = []
+    for m in inc:
+        merged.append({'id': m['id'], 'sender': m['sender'], 'recipient': m['recipient'],
+                       'body': m['body'], 'received_at': m['received_at'], 'direction': 'IN'})
+    for m in out:
+        merged.append({'id': m['id'], 'phone': m['phone'], 'body': m['body'],
+                       'sent_at': m['sent_at'], 'direction': 'OUT'})
+    merged.sort(key=lambda x: x.get('received_at') or x.get('sent_at') or '', reverse=True)
+    return jsonify({'messages': merged[:100], 'total': len(merged)})
+
+@app.route('/api/sms/send', methods=['POST'])
+@login_required
+def api_sms_send():
+    """Send an SMS from the dashboard (compose/reply)."""
+    bid = session['business_id']
+    phone = (request.form.get('phone', '') or '').strip()
+    message = (request.form.get('message', '') or '').strip()
+    if not phone or not message:
+        return jsonify({'success': False, 'error': 'Phone and message required'}), 400
+    # Clean phone to E.164 (US/CA 10-digit gets +1)
+    from smsgate_sms import _clean_phone
+    cleaned = _clean_phone(phone)
+    # Try to match to a lead for this business
+    lead_id = None
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT id FROM leads WHERE business_id = ? AND phone = ? LIMIT 1", (bid, cleaned))
+    row = c.fetchone()
+    if row:
+        lead_id = row['id']
+    db.close()
+    try:
+        from smsgate_sms import send_sms
+        ok = send_sms(cleaned, message, business_id=bid, lead_id=lead_id)
+        if ok:
+            return jsonify({'success': True, 'message': 'SMS sent'})
+        return jsonify({'success': False, 'error': 'SMS provider failed to queue message'}), 502
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ── USER API KEY MANAGEMENT (for dashboard users) ──
 def init_user_api_keys_table():

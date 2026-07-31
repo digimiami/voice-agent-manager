@@ -84,6 +84,20 @@ def _headers():
     }
 
 
+def _clean_phone(to_phone):
+    """Normalize to E.164. US/CA 10-digit numbers get +1 prefix."""
+    cleaned = ''.join(c for c in str(to_phone) if c.isdigit() or c == '+')
+    if not cleaned:
+        return ''
+    if not cleaned.startswith('+'):
+        digits = ''.join(c for c in cleaned if c.isdigit())
+        if len(digits) == 10:
+            cleaned = '+1' + digits  # US/CA
+        else:
+            cleaned = '+' + digits
+    return cleaned
+
+
 def send_sms(to_phone, message, business_id=None, lead_id=None):
     """Send an SMS via sms-gate.app. Returns True on success (202).
     business_id/lead_id are logged so inbound replies can be matched back."""
@@ -95,9 +109,7 @@ def send_sms(to_phone, message, business_id=None, lead_id=None):
         return False
 
     # Clean phone — E.164 with leading +
-    cleaned = ''.join(c for c in str(to_phone) if c.isdigit() or c == '+')
-    if not cleaned.startswith('+'):
-        cleaned = '+' + cleaned
+    cleaned = _clean_phone(to_phone)
 
     payload = {
         "phoneNumbers": [cleaned],

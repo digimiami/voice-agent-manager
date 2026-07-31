@@ -699,10 +699,11 @@ setTimeout(refreshMonitor, 500);
   <div class="space-y-4">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div>
-        <h3 class="font-bold">💬 Incoming Messages</h3>
-        <p class="text-xs text-[#7a7a8e]">SMS received on your device via sms-gate.app. Auto-refreshes.</p>
+        <h3 class="font-bold">💬 SMS Inbox</h3>
+        <p class="text-xs text-[#7a7a8e]">Incoming + outgoing messages for your business. Reply or compose right here.</p>
       </div>
       <div class="flex items-center gap-2">
+        <button onclick="openCompose('')" class="btn-primary text-xs" style="padding:6px 14px">✏️ New Message</button>
         <button onclick="refreshInbox()" class="btn-secondary text-xs" style="padding:6px 14px">🔄 Refresh</button>
         <span id="inboxStatus" class="text-xs text-[#7a7a8e]"></span>
       </div>
@@ -715,30 +716,90 @@ setTimeout(refreshMonitor, 500);
     </div>
   </div>
 
+  <!-- Compose/Reply modal -->
+  <div id="smsComposeModal" class="modal" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.6);align-items:center;justify-content:center">
+    <div class="card" style="width:min(520px,92vw);padding:24px">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold" id="smsComposeTitle">✏️ New Message</h3>
+        <button onclick="closeCompose()" style="background:none;border:none;color:#7a7a8e;font-size:18px;cursor:pointer">✕</button>
+      </div>
+      <label class="text-xs text-[#7a7a8e] block mb-1">📱 Phone Number</label>
+      <input type="text" id="smsComposePhone" placeholder="+1786..." class="mb-3" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5">
+      <label class="text-xs text-[#7a7a8e] block mb-1">💬 Message</label>
+      <textarea id="smsComposeBody" rows="4" placeholder="Type your message..." class="mb-3" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px"></textarea>
+      <div class="flex items-center gap-2 justify-end">
+        <span id="smsComposeStatus" class="text-xs"></span>
+        <button onclick="sendCompose()" class="btn-primary text-xs" style="padding:8px 20px">📤 Send SMS</button>
+      </div>
+    </div>
+  </div>
+
   <script>
   var inboxInterval = null;
+  function openCompose(phone) {
+    document.getElementById('smsComposePhone').value = phone || '';
+    document.getElementById('smsComposeBody').value = '';
+    document.getElementById('smsComposeStatus').textContent = '';
+    document.getElementById('smsComposeTitle').textContent = phone ? '↩️ Reply to ' + phone : '✏️ New Message';
+    var modal = document.getElementById('smsComposeModal');
+    modal.style.display = 'flex';
+    document.getElementById('smsComposeBody').focus();
+  }
+  function closeCompose() {
+    document.getElementById('smsComposeModal').style.display = 'none';
+  }
+  function sendCompose() {
+    var phone = document.getElementById('smsComposePhone').value.trim();
+    var body = document.getElementById('smsComposeBody').value.trim();
+    var status = document.getElementById('smsComposeStatus');
+    if (!phone || !body) { status.textContent = '⚠️ Phone + message required'; status.style.color = '#fbbf24'; return; }
+    status.textContent = '⏳ Sending...'; status.style.color = '#c084fc';
+    var fd = new FormData();
+    fd.append('phone', phone);
+    fd.append('message', body);
+    fetch('/api/sms/send', { method: 'POST', body: fd })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.success) {
+          status.textContent = '✅ Sent!'; status.style.color = '#4ade80';
+          setTimeout(closeCompose, 800);
+          setTimeout(refreshInbox, 1200);
+        } else {
+          status.textContent = '❌ ' + (d.error || 'Send failed'); status.style.color = '#f87171';
+        }
+      })
+      .catch(function(){ status.textContent = '❌ Network error'; status.style.color = '#f87171'; });
+  }
   function refreshInbox() {
     var card = document.getElementById('smsInboxCard');
     var status = document.getElementById('inboxStatus');
     fetch('/api/inbox').then(function(r){ return r.json(); }).then(function(d){
       if (!d.messages || d.messages.length === 0) {
-        card.innerHTML = '<div class="text-center py-12 text-[#7a7a8e]"><div class="text-4xl mb-3">📭</div><p class="mb-2">No incoming SMS yet.</p><p class="text-xs">Messages sent to your Diazites number will appear here.</p></div>';
+        card.innerHTML = '<div class="text-center py-12 text-[#7a7a8e]"><div class="text-4xl mb-3">📭</div><p class="mb-2">No SMS yet.</p><p class="text-xs">Messages to/from your leads appear here. Send one with ✏️ New Message.</p></div>';
         if (status) status.textContent = '';
         return;
       }
       var html = '<div style="overflow-x:auto"><table class="w-full text-sm"><thead><tr style="border-bottom:1px solid #252533">' +
-        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">From</th>' +
+        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">From / To</th>' +
         '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Message</th>' +
-        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Received</th>' +
-        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Type</th>' +
+        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Time</th>' +
+        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Direction</th>' +
+        '<th class="text-left py-3 pr-3 text-[#7a7a8e] text-xs">Actions</th>' +
         '</tr></thead><tbody>';
       d.messages.forEach(function(m){
-        var time = (m.received_at || '').replace('T', ' ').slice(0, 16);
+        var time = (m.received_at || m.sent_at || '').replace('T', ' ').slice(0, 16);
+        var isIn = !!m.sender;
+        var fromTo = isIn ? (m.sender || '-') : ('→ ' + (m.phone || m.recipient || '-'));
+        var badge = isIn
+          ? '<span class="badge badge-success">IN</span>'
+          : '<span class="badge">OUT</span>';
+        var number = isIn ? (m.sender || '') : (m.phone || m.recipient || '');
         html += '<tr style="border-bottom:1px solid #1a1a2e">' +
-          '<td class="py-3 pr-3 font-mono text-xs">' + (m.sender || '-') + '</td>' +
-          '<td class="py-3 pr-3 text-sm max-w-md" style="word-break:break-word">' + (m.body || '') + '</td>' +
+          '<td class="py-3 pr-3 font-mono text-xs">' + (fromTo || '-') + '</td>' +
+          '<td class="py-3 pr-3 text-sm max-w-md" style="word-break:break-word">' + (m.body || m.message || '') + '</td>' +
           '<td class="py-3 pr-3 text-xs text-[#7a7a8e]">' + time + '</td>' +
-          '<td class="py-3 pr-3"><span class="badge">' + (m.msg_type || 'SMS') + '</span></td>' +
+          '<td class="py-3 pr-3">' + badge + '</td>' +
+          '<td class="py-3 pr-3"><button onclick="openCompose(\'' + number + '\')" class="btn-secondary text-xs" style="padding:4px 10px">↩️ Reply</button></td>' +
           '</tr>';
       });
       html += '</tbody></table></div>';
