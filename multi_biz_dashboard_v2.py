@@ -5052,6 +5052,9 @@ def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
     # Ensure E.164 format (must start with +)
     if not phone.startswith('+'):
         phone = '+' + phone
+    # sqlite3.Row has no .get() — convert early (biz conversion happens below)
+    if not isinstance(lead, dict):
+        lead = dict(lead)
     try:
         try:
             max_tokens = int(biz['max_tokens'])
@@ -5701,6 +5704,7 @@ def call_lead(lead_id):
     c.execute("SELECT * FROM leads WHERE id = ? AND business_id = ?", (lead_id, bid))
     lead = c.fetchone()
     if not lead: return redirect('/?tab=leads')
+    lead = dict(lead)  # sqlite3.Row has no .get()
     
     c.execute("SELECT * FROM businesses WHERE id = ?", (bid,))
     biz = c.fetchone()
