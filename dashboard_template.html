@@ -1383,6 +1383,41 @@ setTimeout(refreshMonitor, 500);
         <div id="vapiSyncStatus" class="text-xs text-green-400 hidden mt-2">✅ Synced to Vapi assistant</div>
       </form>
     </div>
+    <div class="card md:col-span-2">
+      <h3 class="font-bold mb-3">📄 Documents &amp; Menus <span class="text-xs font-normal text-[#7a7a8e]">— the AI answers from these</span></h3>
+      <p class="text-xs text-[#7a7a8e] mb-3">Upload your <strong>menu</strong>, <strong>inventory</strong>, price list — or add a website URL. The AI reads them to answer callers and texts (e.g. pizza menu to place orders, car inventory to search for cars).</p>
+      <div class="grid md:grid-cols-2 gap-4 mb-4">
+        <div style="padding:14px;border-radius:10px;background:#1a1a26;border:1px solid #252533">
+          <label class="text-xs font-semibold text-[#c084fc] block mb-2">📎 Upload File</label>
+          <p class="text-xs text-[#7a7a8e] mb-2">.txt &nbsp;.md &nbsp;.csv &nbsp;.json &nbsp;.pdf &nbsp;(max 3MB)</p>
+          <div class="flex gap-2">
+            <input type="file" id="kbFileInput" accept=".txt,.md,.csv,.json,.pdf" style="flex:1;font-size:12px;color:#f1f1f5">
+            <button type="button" onclick="uploadKbDoc()" class="btn-primary text-xs" style="padding:6px 16px;white-space:nowrap">⬆️ Upload</button>
+          </div>
+        </div>
+        <div style="padding:14px;border-radius:10px;background:#1a1a26;border:1px solid #252533">
+          <label class="text-xs font-semibold text-[#c084fc] block mb-2">🌐 Add Website URL</label>
+          <p class="text-xs text-[#7a7a8e] mb-2">Fetches the page text (menu site, inventory page, catalog)</p>
+          <div class="flex gap-2">
+            <input type="text" id="kbUrlInput" placeholder="https://yourmenu.com/menu" style="flex:1;font-size:12px;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5">
+            <button type="button" onclick="addKbUrl()" class="btn-primary text-xs" style="padding:6px 16px;white-space:nowrap">➕ Add</button>
+          </div>
+        </div>
+      </div>
+      <div id="kbDocStatus" class="text-xs mb-2"></div>
+      <div class="flex flex-wrap gap-2">
+        {% for d in kb_documents %}
+        <div class="flex items-center gap-2" style="padding:6px 12px;border-radius:8px;background:#1a1a26;border:1px solid #252533;font-size:12px">
+          <span>{{ '📄' if d['doc_type']=='file' else '🌐' }}</span>
+          <span class="max-w-[220px] truncate" title="{{ d['name'] }}">{{ d['name'] }}</span>
+          <span class="text-[#7a7a8e]">({{ ((d['size'] or 0)/1024)|round(1) }} KB)</span>
+          <button onclick="deleteKbDoc('{{ d['id'] }}')" class="text-red-400 hover:text-red-300" title="Delete">✕</button>
+        </div>
+        {% else %}
+        <p class="text-xs text-[#7a7a8e]">No documents yet — upload a menu or add a URL to get started.</p>
+        {% endfor %}
+      </div>
+    </div>
     <div class="card">
       <h3 class="font-bold mb-3">🤖 AI SMS Replies</h3>
       <form method="POST" action="/update-sms-ai">
@@ -2541,6 +2576,34 @@ if(document.getElementById('browseResults'))setTimeout(browseNumbers,500);
 function generateKB(type){var btn=document.getElementById(type==='inbound'?'genInboundBtn':'genKBBtn');var status=document.getElementById('kbGenStatus');var ta=document.getElementById('kbTextarea');var scriptTa=document.getElementById('scriptTextarea');btn.disabled=true;btn.textContent='⏳ Generating...';status.textContent='Generating '+type+' knowledge base via AI...';status.style.color='#c084fc';fetch('/api/generate-kb',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({method:'venice',type:type})}).then(function(r){return r.json()}).then(function(d){btn.disabled=false;btn.textContent=type==='inbound'?'📞 AI Generate Inbound KB':'🤖 AI Generate KB';if(d.success){ta.value=d.content;status.textContent='✅ '+d.message;status.style.color='#4ade80';if(scriptTa){var bizName=document.querySelector('h1')?.textContent?.trim()||'Your Business';var scriptContent='You are an AI voice assistant for '+bizName+'. You make '+(type==='inbound'?'incoming':'outbound')+' calls. Be professional, concise, and helpful. Use the knowledge base below to answer questions accurately.\n\nKnowledge Base:\n'+d.content;scriptTa.value=scriptContent}}else{status.textContent='❌ '+(d.message||'Generation failed');status.style.color='#ef4444'}}).catch(function(){btn.disabled=false;btn.textContent=type==='inbound'?'📞 AI Generate Inbound KB':'🤖 AI Generate KB';status.textContent='❌ Network error';status.style.color='#ef4444'})}
 // Play Voice
 function playVoice(voiceId){var text="Hi, this is your AI voice assistant.";var audio=new Audio('/api/test-voice?voice_id='+encodeURIComponent(voiceId)+'&text='+encodeURIComponent(text)+'&speed=1.0&t='+Date.now());audio.play().catch(function(e){console.log('Play failed:',e)});}
+
+// ── KB DOCUMENTS (Settings tab) ──
+function kbStatus(msg, ok){var st=document.getElementById('kbDocStatus');if(!st)return;st.textContent=msg;st.style.color=ok?'#4ade80':'#f87171';}
+function uploadKbDoc(){
+  var inp=document.getElementById('kbFileInput');
+  if(!inp||!inp.files.length){kbStatus('⚠️ Choose a file first',false);return;}
+  var fd=new FormData();fd.append('file',inp.files[0]);
+  kbStatus('⏳ Uploading...',true);
+  fetch('/upload-kb-document',{method:'POST',body:fd}).then(function(r){return r.json()}).then(function(d){
+    kbStatus(d.message||d.error,d.success);
+    if(d.success)setTimeout(function(){location.reload()},1200);
+  }).catch(function(e){kbStatus('❌ '+e,false)});
+}
+function addKbUrl(){
+  var inp=document.getElementById('kbUrlInput');
+  var url=inp?inp.value.trim():'';
+  if(!url){kbStatus('⚠️ Enter a URL first',false);return;}
+  kbStatus('⏳ Fetching page...',true);
+  fetch('/add-kb-url',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url})}).then(function(r){return r.json()}).then(function(d){
+    kbStatus(d.message||d.error,d.success);
+    if(d.success)setTimeout(function(){location.reload()},1200);
+  }).catch(function(e){kbStatus('❌ '+e,false)});
+}
+function deleteKbDoc(id){
+  fetch('/delete-kb-document',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id})}).then(function(r){return r.json()}).then(function(d){
+    if(d.success){kbStatus('🗑️ Deleted',false);setTimeout(function(){location.reload()},600);}
+  }).catch(function(e){kbStatus('❌ '+e,false)});
+}
 
 // ── LIVE CALLING STATUS (overview tab) ──
 var callingInterval = setInterval(refreshCallingStatus, 4000);

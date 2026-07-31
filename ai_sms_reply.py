@@ -95,6 +95,22 @@ def build_sms_prompt(biz, current_appt=None):
     script = (biz.get("script_template") or "").strip()
     industry = (biz.get("industry") or "general").strip()
 
+    # Append uploaded documents (menus / inventories / URLs) to the KB
+    try:
+        _conn = sqlite3.connect(DB_PATH)
+        _conn.row_factory = sqlite3.Row
+        _docs = _conn.execute(
+            "SELECT name, content FROM kb_documents WHERE business_id=? ORDER BY created_at",
+            (biz.get("id"),)).fetchall()
+        _conn.close()
+        _blocks = [f"📄 {d['name']}:\n{d['content']}" for d in _docs]
+        if _blocks:
+            kb = (kb + "\n\n[DOCUMENTS — the business's official documents (menu, inventory, catalog). "
+                  "If anything conflicts with the knowledge base, the DOCUMENTS are the source of truth. "
+                  "Use them to answer customer questions.]\n" + "\n\n".join(_blocks)).strip()[:60000]
+    except Exception:
+        pass
+
     kb_block = f"\nKnowledge base:\n{kb}" if kb else ""
     script_block = f"\nRelevant business script/summary:\n{script[:800]}" if script else ""
     appt_block = ""

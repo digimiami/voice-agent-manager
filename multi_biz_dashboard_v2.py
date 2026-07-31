@@ -2713,6 +2713,12 @@ def dashboard():
     except Exception as e:
         print(f"Landing page fetch error: {e}")
     
+    # Uploaded documents (menus / inventories / URLs) for the Settings tab
+    c.execute(
+        "SELECT id, doc_type, name, created_at, length(content) as size FROM kb_documents "
+        "WHERE business_id=? ORDER BY created_at DESC", (bid,))
+    kb_documents_list = c.fetchall()
+
     return render_template_string(dashboard_html,
         session=session, tab=tab, biz_name=biz['name'],
         industry_title=(biz['industry'] or '').title(),
@@ -2733,6 +2739,7 @@ def dashboard():
         landing_page=landing_page,
         conversations=conversations,
         agents=agents_list,
+        kb_documents=kb_documents_list,
         today_date=today_date,
         seven_days_ago=seven_days_ago,
         total_duration=total_duration, user_tier=user_tier,
@@ -5084,6 +5091,15 @@ def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
         # Include system prompt and knowledge base in call overrides
         script = biz['script_template'] if biz and biz['script_template'] else ''
         kb = biz['knowledge_base'] if biz and biz['knowledge_base'] else ''
+        # Append uploaded documents (menus / inventories / URLs) to the KB
+        try:
+            doc_kb = get_kb_documents_text(biz.get('id'))
+            if doc_kb:
+                kb = (kb + "\n\n[DOCUMENTS — the business's official documents (menu, inventory, catalog). "
+                      "If anything conflicts with the knowledge base, the DOCUMENTS are the source of truth. "
+                      "Use them to answer customer questions.]\n" + doc_kb).strip()
+        except Exception:
+            pass
         biz_name = biz.get('name') or ''
         biz_industry = biz.get('industry') or 'general'
         
@@ -7764,6 +7780,159 @@ def init_incoming_sms_table():
     db.close()
 
 init_incoming_sms_table()
+
+# ── KB DOCUMENTS (menus / inventories / URLs the AI can search) ──
+def init_kb_documents_table():
+    """Ensure kb_documents table exists."""
+    db = get_db()
+    c = db.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS kb_documents (
+            id TEXT PRIMARY KEY,
+            business_id TEXT,
+            doc_type TEXT DEFAULT 'file',
+            name TEXT,
+            content TEXT,
+            created_at TEXT
+        )
+    """)
+    db.commit()
+    db.close()
+
+init_kb_documents_table()
+
+
+def get_kb_documents_text(bid, max_chars=60000):
+    """Build a prompt-ready text block from all documents for a business."""
+    if not bid:
+        return ""
+    try:
+        db = get_db()
+        c = db.cursor()
+        rows = c.execute(
+            "SELECT name, content FROM kb_documents WHERE business_id=? ORDER BY created_at",
+            (bid,)).fetchall()
+        db.close()
+    except Exception:
+        return ""
+    parts, total = [], 0
+    for r in rows:
+        block = f"📄 {r['name']}:\n{r['content']}"
+        if total + len(block) > max_chars:
+            block = block[:max_chars - total]
+        parts.append(block)
+        total += len(block)
+        if total >= max_chars:
+            break
+    return "\n\n".join(parts)
+
+
+def extract_doc_text(filename, data):
+    """Extract readable text from an uploaded file (.txt .md .csv .json .pdf)."""
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+    if ext == 'pdf':
+        import io
+        try:
+            from pypdf import PdfReader
+        except ImportError:
+            from PyPDF2 import PdfReader
+        reader = PdfReader(io.BytesIO(data))
+        pages = []
+        for p in reader.pages:
+            try:
+                pages.append(p.extract_text() or '')
+            except Exception:
+                continue
+        return "\n".join(pages)
+    if ext in ('csv', 'json', 'txt', 'md', 'text'):
+        try:
+            return data.decode('utf-8', errors='replace')
+        except Exception:
+            return data.decode('latin-1', errors='replace')
+    return None
+
+
+def fetch_url_text(url):
+    """Fetch a URL and strip HTML to plain text (with curl-like UA for Cloudflare)."""
+    import re as _re
+    import html as _html
+    try:
+        r = requests.get(url, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
+        }, timeout=25)
+        if r.status_code != 200:
+            return None, f"HTTP {r.status_code}"
+        ct = r.headers.get('Content-Type', '')
+        text = r.text
+        if 'text/html' in ct or 'html' in ct or '<html' in text[:2000].lower():
+            text = _re.sub(r'<script[\s\S]*?</script>|<style[\s\S]*?</style>|<!--[\s\S]*?-->', ' ', text, flags=_re.I)
+            text = _re.sub(r'<[^>]+>', ' ', text)
+            text = _html.unescape(text)
+        text = _re.sub(r'[ \t]+', ' ', text)
+        text = _re.sub(r'\n\s*\n+', '\n', text).strip()
+        return text[:100000], None
+    except Exception as e:
+        return None, str(e)
+
+
+@app.route('/upload-kb-document', methods=['POST'])
+@login_required
+def upload_kb_document():
+    bid = session['business_id']
+    f = request.files.get('file')
+    if not f or not f.filename:
+        return jsonify({'success': False, 'error': 'No file selected'})
+    data = f.read()
+    if len(data) > 3 * 1024 * 1024:
+        return jsonify({'success': False, 'error': 'File too large (max 3MB)'})
+    text = extract_doc_text(f.filename, data)
+    if text is None:
+        return jsonify({'success': False, 'error': 'Unsupported file — use .txt, .md, .csv, .json or .pdf'})
+    text = text.strip()
+    if not text:
+        return jsonify({'success': False, 'error': 'No readable text found in that file'})
+    db = get_db()
+    c = db.cursor()
+    c.execute(
+        "INSERT INTO kb_documents (id, business_id, doc_type, name, content, created_at) VALUES (?,?,?,?,?,?)",
+        (uuid.uuid4().hex[:16], bid, 'file', f.filename[:120], text[:150000], datetime.now().isoformat()))
+    db.commit()
+    db.close()
+    return jsonify({'success': True, 'message': f'📄 {f.filename} added — AI can now answer from it!'})
+
+
+@app.route('/add-kb-url', methods=['POST'])
+@login_required
+def add_kb_url():
+    bid = session['business_id']
+    url = (request.get_json(silent=True) or {}).get('url', '').strip()
+    if not url.startswith('http'):
+        return jsonify({'success': False, 'error': 'Enter a valid URL (https://...)'})
+    text, err = fetch_url_text(url)
+    if err or not text:
+        return jsonify({'success': False, 'error': f'Could not fetch that page: {err or "empty content"}'})
+    name = url.replace('https://', '').replace('http://', '').rstrip('/')[:100]
+    db = get_db()
+    c = db.cursor()
+    c.execute(
+        "INSERT INTO kb_documents (id, business_id, doc_type, name, content, created_at) VALUES (?,?,?,?,?,?)",
+        (uuid.uuid4().hex[:16], bid, 'url', name, text, datetime.now().isoformat()))
+    db.commit()
+    db.close()
+    return jsonify({'success': True, 'message': f'🌐 {name} saved ({len(text):,} chars of text)'})
+
+
+@app.route('/delete-kb-document', methods=['POST'])
+@login_required
+def delete_kb_document():
+    bid = session['business_id']
+    doc_id = (request.get_json(silent=True) or {}).get('id', '')
+    db = get_db()
+    c = db.cursor()
+    c.execute("DELETE FROM kb_documents WHERE id=? AND business_id=?", (doc_id, bid))
+    db.commit()
+    db.close()
+    return jsonify({'success': True})
 
 @app.route('/sms-gate-webhook', methods=['POST'])
 def sms_gate_webhook():
