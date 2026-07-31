@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 from diazites_prompt import build_diazites_prompt
 
 DB_PATH = "/root/voice-agent-businesses.db"
-VAPI_API_KEY = "d9486ec8-b862-460b-97ba-64bbb639f234"
+VAPI_API_KEY = os.environ.get("VAPI_API_KEY") or "d9486ec8-b862-460b-97ba-64bbb639f234"
 VAPI_BASE = "https://api.vapi.ai"
 
 os.makedirs(os.path.dirname(DB_PATH) or '.', exist_ok=True)

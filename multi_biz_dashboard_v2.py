@@ -46,14 +46,14 @@ def git_auto_commit(message):
         pass  # don't break if git fails
 
 DB_PATH = "/root/voice-agent-businesses.db"
-VAPI_API_KEY = os.environ.get("VAPI_API_KEY", "")
 CAL_COM_API_KEY = os.environ.get("CAL_COM_API_KEY", "")
 CAL_COM_USERNAME = os.environ.get("CAL_COM_USERNAME", "pablo-d-i2xmhr")
-# Force use of the actual calling key (the env var may contain the admin key)
-VAPI_API_KEY = "d9486ec8-b862-460b-97ba-64bbb639f234"
+# Calling key (d948...) — admin key is only for the admin panel on 8086.
+# Env wins; literal is a last-resort fallback so calls never silently break.
+VAPI_API_KEY = os.environ.get("VAPI_API_KEY") or "d9486ec8-b862-460b-97ba-64bbb639f234"
 VAPI_BASE = "https://api.vapi.ai"
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(32)
+app.secret_key = os.environ.get("DIAZITES_SECRET_KEY") or secrets.token_hex(32)
 
 # Track active campaign threads so we can detect stale ones
 campaign_threads = {}
@@ -4888,7 +4888,8 @@ def api_campaign_status():
     
     db_status = camp['status'] if camp else 'idle'
     cached = campaign_status_cache.get(bid, db_status)
-    thread_alive = bid in campaign_threads and campaign_threads[bid].is_alive()
+    thread = campaign_threads.get(bid)
+    thread_alive = thread is not None and thread.is_alive()
     
     if db_status == 'running' and not thread_alive:
         display_status = 'WARNING Stale (restart needed)'
@@ -4949,7 +4950,7 @@ def reset_campaign():
     c = db.cursor()
     # Stop any running campaign thread
     if bid in campaign_threads:
-        try: campaign_threads[bid] = None
+        try: campaign_threads.pop(bid, None)
         except: pass
     # Clear campaign logs so monitor starts fresh
     c.execute("DELETE FROM campaign_log WHERE business_id = ?", (bid,))
@@ -5003,7 +5004,8 @@ def campaign_monitor():
         recent_calls = [dict(r) for r in c.fetchall()]
         
         # Thread status
-        thread_alive = bid in campaign_threads and campaign_threads[bid].is_alive()
+        thread = campaign_threads.get(bid)
+        thread_alive = thread is not None and thread.is_alive()
         campaign_running = camp and camp[0] == 'running' if camp else False
         
         # Currently calling leads
