@@ -5171,12 +5171,24 @@ def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
             
             # Fetch call details in background after a delay
             def fetch_call_details(cid, lead_phone):
-                time.sleep(30)  # Wait 30s for call to complete and transcript to be ready
+                # Poll until the call actually ENDS — a single 30s wait races
+                # calls that run 60-120s+ (transcript empty => no booking detected)
+                cd = None
+                for attempt in range(20):  # up to ~5 min
+                    time.sleep(15)
+                    try:
+                        r2 = subprocess.run(["curl", "-s", f"{VAPI_BASE}/call/{cid}",
+                            "-H", f"Authorization: Bearer ***"], capture_output=True, text=True, timeout=20)
+                        cd = json.loads(r2.stdout)
+                        st = (cd or {}).get('status', '')
+                        if st in ('ended', 'completed', 'failed', 'cancelled', 'voicemail'):
+                            break
+                    except Exception:
+                        cd = None
+                if not cd or not cd.get('id'):
+                    print(f"⚠️ Could not fetch call {cid} details after retries")
+                    return
                 try:
-                    r2 = subprocess.run(["curl","-s",f"{VAPI_BASE}/call/{cid}",
-                        "-H",f"Authorization: Bearer {VAPI_API_KEY}"], capture_output=True, text=True, timeout=20)
-                    cd = json.loads(r2.stdout)
-                    
                     # Vapi doesn't have durationSeconds - calculate from timestamps
                     dur = 0
                     try:

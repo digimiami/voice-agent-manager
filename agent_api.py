@@ -1129,13 +1129,32 @@ def api_provision_phone(api_key, bid):
                 "systemPrompt": full_script
             },
             "voice": {"provider": "11labs", "voiceId": voice_id},
-            "firstMessage": f"Hi, this is {name}'s assistant from Diazites. We help {industry} businesses never miss a call. Do you have a moment?",
+            "firstMessage": f"Hi, this is {name}'s assistant. I'm calling because we help {industry} businesses. Am I catching you at a good time?",
             "firstMessageMode": "assistant-speaks-first",
             "silenceTimeoutSeconds": 10,
             "maxDurationSeconds": 300,
             "backgroundSound": "off",
-            "serverUrl": "https://diazites.online/api/v1/vapi-webhook",
-            "serverMessages": ["end-of-call-report", "status-update", "hang", "transcript", "conversation-update"]
+            # CRITICAL: 8083 webhook (vapi_webhook_server.py) does the email/SMS/calendar
+            # confirmations. The /api/v1/vapi-webhook route on 8086 only logs calls.
+            "serverUrl": "https://diazites.online/api/vapi/webhook",
+            "serverMessages": ["end-of-call-report", "status-update", "hang", "transcript", "conversation-update"],
+            "analysisPlan": {
+                "summaryPlan": {"enabled": True},
+                "successEvaluationPlan": {"enabled": True},
+                "structuredDataPlan": {
+                    "enabled": True,
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "notes": {"type": "string"},
+                            "interested": {"type": "boolean"},
+                            "prospect_name": {"type": "string"},
+                            "appointment_time": {"type": "string"},
+                            "appointment_booked": {"type": "boolean"}
+                        }
+                    }
+                }
+            }
         }
         result = subprocess.run([
             "curl", "-s", "-X", "POST", f"{VAPI_BASE}/assistant",
