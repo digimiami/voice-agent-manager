@@ -1819,6 +1819,14 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                             <input type="hidden" name="affiliate_id" value="{{ a.id }}">
                             <button class="btn-secondary text-xs" style="padding:4px 10px">{{ '⏸ Disable' if a.status=='active' else '▶ Enable' }}</button>
                         </form>
+                        <form method="POST" action="/admin/affiliates/mark-all-paid" style="display:inline">
+                            <input type="hidden" name="affiliate_id" value="{{ a.id }}">
+                            <button class="btn-secondary text-xs" style="padding:4px 10px" title="Mark all pending commissions paid">✅ All Paid</button>
+                        </form>
+                        <form method="POST" action="/admin/affiliates/delete" style="display:inline" onsubmit="return confirm('Delete {{ a.name }} and ALL their events/payouts? This cannot be undone.')">
+                            <input type="hidden" name="affiliate_id" value="{{ a.id }}">
+                            <button class="btn-secondary text-xs" style="padding:4px 10px;color:#f87171" title="Delete affiliate + all data">🗑️ Delete</button>
+                        </form>
                     </td>
                 </tr>
                 {% endfor %}
@@ -1842,6 +1850,10 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                             <button class="btn-primary text-xs" style="padding:4px 10px">💸 Settle ${{ '%.0f' % (p.amount or 0) }}</button>
                         </form>
                         {% endif %}
+                        <form method="POST" action="/admin/affiliates/delete-payout" style="display:inline" onsubmit="return confirm('Delete this payout request?')">
+                            <input type="hidden" name="payout_id" value="{{ p.id }}">
+                            <button class="btn-secondary text-xs" style="padding:4px 10px;color:#f87171">🗑️</button>
+                        </form>
                     </td>
                 </tr>
                 {% else %}
@@ -1868,6 +1880,10 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                             <button class="btn-primary text-xs" style="padding:4px 10px">💰 Mark Paid</button>
                         </form>
                         {% endif %}
+                        <form method="POST" action="/admin/affiliates/delete-event" style="display:inline" onsubmit="return confirm('Delete this event?')">
+                            <input type="hidden" name="event_id" value="{{ e.id }}">
+                            <button class="btn-secondary text-xs" style="padding:4px 10px;color:#f87171">🗑️</button>
+                        </form>
                     </td>
                 </tr>
                 {% endfor %}
@@ -3359,6 +3375,63 @@ def admin_affiliate_payout_pay():
     else:
         flash('Payout not found', 'error')
     db.close()
+    return redirect('/admin?tab=affiliates')
+
+
+@app.route('/admin/affiliates/delete', methods=['POST'])
+@admin_required
+def admin_affiliate_delete():
+    aid = request.form.get('affiliate_id', '')
+    db = get_db()
+    c = db.cursor()
+    c.execute("DELETE FROM affiliate_events WHERE affiliate_id=?", (aid,))
+    c.execute("DELETE FROM affiliate_payouts WHERE affiliate_id=?", (aid,))
+    c.execute("DELETE FROM affiliates WHERE id=?", (aid,))
+    db.commit()
+    db.close()
+    flash('🗑️ Affiliate + all events/payouts deleted', 'success')
+    return redirect('/admin?tab=affiliates')
+
+
+@app.route('/admin/affiliates/mark-all-paid', methods=['POST'])
+@admin_required
+def admin_affiliate_mark_all_paid():
+    aid = request.form.get('affiliate_id', '')
+    db = get_db()
+    c = db.cursor()
+    c.execute("UPDATE affiliate_events SET status='paid', paid_at=datetime('now') "
+              "WHERE affiliate_id=? AND event_type='signup' AND status='pending'", (aid,))
+    c.execute("UPDATE affiliate_payouts SET status='paid', paid_at=datetime('now') "
+              "WHERE affiliate_id=? AND status='pending'", (aid,))
+    db.commit()
+    db.close()
+    flash('✅ All pending commissions + payouts marked paid', 'success')
+    return redirect('/admin?tab=affiliates')
+
+
+@app.route('/admin/affiliates/delete-event', methods=['POST'])
+@admin_required
+def admin_affiliate_delete_event():
+    eid = request.form.get('event_id', '')
+    db = get_db()
+    c = db.cursor()
+    c.execute("DELETE FROM affiliate_events WHERE id=?", (eid,))
+    db.commit()
+    db.close()
+    flash('🗑️ Event deleted', 'success')
+    return redirect('/admin?tab=affiliates')
+
+
+@app.route('/admin/affiliates/delete-payout', methods=['POST'])
+@admin_required
+def admin_affiliate_delete_payout():
+    pid = request.form.get('payout_id', '')
+    db = get_db()
+    c = db.cursor()
+    c.execute("DELETE FROM affiliate_payouts WHERE id=?", (pid,))
+    db.commit()
+    db.close()
+    flash('🗑️ Payout request deleted', 'success')
     return redirect('/admin?tab=affiliates')
 
 
