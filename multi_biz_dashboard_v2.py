@@ -58,6 +58,17 @@ app = Flask(__name__)
 app.url_map.strict_slashes = False
 app.secret_key = os.environ.get("DIAZITES_SECRET_KEY") or secrets.token_hex(32)
 
+GA_CONFIG_PATH = "/root/voice-agent-manager/ga_config.json"
+
+@app.route('/api/ga-config')
+def api_ga_config():
+    try:
+        with open(GA_CONFIG_PATH) as f:
+            cfg = json.load(f)
+        return jsonify({'ga_id': cfg.get('ga_id', ''), 'sc_key': cfg.get('sc_key', '')})
+    except Exception:
+        return jsonify({'ga_id': '', 'sc_key': ''})
+
 # Track active campaign threads so we can detect stale ones
 campaign_threads = {}
 campaign_status_cache = {}
@@ -744,6 +755,7 @@ function submitSignup(e) {
 
 LANDING_PAGE = """<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){fetch('/api/ga-config').then(function(r){return r.json()}).then(function(d){if(d&&d.sc_key){var m=document.createElement('meta');m.name='google-site-verification';m.content=d.sc_key;document.head.appendChild(m)}if(d&&d.ga_id&&d.ga_id.indexOf('G-')===0){var s=document.createElement('script');s.src='https://www.googletagmanager.com/gtag/js?id='+d.ga_id;s.async=true;document.head.appendChild(s);window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config',d.ga_id)}}).catch(function(){})})();</script>
 <title>Diazites — AI Voice Agents for Local Businesses</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>@import url('https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap');

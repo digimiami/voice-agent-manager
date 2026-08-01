@@ -179,6 +179,7 @@ ADMIN_HTML = """<!DOCTYPE html>
                 ('sms', 'message', 'SMS'),
                 ('calendar', 'calendar-alt', 'Calendar'),
                 ('stripe', 'credit-card', 'Stripe'),
+                ('analytics', 'chart-bar', 'Analytics'),
                 ('agent-tars', 'robot', 'Agent TARS'),
                 ('agent-api', 'key', 'Agent API'),
                 ('affiliates', 'hand-holding-usd', 'Affiliates')
@@ -1119,6 +1120,21 @@ ADMIN_HTML = """<!DOCTYPE html>
                 {{ request.host_url }}stripe-webhook
             </div>
             <p class="text-xs text-[#5c5c70] mt-2">Events: <code>checkout.session.completed</code></p>
+        </div>
+        {% elif tab == 'analytics' %}
+        <h2 class="text-xl font-bold mb-6">📊 Analytics & Console</h2>
+        <div class="max-w-xl card mb-6">
+            <h3 class="font-bold mb-3">Google Analytics & Search Console</h3>
+            <p class="text-xs text-[#64748b] mb-4">Injects Google Analytics (GA4) + Search Console verification into diazites.online (landing page & client dashboard).</p>
+            <form method="POST" action="/admin/update-ga-config">
+                <label class="text-xs text-[#64748b] block mb-1">Google Analytics ID (GA4)</label>
+                <input type="text" name="ga_id" value="{{ ga_config.ga_id or '' }}" placeholder="G-XXXXXXXXXX" class="mb-3 font-mono text-xs">
+                <p class="text-[10px] text-[#5c5c70] mb-3">Get this from <a href="https://analytics.google.com" target="_blank" class="text-[#38bdf8]">Google Analytics</a> &rarr; Admin &rarr; Data Streams</p>
+                <label class="text-xs text-[#64748b] block mb-1">Search Console Verification Key</label>
+                <input type="text" name="sc_key" value="{{ ga_config.sc_key or '' }}" placeholder="Paste the google-site-verification content value" class="mb-3 font-mono text-xs">
+                <p class="text-[10px] text-[#5c5c70] mb-3">Get this from <a href="https://search.google.com/search-console" target="_blank" class="text-[#38bdf8]">Search Console</a> &rarr; Settings &rarr; Ownership verification &rarr; HTML tag</p>
+                <button type="submit" class="btn-primary text-sm"><i class="fas fa-save mr-1"></i> Save Analytics Config</button>
+            </form>
         </div>
         {% elif tab == 'campaigns' %}
         <h2 class="text-xl font-bold mb-6">📞 Outbound Campaigns</h2>
@@ -2791,6 +2807,28 @@ def update_stripe():
     flash('✅ Stripe config saved!', 'success')
     return redirect('/admin?tab=stripe')
 
+GA_CONFIG_PATH = "/root/voice-agent-manager/ga_config.json"
+
+def load_ga_config():
+    try:
+        with open(GA_CONFIG_PATH) as f:
+            cfg = json.load(f)
+        return {'ga_id': cfg.get('ga_id', ''), 'sc_key': cfg.get('sc_key', '')}
+    except Exception:
+        return {'ga_id': '', 'sc_key': ''}
+
+@app.route('/admin/update-ga-config', methods=['POST'])
+@admin_required
+def update_ga_config():
+    cfg = {
+        'ga_id': request.form.get('ga_id', '').strip(),
+        'sc_key': request.form.get('sc_key', '').strip(),
+    }
+    with open(GA_CONFIG_PATH, 'w') as f:
+        json.dump(cfg, f, indent=2)
+    flash('✅ Analytics config saved!', 'success')
+    return redirect('/admin?tab=analytics')
+
 def load_stripe_config():
     from premium_features import load_stripe_config as lsc
     return lsc()
@@ -3311,7 +3349,8 @@ def admin_dashboard():
         recent_activity=recent_activity,
         smtp_config=load_smtp_config(),
         twilio_config=load_twilio_config(),
-        stripe_config=load_stripe_config())
+        stripe_config=load_stripe_config(),
+        ga_config=load_ga_config())
 
 @app.route('/admin/affiliates/pay', methods=['POST'])
 @admin_required
