@@ -1339,6 +1339,42 @@ p.play().then(function(){document.getElementById('voice-status-'+s).textContent=
 </div>
 </section>
 
+<!-- DEMO + ROI -->
+<section id="try-it-live" class="max-w-6xl mx-auto px-6 py-20">
+<h2 class="text-3xl md:text-4xl font-extrabold text-center mb-3 gradient-text">Try It Live — It's a Phone Call</h2>
+<p class="text-center text-[#7a7a8e] mb-10 text-sm">Call the demo line. Maria answers like a real receptionist — no forms, no videos, just call.</p>
+<div class="grid md:grid-cols-2 gap-6">
+<div class="card p-8 text-center" style="border:1px solid #252533;background:#0c0c18;border-radius:16px">
+<div class="text-5xl mb-4">📞</div>
+<h3 class="text-xl font-bold mb-2">Diazites Demo Line</h3>
+<p class="text-[#7a7a8e] text-sm mb-5">"Hi, you've reached the Diazites demo line — I'm Maria, an AI receptionist!"</p>
+<a href="tel:+17868084099" class="btn-primary inline-block py-4 px-8 text-lg rounded-2xl">📱 (786) 808-4099</a>
+<p class="text-xs text-[#5c5c70] mt-5">Works with any phone. Try asking: <i>"What can you do for my roofing business?"</i></p>
+</div>
+<div class="card p-8" style="border:1px solid #252533;background:#0c0c18;border-radius:16px">
+<h3 class="text-xl font-bold mb-1">Missed-Call ROI Calculator</h3>
+<p class="text-xs text-[#7a7a8e] mb-6">How much are missed calls costing your business every month?</p>
+<div class="space-y-4 text-left">
+<div><label class="text-xs text-[#7a7a8e] block mb-1">Missed calls per day</label><input id="roiCalls" type="number" value="5" min="0" style="width:100%;background:#12121a;border:1px solid #252533;color:#fff;border-radius:10px;padding:10px 12px;font-size:14px"></div>
+<div><label class="text-xs text-[#7a7a8e] block mb-1">Average job value ($)</label><input id="roiValue" type="number" value="850" min="0" style="width:100%;background:#12121a;border:1px solid #252533;color:#fff;border-radius:10px;padding:10px 12px;font-size:14px"></div>
+<div><label class="text-xs text-[#7a7a8e] block mb-1">Close rate on answered calls (%)</label><input id="roiClose" type="number" value="30" min="0" max="100" style="width:100%;background:#12121a;border:1px solid #252533;color:#fff;border-radius:10px;padding:10px 12px;font-size:14px"></div>
+<div style="background:#12121a;border-radius:12px;padding:16px;text-align:center">
+<div class="text-xs text-[#7a7a8e] mb-1">Missed revenue every month</div>
+<div id="roiResult" class="text-3xl font-extrabold" style="color:#4ade80">$25,500</div>
+<div class="text-xs text-[#5c5c70] mt-2">An AI agent at <b style="color:#c084fc">$197/mo</b> helps you recover that</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<script>
+function roiCalc(){var c=parseFloat(document.getElementById('roiCalls').value)||0,v=parseFloat(document.getElementById('roiValue').value)||0,cl=(parseFloat(document.getElementById('roiClose').value)||0)/100;document.getElementById('roiResult').textContent='$'+Math.round(c*30*v*cl).toLocaleString()}
+document.getElementById('roiCalls').addEventListener('input',roiCalc);
+document.getElementById('roiValue').addEventListener('input',roiCalc);
+document.getElementById('roiClose').addEventListener('input',roiCalc);
+roiCalc();
+</script>
+
 <!-- FOOTER -->
 <footer class="border-t border-[#252533] py-8 text-center text-xs text-[#5c5c70]">
 <div class="flex items-center justify-center gap-2 mb-3"><div class="text-lg">🎙️</div><span class="text-sm gradient-text font-bold">Diazites</span></div>
@@ -1591,7 +1627,7 @@ def index():
     aff = get_affiliate_by_code(ref) if ref else None
     if aff:
         resp = make_response(render_template_string(LANDING_PAGE.replace('<!-- GSC_META -->', gsc_meta_tag())))
-        resp.set_cookie('diazites_ref', aff['code'], max_age=60 * 60 * 24 * 30, samesite='Lax')
+        resp.set_cookie('diazites_ref', aff['code'], max_age=60 * 60 * 24 * 90, samesite='Lax')
         try:
             db = get_db()
             c = db.cursor()
@@ -8242,6 +8278,12 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid #1a1a2e}
 <div class="card"><h2 style="margin:0 0 4px">Hi, {{ aff.name }} 👋</h2>
 <p style="color:#a1a1b5;font-size:14px;margin:0">Your affiliate code: <b>{{ aff.code }}</b></p>
 <div class="linkbox">🔗 {{ link }}</div>
+<div class="linkbox">📞 Demo line: <b>(786) 808-4099</b> — tell prospects to call it and hear Maria answer</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
+<a class="btn" href="/affiliate/toolkit/social_kit.md">📱 Social Kit (reels + posts)</a>
+<a class="btn" href="/affiliate/toolkit/outreach_scripts.md">✉️ Cold Outreach Scripts</a>
+<a class="btn" href="/a/{{ aff.code }}">👀 Preview my page</a>
+</div>
 <button class="btn" onclick="copyLink()">📋 Copy Link</button> <span id="copied" class="copy">Copied!</span></div>
 <div class="card">
 <div class="stat"><b>{{ clicks }}</b>Link Clicks</div>
@@ -8286,13 +8328,43 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid #1a1a2e}
 </body></html>"""
 
 
+TOOLKIT_DIR = "/root/voice-agent-manager/affiliate_toolkit"
+
+
+@app.route('/a/<code>')
+def affiliate_landing_page(code):
+    """Per-affiliate personalized landing page: diazites.online/a/CODE"""
+    aff = get_affiliate_by_code(code)
+    if 'business_id' in session:
+        return dashboard()
+    page = LANDING_PAGE.replace('<!-- GSC_META -->', gsc_meta_tag())
+    if aff:
+        banner = ('<div style="background:linear-gradient(90deg,#6366f1,#8b5cf6);color:#fff;'
+                  'text-align:center;padding:10px 16px;font-size:13px;font-weight:600;'
+                  'font-family:Inter,sans-serif">🤝 You\'re here through <span style="text-decoration:underline">'
+                  + str(aff['name']) + '</span> — get <b>14-day free trial</b> + <b>20% off</b> your first month!</div>')
+        page = page.replace('<!-- NAV -->', banner + '\n<!-- NAV -->', 1)
+        resp = make_response(render_template_string(page))
+        resp.set_cookie('diazites_ref', aff['code'], max_age=60 * 60 * 24 * 90, samesite='Lax')
+        return resp
+    return render_template_string(page)
+
+
+@app.route('/affiliate/toolkit/<name>')
+def affiliate_toolkit(name):
+    fp = os.path.join(TOOLKIT_DIR, os.path.basename(name))
+    if os.path.exists(fp):
+        return send_file(fp, mimetype='text/markdown', as_attachment=False)
+    return "Not found", 404
+
+
 @app.route('/affiliate')
 def affiliate_landing():
     ref = request.args.get('ref', '')
     aff = get_affiliate_by_code(ref) if ref else None
     if aff:
         resp = make_response(render_template_string(AFFILIATE_LANDING, ref=ref))
-        resp.set_cookie('diazites_ref', aff['code'], max_age=60 * 60 * 24 * 30, samesite='Lax')
+        resp.set_cookie('diazites_ref', aff['code'], max_age=60 * 60 * 24 * 90, samesite='Lax')
         try:
             db = get_db()
             c = db.cursor()
@@ -8388,7 +8460,7 @@ def affiliate_dashboard():
     payouts = c.execute("SELECT * FROM affiliate_payouts WHERE affiliate_id=? ORDER BY created_at DESC",
                         (aid,)).fetchall()
     db.close()
-    link = site_base() + '/?ref=' + aff['code']
+    link = site_base() + '/a/' + aff['code']
     return render_template_string(AFFILIATE_DASHBOARD, aff=dict(aff), link=link, clicks=clicks,
                                   signups=signups, total_pending=total_pending, total_paid=total_paid,
                                   payouts=payouts)
