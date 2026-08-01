@@ -69,6 +69,18 @@ def api_ga_config():
     except Exception:
         return jsonify({'ga_id': '', 'sc_key': ''})
 
+def gsc_meta_tag():
+    """Server-side Google Search Console verification meta tag (no JS needed)."""
+    try:
+        with open(GA_CONFIG_PATH) as f:
+            cfg = json.load(f)
+        key = cfg.get('sc_key', '').strip()
+        if key:
+            return f'<meta name="google-site-verification" content="{key}" />'
+    except Exception:
+        pass
+    return ''
+
 # Track active campaign threads so we can detect stale ones
 campaign_threads = {}
 campaign_status_cache = {}
@@ -755,6 +767,7 @@ function submitSignup(e) {
 
 LANDING_PAGE = """<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- GSC_META -->
 <script>(function(){fetch('/api/ga-config').then(function(r){return r.json()}).then(function(d){if(d&&d.sc_key){var m=document.createElement('meta');m.name='google-site-verification';m.content=d.sc_key;document.head.appendChild(m)}if(d&&d.ga_id&&d.ga_id.indexOf('G-')===0){var s=document.createElement('script');s.src='https://www.googletagmanager.com/gtag/js?id='+d.ga_id;s.async=true;document.head.appendChild(s);window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config',d.ga_id)}}).catch(function(){})})();</script>
 <title>Diazites — AI Voice Agents for Local Businesses</title>
 <script src="https://cdn.tailwindcss.com"></script>
@@ -1577,7 +1590,7 @@ def index():
     ref = request.args.get('ref', '')
     aff = get_affiliate_by_code(ref) if ref else None
     if aff:
-        resp = make_response(render_template_string(LANDING_PAGE))
+        resp = make_response(render_template_string(LANDING_PAGE.replace('<!-- GSC_META -->', gsc_meta_tag())))
         resp.set_cookie('diazites_ref', aff['code'], max_age=60 * 60 * 24 * 30, samesite='Lax')
         try:
             db = get_db()
@@ -1590,7 +1603,7 @@ def index():
         except Exception:
             pass
         return resp
-    return render_template_string(LANDING_PAGE)
+    return render_template_string(LANDING_PAGE.replace('<!-- GSC_META -->', gsc_meta_tag()))
 
 
 LEGAL_PAGES = {
@@ -2766,7 +2779,7 @@ def dashboard():
         "WHERE business_id=? ORDER BY created_at DESC", (bid,))
     kb_documents_list = c.fetchall()
 
-    return render_template_string(dashboard_html,
+    return render_template_string(dashboard_html.replace('<!-- GSC_META -->', gsc_meta_tag()),
         session=session, tab=tab, biz_name=biz['name'],
         industry_title=(biz['industry'] or '').title(),
         biz_info=biz, campaign_status=campaign_status,
