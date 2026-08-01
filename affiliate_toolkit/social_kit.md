@@ -13,7 +13,7 @@ Ready-to-post content. Swap the bracketed parts, post, and add your link in the 
 [VO] "That call was a $2,400 roof repair. You'll never know."
 [10s] Cut to the SAME number being answered by an AI receptionist:
 "Good morning, Sunshine Roofing! How can we help?"
-[VO] "Meet Maria. She answers 24/7, books appointments, and never takes a day off."
+[VO] "Meet Pablo. He answers 24/7, books appointments, and never takes a day off."
 [25s] Text overlay: "Zero missed calls. Ever."
 [30-45s] Show the call becoming a booked appointment on a calendar.
 [CTA] "Want one for YOUR business? Link in bio — get 20% off your first month."
@@ -54,7 +54,7 @@ Caption: 3 missed calls = your lunch break just cost you $800. 😳 [YOUR LINK]
 [HOOK] "Everyone asks: what does it actually SOUND like?"
 [VO] "Don't take my word for it — call the live demo line right now."
 [Show] (786) 808-4099 on screen, big.
-[Audio clip] Maria answering: "Hi, you've reached the Diazites demo line!"
+[Audio clip] Pablo answering: "Hi, you've reached the Diazites demo line!"
 [VO] "That's a real AI receptionist. Hear it with your own ears — then imagine it answering for YOUR business."
 [CTA] "Call it. Then use my link for 20% off your first month 👇 [YOUR LINK]"
 ```

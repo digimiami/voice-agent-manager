@@ -1347,7 +1347,7 @@ p.play().then(function(){document.getElementById('voice-status-'+s).textContent=
 <div class="card p-8 text-center" style="border:1px solid #252533;background:#0c0c18;border-radius:16px">
 <div class="text-5xl mb-4">📞</div>
 <h3 class="text-xl font-bold mb-2">Diazites Demo Line</h3>
-<p class="text-[#7a7a8e] text-sm mb-5">"Hi, you've reached the Diazites demo line — I'm Maria, an AI receptionist!"</p>
+<p class="text-[#7a7a8e] text-sm mb-5">"Hi, you've reached the Diazites demo line — I'm Pablo, an AI receptionist!"</p>
 <a href="tel:+17868084099" class="btn-primary inline-block py-4 px-8 text-lg rounded-2xl">📱 (786) 808-4099</a>
 <p class="text-xs text-[#5c5c70] mt-5">Works with any phone. Try asking: <i>"What can you do for my roofing business?"</i></p>
 </div>
@@ -8278,11 +8278,18 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid #1a1a2e}
 <div class="card"><h2 style="margin:0 0 4px">Hi, {{ aff.name }} 👋</h2>
 <p style="color:#a1a1b5;font-size:14px;margin:0">Your affiliate code: <b>{{ aff.code }}</b></p>
 <div class="linkbox">🔗 {{ link }}</div>
-<div class="linkbox">📞 Demo line: <b>(786) 808-4099</b> — tell prospects to call it and hear Maria answer</div>
+<div class="linkbox">📞 Demo line: <b>(786) 808-4099</b> — tell prospects to call it and hear Pablo answer</div>
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
 <a class="btn" href="/affiliate/toolkit/social_kit.md">📱 Social Kit (reels + posts)</a>
 <a class="btn" href="/affiliate/toolkit/outreach_scripts.md">✉️ Cold Outreach Scripts</a>
 <a class="btn" href="/a/{{ aff.code }}">👀 Preview my page</a>
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
+<a class="btn" href="/affiliate/toolkit/carousel-1.png">📸 Slide 1</a>
+<a class="btn" href="/affiliate/toolkit/carousel-2.png">📸 Slide 2</a>
+<a class="btn" href="/affiliate/toolkit/carousel-3.png">📸 Slide 3</a>
+<a class="btn" href="/affiliate/toolkit/carousel-4.png">📸 Slide 4</a>
+<a class="btn" href="/affiliate/toolkit/carousel-5.png">📸 Slide 5</a>
 </div>
 <button class="btn" onclick="copyLink()">📋 Copy Link</button> <span id="copied" class="copy">Copied!</span></div>
 <div class="card">
@@ -8346,6 +8353,16 @@ def affiliate_landing_page(code):
         page = page.replace('<!-- NAV -->', banner + '\n<!-- NAV -->', 1)
         resp = make_response(render_template_string(page))
         resp.set_cookie('diazites_ref', aff['code'], max_age=60 * 60 * 24 * 90, samesite='Lax')
+        try:
+            db = get_db()
+            c = db.cursor()
+            if request.cookies.get('diazites_ref', '') != aff['code']:
+                c.execute("INSERT INTO affiliate_events (id, affiliate_id, event_type, created_at) VALUES (?,?,?,datetime('now'))",
+                          (uuid.uuid4().hex[:16], aff['id'], 'click'))
+                db.commit()
+            db.close()
+        except Exception:
+            pass
         return resp
     return render_template_string(page)
 
