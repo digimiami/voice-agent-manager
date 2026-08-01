@@ -81,7 +81,7 @@ Copy-paste scripts for each vertical. Fill in `[NAME]`, `[BUSINESS]`. Send via S
 
 ## 💡 Affiliate tips that double conversions
 
-1. **Send the demo number first** — (786) 808-4099. Hearing it converts better than any pitch.
+1. **Send the demo number first** — (786) 808-4099. Hearing it converts better than any pitch. **Pablo speaks Spanish, Portuguese, French & more — perfect for Miami and any Latino market.** Tell prospects: "call it and speak Spanish — he'll answer you in Spanish."
 2. **Never pitch features, pitch the missed job** — talk about ONE missed call and what it cost.
 3. **Reply fast** — businesses that reply within 1 hour convert 7x better. Use the SMS scripts on your lunch break.
 4. **Personalize the "as YOU" moment** — offer to record a 10-sec demo of "their" agent. Diazites does this free.

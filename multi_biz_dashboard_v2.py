@@ -1349,7 +1349,7 @@ p.play().then(function(){document.getElementById('voice-status-'+s).textContent=
 <h3 class="text-xl font-bold mb-2">Diazites Demo Line</h3>
 <p class="text-[#7a7a8e] text-sm mb-5">"Hi, you've reached the Diazites demo line — I'm Pablo, an AI receptionist!"</p>
 <a href="tel:+17868084099" class="btn-primary inline-block py-4 px-8 text-lg rounded-2xl">📱 (786) 808-4099</a>
-<p class="text-xs text-[#5c5c70] mt-5">Works with any phone. Try asking: <i>"What can you do for my roofing business?"</i></p>
+<p class="text-xs text-[#5c5c70] mt-5">Works with any phone. Try asking: <i>"What can you do for my roofing business?"</i> — he speaks <b style="color:#c084fc">español</b>, português, français & more 🌎</p>
 </div>
 <div class="card p-8" style="border:1px solid #252533;background:#0c0c18;border-radius:16px">
 <h3 class="text-xl font-bold mb-1">Missed-Call ROI Calculator</h3>
