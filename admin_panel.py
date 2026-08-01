@@ -17,7 +17,7 @@ Password:    admin123
 import os, sys, json, sqlite3, csv, io, hashlib, time, threading, subprocess, uuid
 from datetime import datetime, date, timedelta
 from pathlib import Path
-from flask import Flask, render_template_string, jsonify, request, redirect, session, url_for, flash
+from flask import Flask, render_template_string, jsonify, request, redirect, session, url_for, flash, send_file
 from functools import wraps
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -180,6 +180,20 @@ ADMIN_HTML = """<!DOCTYPE html>
                 ('calendar', 'calendar-alt', 'Calendar'),
                 ('stripe', 'credit-card', 'Stripe'),
                 ('analytics', 'chart-bar', 'Analytics'),
+                ('mrr', 'chart-line', 'MRR'),
+                ('coupons', 'ticket-alt', 'Coupons'),
+                ('trials', 'hourglass-half', 'Trials'),
+                ('usage', 'gauge-high', 'Usage'),
+                ('scoreboard', 'medal', 'Scoreboard'),
+                ('transcripts', 'file-alt', 'Transcripts'),
+                ('health', 'heartbeat', 'Health'),
+                ('broadcast', 'bullhorn', 'Broadcast'),
+                ('backup', 'database', 'Backup'),
+                ('inbox', 'inbox', 'Inbox'),
+                ('costs', 'dollar-sign', 'Costs'),
+                ('abtest', 'vials', 'A/B Tests'),
+                ('audit', 'history', 'Audit Log'),
+                ('security', 'shield-alt', 'Security'),
                 ('agent-tars', 'robot', 'Agent TARS'),
                 ('agent-api', 'key', 'Agent API'),
                 ('affiliates', 'hand-holding-usd', 'Affiliates')
@@ -1992,6 +2006,237 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
             document.getElementById('calCount').textContent = count;
         }
         </script>
+        {% elif tab == 'mrr' %}
+        <h2 class="text-xl font-bold mb-6">💰 MRR Dashboard</h2>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="card"><div class="text-xs text-[#64748b]">Monthly Recurring Revenue</div><div class="text-2xl font-bold text-green-400">${{ mrr.mrr or 0 }}</div></div>
+            <div class="card"><div class="text-xs text-[#64748b]">Active Subscribers</div><div class="text-2xl font-bold">{{ mrr.active }}</div></div>
+            <div class="card"><div class="text-xs text-[#64748b]">Churn (30d)</div><div class="text-2xl font-bold {% if mrr.churn > 0.05 %}text-red-400{% else %}text-white{% endif %}">{{ "%.1f"|format(mrr.churn * 100) }}%</div></div>
+            <div class="card"><div class="text-xs text-[#64748b]">Failed Payments</div><div class="text-2xl font-bold text-red-400">{{ mrr.dunning|length }}</div></div>
+        </div>
+        <div class="card mb-6">
+            <h3 class="font-bold mb-3">🔴 Dunning List (failed/incomplete payments)</h3>
+            {% if mrr.dunning %}
+            <table class="w-full text-xs"><thead><tr class="text-left text-[#64748b] border-b border-[#1a1a28]"><th class="py-2">Customer</th><th>Amount</th><th>Status</th><th>Due</th></tr></thead><tbody>
+            {% for d in mrr.dunning %}<tr class="border-b border-[#1a1a28]"><td class="py-2">{{ d.customer }}</td><td>${{ d.amount }}</td><td>{{ d.status }}</td><td>{{ d.due }}</td></tr>{% endfor %}
+            </tbody></table>
+            {% else %}<p class="text-xs text-[#5c5c70]">No failed payments 🎉</p>{% endif %}
+        </div>
+        <div class="card">
+            <h3 class="font-bold mb-3">📦 Revenue by Plan</h3>
+            {% if mrr.by_plan %}
+            <table class="w-full text-xs"><thead><tr class="text-left text-[#64748b] border-b border-[#1a1a28]"><th class="py-2">Plan</th><th>Subscribers</th><th>MRR</th></tr></thead><tbody>
+            {% for p in mrr.by_plan %}<tr class="border-b border-[#1a1a28]"><td class="py-2">{{ p.plan }}</td><td>{{ p.count }}</td><td>${{ p.mrr }}</td></tr>{% endfor %}
+            </tbody></table>
+            {% else %}<p class="text-xs text-[#5c5c70]">No subscription data (is Stripe configured?)</p>{% endif %}
+        </div>
+        {% elif tab == 'coupons' %}
+        <h2 class="text-xl font-bold mb-6">🎟️ Coupons & Promotions</h2>
+        <div class="card mb-6 max-w-xl">
+            <h3 class="font-bold mb-3">Create Coupon</h3>
+            <form method="POST" action="/admin/coupon-create" class="space-y-3">
+                <label class="text-xs text-[#64748b] block mb-1">Coupon Name</label>
+                <input type="text" name="name" placeholder="Launch Week 50%" class="text-xs">
+                <div class="grid grid-cols-3 gap-3">
+                    <div><label class="text-xs text-[#64748b] block mb-1">Percent Off</label><input type="number" name="percent" value="50" min="1" max="100" class="text-xs"></div>
+                    <div><label class="text-xs text-[#64748b] block mb-1">Months</label><input type="number" name="duration" value="1" min="1" class="text-xs"></div>
+                    <div><label class="text-xs text-[#64748b] block mb-1">Code</label><input type="text" name="code" placeholder="LAUNCH50" class="text-xs font-mono"></div>
+                </div>
+                <button type="submit" class="btn-primary text-sm"><i class="fas fa-plus mr-1"></i> Create Coupon</button>
+            </form>
+        </div>
+        <div class="card">
+            <h3 class="font-bold mb-3">Active Promo Codes</h3>
+            {% if coupons %}
+            <table class="w-full text-xs"><thead><tr class="text-left text-[#64748b] border-b border-[#1a1a28]"><th class="py-2">Code</th><th>Discount</th><th>Redeemed</th><th>Max</th><th>Active</th></tr></thead><tbody>
+            {% for c in coupons %}<tr class="border-b border-[#1a1a28]"><td class="py-2 font-mono">{{ c.code }}</td><td>{{ c.discount }}</td><td>{{ c.redeemed }}</td><td>{{ c.max or '∞' }}</td><td>{% if c.active %}<span class="text-green-400">✅</span>{% else %}<span class="text-red-400">❌</span>{% endif %}</td></tr>{% endfor %}
+            </tbody></table>
+            {% else %}<p class="text-xs text-[#5c5c70]">No promo codes yet</p>{% endif %}
+        </div>
+        {% elif tab == 'trials' %}
+        <h2 class="text-xl font-bold mb-6">⏳ Trial Expiry Radar</h2>
+        <div class="card">
+            {% if trials %}
+            <table class="w-full text-xs"><thead><tr class="text-left text-[#64748b] border-b border-[#1a1a28]"><th class="py-2">Business</th><th>Trial Ends</th><th>Days Left</th><th>Plan</th><th>Actions</th></tr></thead><tbody>
+            {% for t in trials %}<tr class="border-b border-[#1a1a28]">
+                <td class="py-2">{{ t.name }}</td><td>{{ t.trial_end }}</td>
+                <td>{% if t.days_left < 0 %}<span class="text-red-400">expired</span>{% elif t.days_left <= 3 %}<span class="text-amber-400">{{ t.days_left }}d ⚠️</span>{% else %}{{ t.days_left }}d{% endif %}</td>
+                <td>{{ t.plan }}</td>
+                <td><form method="POST" action="/admin/trial-extend/{{ t.id }}" style="display:inline"><button class="btn-secondary text-xs py-1 px-2">+7 days</button></form> <form method="POST" action="/admin/trial-nudge/{{ t.id }}" style="display:inline"><button class="btn-primary text-xs py-1 px-2">📲 Nudge</button></form></td>
+            </tr>{% endfor %}
+            </tbody></table>
+            {% else %}<p class="text-xs text-[#5c5c70]">No businesses on trial</p>{% endif %}
+        </div>
+        {% elif tab == 'usage' %}
+        <h2 class="text-xl font-bold mb-6">📊 Usage vs Plan Limits</h2>
+        <div class="card">
+            <table class="w-full text-xs"><thead><tr class="text-left text-[#64748b] border-b border-[#1a1a28]"><th class="py-2">Business</th><th>Plan</th><th>Limit</th><th>Used (mo)</th><th>Usage</th><th>Status</th></tr></thead><tbody>
+            {% for u in usage_rows %}<tr class="border-b border-[#1a1a28]">
+                <td class="py-2">{{ u.name }}</td><td>{{ u.plan }}</td><td>{{ u.limit }} min</td><td>{{ u.used }} min</td>
+                <td><div class="w-32 bg-[#1a1a28] rounded-full h-2"><div class="h-2 rounded-full {% if u.pct > 90 %}bg-red-500{% elif u.pct > 70 %}bg-amber-500{% else %}bg-green-500{% endif %}" style="width: {{ u.pct }}%"></div></div></td>
+                <td>{% if u.pct >= 100 %}<span class="text-red-400 font-bold">OVER ⚠️</span>{% elif u.pct > 80 %}<span class="text-amber-400">near limit</span>{% else %}<span class="text-green-400">ok</span>{% endif %}</td>
+            </tr>{% endfor %}
+            </tbody></table>
+        </div>
+        {% elif tab == 'scoreboard' %}
+        <h2 class="text-xl font-bold mb-6">🏆 Agent Performance Scoreboard</h2>
+        <div class="card">
+            <table class="w-full text-xs"><thead><tr class="text-left text-[#64748b] border-b border-[#1a1a28]"><th class="py-2">#</th><th>Business</th><th>Calls</th><th>Answered</th><th>Answer Rate</th><th>Bookings</th><th>Booking Rate</th></tr></thead><tbody>
+            {% for s in score_rows %}<tr class="border-b border-[#1a1a28]">
+                <td class="py-2">{{ loop.index }}</td><td class="font-semibold">{{ s.name }}</td><td>{{ s.calls }}</td><td>{{ s.answered }}</td><td>{{ s.answer_rate }}%</td><td>{{ s.bookings }}</td><td>{% if s.booking_rate %}<span class="{% if s.booking_rate >= 20 %}text-green-400{% elif s.booking_rate >= 10 %}text-amber-400{% else %}text-red-400{% endif %}">{{ s.booking_rate }}%</span>{% else %}—{% endif %}</td>
+            </tr>{% endfor %}
+            </tbody></table>
+        </div>
+        {% elif tab == 'transcripts' %}
+        <h2 class="text-xl font-bold mb-6">📜 Transcript Review Center</h2>
+        <div class="card mb-6 max-w-xl">
+            <form method="GET" action="/admin" class="flex gap-2">
+                <input type="hidden" name="tab" value="transcripts">
+                <input type="text" name="q" value="{{ tx_query or '' }}" placeholder="Search transcripts (e.g. appointment, price, hello)..." class="text-xs flex-1">
+                <button class="btn-primary text-xs">Search</button>
+            </form>
+        </div>
+        <div class="card">
+            {% if tx_rows %}
+            {% for t in tx_rows %}
+            <div class="border-b border-[#1a1a28] py-3">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="font-semibold text-sm">{{ t.biz }}</span>
+                    <span class="text-[#5c5c70] text-xs">{{ t.created_at }} · {{ t.status }} · {{ t.duration or 0 }}s</span>
+                </div>
+                <details><summary class="text-xs text-[#818cf8] cursor-pointer">View transcript</summary>
+                <pre class="mt-2 bg-[#12121a] rounded-lg p-3 text-xs text-[#cbd5e1] whitespace-pre-wrap">{{ t.transcript or '(no transcript)' }}</pre>
+                </details>
+                <form method="POST" action="/admin/transcript-flag/{{ t.id }}" class="mt-2"><button class="btn-secondary text-xs py-1 px-2 {% if t.flagged %}border-red-700 text-red-400{% endif %}">{% if t.flagged %}🏳️ Flagged{% else %}🚩 Flag</button>{% endif %}</form>
+            </div>
+            {% endfor %}
+            {% else %}<p class="text-xs text-[#5c5c70]">No transcripts{% if tx_query %} matching "{{ tx_query }}"{% endif %}</p>{% endif %}
+        </div>
+        {% elif tab == 'health' %}
+        <h2 class="text-xl font-bold mb-6">🩺 Setup Health Board</h2>
+        <div class="card">
+            <table class="w-full text-xs"><thead><tr class="text-left text-[#64748b] border-b border-[#1a1a28]"><th class="py-2">Business</th><th>Assistant</th><th>Phone</th><th>KB</th><th>Script</th><th>Webhook</th><th>Payment</th><th>Score</th></tr></thead><tbody>
+            {% for h in health_rows %}<tr class="border-b border-[#1a1a28]">
+                <td class="py-2 font-semibold">{{ h.name }}</td>
+                <td>{% if h.assistant %}<span class="text-green-400">✅</span>{% else %}<span class="text-red-400">❌</span>{% endif %}</td>
+                <td>{% if h.phone %}<span class="text-green-400">✅</span>{% else %}<span class="text-red-400">❌</span>{% endif %}</td>
+                <td>{% if h.kb %}<span class="text-green-400">✅</span>{% else %}<span class="text-amber-400">⚠️</span>{% endif %}</td>
+                <td>{% if h.script %}<span class="text-green-400">✅</span>{% else %}<span class="text-amber-400">⚠️</span>{% endif %}</td>
+                <td>{% if h.webhook %}<span class="text-green-400">✅</span>{% else %}<span class="text-amber-400">⚠️</span>{% endif %}</td>
+                <td>{% if h.payment %}<span class="text-green-400">✅</span>{% else %}<span class="text-red-400">❌</span>{% endif %}</td>
+                <td><span class="{% if h.score >= 5 %}text-green-400{% elif h.score >= 3 %}text-amber-400{% else %}text-red-400{% endif %} font-bold">{{ h.score }}/7</span></td>
+            </tr>{% endfor %}
+            </tbody></table>
+        </div>
+        {% elif tab == 'broadcast' %}
+        <h2 class="text-xl font-bold mb-6">📣 Broadcast Center</h2>
+        <div class="card max-w-xl">
+            <h3 class="font-bold mb-3">Send to all business owners</h3>
+            <form method="POST" action="/admin/broadcast-send" class="space-y-3">
+                <label class="flex items-center gap-2"><input type="checkbox" name="channel_email" value="1" checked class="w-auto"> Email (AgentMail)</label>
+                <label class="flex items-center gap-2"><input type="checkbox" name="channel_sms" value="1" checked class="w-auto"> SMS (sms-gate)</label>
+                <input type="text" name="subject" placeholder="Subject (email only)" class="text-xs">
+                <textarea name="message" rows="4" placeholder="Your message to all {{ health_rows|length }} business owners..." class="text-xs"></textarea>
+                <button type="submit" class="btn-primary text-sm" onclick="return confirm('Send broadcast to ALL businesses?')"><i class="fas fa-paper-plane mr-1"></i> Send Broadcast</button>
+            </form>
+        </div>
+        {% elif tab == 'backup' %}
+        <h2 class="text-xl font-bold mb-6">💾 Backup & Restore</h2>
+        <div class="card mb-6 max-w-xl">
+            <h3 class="font-bold mb-3">Create snapshot</h3>
+            <p class="text-xs text-[#64748b] mb-3">Copies the live database to the backup folder (keeps last 10).</p>
+            <form method="POST" action="/admin/backup-now"><button class="btn-primary text-sm"><i class="fas fa-download mr-1"></i> Backup Now</button></form>
+        </div>
+        <div class="card">
+            <h3 class="font-bold mb-3">Snapshots</h3>
+            {% if backup_files %}
+            <table class="w-full text-xs"><thead><tr class="text-left text-[#64748b] border-b border-[#1a1a28]"><th class="py-2">File</th><th>Size</th><th>Download</th></tr></thead><tbody>
+            {% for b in backup_files %}<tr class="border-b border-[#1a1a28]"><td class="py-2 font-mono">{{ b.name }}</td><td>{{ b.size }}</td><td><a href="/admin/backup-download/{{ b.name }}" class="text-[#818cf8]">⬇️</a></td></tr>{% endfor %}
+            </tbody></table>
+            {% else %}<p class="text-xs text-[#5c5c70]">No backups yet</p>{% endif %}
+        </div>
+        {% elif tab == 'inbox' %}
+        <h2 class="text-xl font-bold mb-6">📥 Unified Inbox (all SMS)</h2>
+        <div class="card">
+            {% if inbox_rows %}
+            <table class="w-full text-xs"><thead><tr class="text-left text-[#64748b] border-b border-[#1a1a28]"><th class="py-2">Time</th><th>Business</th><th>Phone</th><th>Dir</th><th>Message</th><th>Reply</th></tr></thead><tbody>
+            {% for m in inbox_rows %}<tr class="border-b border-[#1a1a28] align-top">
+                <td class="py-2 whitespace-nowrap">{{ m.created_at }}</td>
+                <td class="py-2">{{ m.biz }}</td>
+                <td class="py-2 font-mono">{{ m.phone }}</td>
+                <td class="py-2">{% if m.direction == 'in' %}<span class="text-green-400">← IN</span>{% else %}<span class="text-[#818cf8]">→ OUT</span>{% endif %}</td>
+                <td class="py-2 max-w-md">{{ m.body }}</td>
+                <td class="py-2"><form method="POST" action="/admin/inbox-reply" class="flex gap-1"><input type="hidden" name="phone" value="{{ m.phone }}"><input type="hidden" name="business_id" value="{{ m.business_id }}"><input type="text" name="body" placeholder="Reply..." class="text-xs w-40"><button class="btn-primary text-xs py-1 px-2">Send</button></form></td>
+            </tr>{% endfor %}
+            </tbody></table>
+            {% else %}<p class="text-xs text-[#5c5c70]">No SMS yet</p>{% endif %}
+        </div>
+        {% elif tab == 'costs' %}
+        <h2 class="text-xl font-bold mb-6">💵 LLM Cost & Margin Tracker</h2>
+        <div class="card mb-4"><p class="text-xs text-[#5c5c70]">Estimated: voice ~$0.12/min (grok-4.3 via VAPI), AI SMS ~$0.006/msg. Adjust constants in code.</p></div>
+        <div class="card">
+            <table class="w-full text-xs"><thead><tr class="text-left text-[#64748b] border-b border-[#1a1a28]"><th class="py-2">Business</th><th>Plan Price</th><th>Voice Cost</th><th>SMS AI Cost</th><th>Est. Total</th><th>Margin</th></tr></thead><tbody>
+            {% for c in cost_rows %}<tr class="border-b border-[#1a1a28]">
+                <td class="py-2 font-semibold">{{ c.name }}</td><td>${{ c.price }}</td><td>${{ c.voice_cost }}</td><td>${{ c.sms_cost }}</td><td>${{ c.total }}</td>
+                <td class="{% if c.margin < 0 %}text-red-400{% elif c.margin < c.price * 0.5 %}text-amber-400{% else %}text-green-400{% endif %} font-bold">${{ c.margin }}</td>
+            </tr>{% endfor %}
+            </tbody></table>
+        </div>
+        {% elif tab == 'abtest' %}
+        <h2 class="text-xl font-bold mb-6">🧪 Script A/B Testing</h2>
+        <div class="card mb-6 max-w-xl">
+            <h3 class="font-bold mb-3">Create Script Variant</h3>
+            <form method="POST" action="/admin/abtest-create" class="space-y-3">
+                <select name="business_id" class="text-xs" required><option value="">— Business —</option>{% for b in health_rows %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}</select>
+                <input type="text" name="variant_name" placeholder="Variant name (e.g. v2 short intro)" class="text-xs">
+                <textarea name="script" rows="4" placeholder="New script text..." class="text-xs"></textarea>
+                <button type="submit" class="btn-primary text-sm"><i class="fas fa-flask mr-1"></i> Create Variant</button>
+            </form>
+        </div>
+        <div class="card">
+            <h3 class="font-bold mb-3">Variants</h3>
+            {% if ab_rows %}
+            <table class="w-full text-xs"><thead><tr class="text-left text-[#64748b] border-b border-[#1a1a28]"><th class="py-2">Business</th><th>Variant</th><th>Calls</th><th>Bookings</th><th>Rate</th><th>Status</th><th>Activate</th></tr></thead><tbody>
+            {% for a in ab_rows %}<tr class="border-b border-[#1a1a28]">
+                <td class="py-2">{{ a.biz }}</td><td class="py-2">{{ a.name }}</td><td>{{ a.calls }}</td><td>{{ a.bookings }}</td><td>{{ a.rate or '—' }}</td>
+                <td>{% if a.active %}<span class="text-green-400">LIVE</span>{% else %}<span class="text-[#5c5c70]">draft</span>{% endif %}</td>
+                <td>{% if not a.active %}<form method="POST" action="/admin/abtest-activate/{{ a.id }}"><button class="btn-primary text-xs py-1 px-2">Activate</button></form>{% endif %}</td>
+            </tr>{% endfor %}
+            </tbody></table>
+            {% else %}<p class="text-xs text-[#5c5c70]">No variants yet</p>{% endif %}
+        </div>
+        {% elif tab == 'audit' %}
+        <h2 class="text-xl font-bold mb-6">🕵️ Admin Audit Log</h2>
+        <div class="card">
+            {% if audit_rows %}
+            <table class="w-full text-xs"><thead><tr class="text-left text-[#64748b] border-b border-[#1a1a28]"><th class="py-2">Time</th><th>Action</th><th>Detail</th></tr></thead><tbody>
+            {% for a in audit_rows %}<tr class="border-b border-[#1a1a28]"><td class="py-2 whitespace-nowrap">{{ a.created_at }}</td><td class="py-2 font-mono">{{ a.action }}</td><td class="py-2">{{ a.detail }}</td></tr>{% endfor %}
+            </tbody></table>
+            {% else %}<p class="text-xs text-[#5c5c70]">No audit entries yet</p>{% endif %}
+        </div>
+        {% elif tab == 'security' %}
+        <h2 class="text-xl font-bold mb-6">🛡️ Admin Security</h2>
+        <div class="card max-w-xl">
+            <h3 class="font-bold mb-3">Two-Factor Authentication (TOTP)</h3>
+            {% if twofa.enabled %}
+            <p class="text-xs text-green-400 mb-3">✅ 2FA is enabled</p>
+            <form method="POST" action="/admin/security-2fa-disable"><button class="btn-danger text-sm"><i class="fas fa-unlock mr-1"></i> Disable 2FA</button></form>
+            {% else %}
+            <p class="text-xs text-[#64748b] mb-3">Enable TOTP: scan the QR with Google Authenticator / Authy, then enter the 6-digit code.</p>
+            {% if twofa.secret %}
+            <div class="bg-[#12121a] rounded-lg p-4 mb-3 text-center">
+                <img src="{{ twofa.qr }}" alt="2FA QR" class="mx-auto w-48 h-48">
+                <p class="text-xs text-[#5c5c70] mt-2">Secret: <code class="font-mono">{{ twofa.secret }}</code></p>
+            </div>
+            <form method="POST" action="/admin/security-2fa-verify" class="flex gap-2">
+                <input type="text" name="code" placeholder="6-digit code" class="text-xs font-mono w-32" maxlength="6">
+                <button class="btn-primary text-sm">Verify & Enable</button>
+            </form>
+            {% else %}
+            <form method="POST" action="/admin/security-2fa-setup"><button class="btn-primary text-sm"><i class="fas fa-qrcode mr-1"></i> Generate QR Code</button></form>
+            {% endif %}
+            {% endif %}
+        </div>
         {% endif %}
     </div>
 
@@ -3350,7 +3595,8 @@ def admin_dashboard():
         smtp_config=load_smtp_config(),
         twilio_config=load_twilio_config(),
         stripe_config=load_stripe_config(),
-        ga_config=load_ga_config())
+        ga_config=load_ga_config(),
+        **admin_extra_data(tab))
 
 @app.route('/admin/affiliates/pay', methods=['POST'])
 @admin_required
@@ -3494,6 +3740,657 @@ def update_chatbot():
     
     flash(f'✅ Chatbot settings saved! Provider: {provider}', 'success')
     return redirect('/admin?tab=chatbot')
+
+# ============================================================
+# NEW ADMIN FEATURES (MRR, Coupons, Trials, Usage, Scoreboard,
+# Transcripts, Health, Broadcast, Backup, Inbox, Costs, A/B, Audit, 2FA)
+# ============================================================
+
+import shutil, threading, base64, io as _io
+import datetime as _dt
+
+PLAN_LIMITS = {'starter': 500, 'pro': 2000, 'premium': 10000, 'enterprise': 99999}
+PLAN_PRICES = {'starter': 97, 'pro': 197, 'premium': 497, 'enterprise': 0}
+VOICE_COST_PER_MIN = 0.12
+SMS_AI_COST_PER_MSG = 0.006
+BACKUP_DIR = "/root/voice-agent-manager/backups"
+TWOFA_PATH = "/root/voice-agent-manager/admin_2fa.json"
+
+
+def _load_env_keys():
+    """Load /root/.env + manager .env into os.environ (idempotent)."""
+    for p in ("/root/.env", "/root/voice-agent-manager/.env"):
+        try:
+            for line in open(p):
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+        except Exception:
+            pass
+
+
+def init_tables():
+    db = sqlite3.connect(DB_PATH)
+    db.execute("CREATE TABLE IF NOT EXISTS script_variants (id INTEGER PRIMARY KEY AUTOINCREMENT, business_id TEXT, name TEXT, script TEXT, active INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+    db.execute("CREATE TABLE IF NOT EXISTS call_flags (call_id TEXT PRIMARY KEY, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+    db.execute("CREATE TABLE IF NOT EXISTS admin_audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT, detail TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+    db.commit()
+    db.close()
+
+
+def audit(action, detail=""):
+    try:
+        init_tables()
+        db = sqlite3.connect(DB_PATH)
+        db.execute("INSERT INTO admin_audit_log (action, detail) VALUES (?,?)", (action, str(detail)[:500]))
+        db.commit()
+        db.close()
+    except Exception:
+        pass
+
+
+def get_stripe_key():
+    try:
+        with open("/root/voice-agent-manager/stripe_config.json") as f:
+            return json.load(f).get("secret_key", "")
+    except Exception:
+        return ""
+
+
+def get_mrr_data():
+    base = {'mrr': 0, 'active': 0, 'churn': 0, 'dunning': [], 'by_plan': []}
+    key = get_stripe_key()
+    if not key:
+        try:
+            db = sqlite3.connect(DB_PATH)
+            base['active'] = db.execute("SELECT COUNT(*) FROM businesses WHERE stripe_subscription_id IS NOT NULL AND stripe_subscription_id != ''").fetchone()[0]
+            db.close()
+        except Exception:
+            pass
+        return base
+    try:
+        import stripe as stripe_lib
+        stripe_lib.api_key = key
+        subs = stripe_lib.Subscription.list(status='active', limit=100)
+        trialing = stripe_lib.Subscription.list(status='trialing', limit=100)
+        mrr = 0
+        by_plan = {}
+        for s in list(subs.data) + list(trialing.data):
+            for it in (s.get('items') or {}).get('data', []):
+                price = it.get('price') or {}
+                amt = (price.get('unit_amount') or 0) / 100
+                interval = ((price.get('recurring') or {}).get('interval') or 'month')
+                if interval == 'year':
+                    amt /= 12
+                mrr += amt
+                nick = price.get('nickname') or 'other'
+                by_plan[nick] = by_plan.get(nick, 0) + amt
+        # dunning
+        invs = stripe_lib.Invoice.list(status='open', limit=100)
+        dunning = []
+        for inv in invs.data:
+            if inv.get('status') in ('open', 'past_due', 'uncollectible'):
+                dunning.append({
+                    'customer': inv.get('customer_email') or inv.get('customer') or '?',
+                    'amount': round((inv.get('amount_due') or 0) / 100, 2),
+                    'status': inv.get('status'),
+                    'due': _dt.datetime.fromtimestamp(inv.get('created') or 0).strftime('%Y-%m-%d'),
+                })
+        # churn: canceled last 30d / (active+canceled)
+        try:
+            cutoff = int(_dt.datetime.now().timestamp()) - 30 * 86400
+            canceled = stripe_lib.Subscription.list(status='canceled', created={'gte': cutoff}, limit=100)
+            churn = len(canceled.data) / max(1, len(subs.data) + len(canceled.data))
+        except Exception:
+            churn = 0
+        return {'mrr': round(mrr), 'active': len(subs.data), 'churn': churn,
+                'dunning': dunning, 'by_plan': [{'plan': k, 'count': 0, 'mrr': round(v)} for k, v in by_plan.items()]}
+    except Exception as e:
+        base['error'] = str(e)
+        return base
+
+
+def get_coupons():
+    key = get_stripe_key()
+    if not key:
+        return []
+    try:
+        import stripe as stripe_lib
+        stripe_lib.api_key = key
+        codes = stripe_lib.PromotionCode.list(limit=50)
+        out = []
+        for c in codes.data:
+            coup = c.get('coupon') or {}
+            pct = coup.get('percent_off')
+            out.append({
+                'code': c.get('code'),
+                'discount': f"{pct}%" if pct else f"${(coup.get('amount_off') or 0) / 100:.0f}",
+                'redeemed': c.get('times_redeemed') or 0,
+                'max': c.get('max_redemptions'),
+                'active': bool(c.get('active')) and bool(coup.get('valid', True)),
+            })
+        return out
+    except Exception:
+        return []
+
+
+def get_trials():
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    rows = db.execute("SELECT id, name, plan, trial_end, owner_phone, email FROM businesses WHERE trial_end IS NOT NULL AND trial_end != ''").fetchall()
+    db.close()
+    out = []
+    for r in rows:
+        d = dict(r)
+        try:
+            te = _dt.datetime.fromisoformat(str(d['trial_end']).replace('Z', ''))
+        except Exception:
+            continue
+        d['trial_end'] = te.strftime('%Y-%m-%d')
+        d['days_left'] = (te - _dt.datetime.now()).days
+        out.append(d)
+    out.sort(key=lambda x: x['days_left'])
+    return out
+
+
+def get_usage():
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    rows = db.execute("SELECT id, name, plan FROM businesses").fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        used_secs = db.execute("SELECT COALESCE(SUM(duration),0) FROM call_log WHERE business_id=? AND created_at > datetime('now','start of month')", (d['id'],)).fetchone()[0] or 0
+        used_min = int(used_secs / 60)
+        limit = PLAN_LIMITS.get((d['plan'] or 'starter').lower(), 500)
+        out.append({'id': d['id'], 'name': d['name'], 'plan': d['plan'] or 'starter', 'limit': limit,
+                    'used': used_min, 'pct': min(100, int(used_min / limit * 100) if limit else 0)})
+    db.close()
+    return out
+
+
+def get_scoreboard():
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    rows = db.execute("SELECT id, name FROM businesses").fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        calls = db.execute("SELECT COUNT(*) FROM call_log WHERE business_id=?", (d['id'],)).fetchone()[0]
+        answered = db.execute("SELECT COUNT(*) FROM call_log WHERE business_id=? AND duration > 10", (d['id'],)).fetchone()[0]
+        try:
+            bookings = db.execute("SELECT COUNT(*) FROM appointments WHERE business_id=?", (d['id'],)).fetchone()[0]
+        except Exception:
+            bookings = 0
+        out.append({
+            'name': d['name'], 'calls': calls, 'answered': answered,
+            'answer_rate': round(answered / calls * 100) if calls else 0,
+            'bookings': bookings,
+            'booking_rate': round(bookings / calls * 100) if calls else 0,
+        })
+    db.close()
+    out.sort(key=lambda x: x['bookings'], reverse=True)
+    return out
+
+
+def get_transcripts(q=None):
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    if q:
+        rows = db.execute("SELECT cl.*, b.name as biz FROM call_log cl JOIN businesses b ON cl.business_id=b.id WHERE cl.transcript LIKE ? ORDER BY cl.created_at DESC LIMIT 50", (f"%{q}%",)).fetchall()
+    else:
+        rows = db.execute("SELECT cl.*, b.name as biz FROM call_log cl JOIN businesses b ON cl.business_id=b.id WHERE cl.transcript IS NOT NULL AND cl.transcript != '' ORDER BY cl.created_at DESC LIMIT 50").fetchall()
+    db.close()
+    flags = set()
+    try:
+        fdb = sqlite3.connect(DB_PATH)
+        flags = set(r[0] for r in fdb.execute("SELECT call_id FROM call_flags").fetchall())
+        fdb.close()
+    except Exception:
+        pass
+    return [dict(r, flagged=r['id'] in flags) for r in rows]
+
+
+def get_health():
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    rows = db.execute("SELECT id, name, vapi_assistant_id, vapi_phone_id, knowledge_base, script_template, trial_end, stripe_subscription_id, plan FROM businesses").fetchall()
+    db.close()
+    out = []
+    for r in rows:
+        d = dict(r)
+        d['assistant'] = bool(d.get('vapi_assistant_id'))
+        d['phone'] = bool(d.get('vapi_phone_id'))
+        d['kb'] = bool(d.get('knowledge_base'))
+        d['script'] = bool(d.get('script_template'))
+        d['webhook'] = bool(d.get('vapi_assistant_id'))
+        d['payment'] = bool(d.get('stripe_subscription_id')) or bool(d.get('trial_end'))
+        d['score'] = sum([d['assistant'], d['phone'], d['kb'], d['script'], d['webhook'], d['payment']])
+        out.append(d)
+    return out
+
+
+def get_backup_files():
+    try:
+        os.makedirs(BACKUP_DIR, exist_ok=True)
+        files = []
+        for fn in sorted(os.listdir(BACKUP_DIR), reverse=True)[:10]:
+            fp = os.path.join(BACKUP_DIR, fn)
+            files.append({'name': fn, 'size': f"{os.path.getsize(fp) / 1048576:.1f} MB"})
+        return files
+    except Exception:
+        return []
+
+
+def get_inbox():
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    try:
+        rows = db.execute(
+            "SELECT 'in' as direction, business_id, phone, body, created_at FROM incoming_sms "
+            "UNION ALL SELECT 'out' as direction, business_id, phone, body, created_at FROM outgoing_sms "
+            "ORDER BY created_at DESC LIMIT 100").fetchall()
+        biz_names = {r['id']: r['name'] for r in db.execute("SELECT id, name FROM businesses").fetchall()}
+    except Exception:
+        rows = []
+        biz_names = {}
+    db.close()
+    out = []
+    for r in rows:
+        d = dict(r)
+        d['biz'] = biz_names.get(d.get('business_id'), '?')
+        out.append(d)
+    return out
+
+
+def get_costs():
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    rows = db.execute("SELECT id, name, plan FROM businesses").fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        mins = (db.execute("SELECT COALESCE(SUM(duration),0)/60.0 FROM call_log WHERE business_id=?", (d['id'],)).fetchone()[0] or 0)
+        try:
+            sms_n = db.execute("SELECT COUNT(*) FROM outgoing_sms WHERE business_id=? AND created_at > datetime('now','start of month')", (d['id'],)).fetchone()[0]
+        except Exception:
+            sms_n = 0
+        voice = mins * VOICE_COST_PER_MIN
+        sms_cost = sms_n * SMS_AI_COST_PER_MSG
+        total = voice + sms_cost
+        price = PLAN_PRICES.get((d['plan'] or 'starter').lower(), 0)
+        out.append({'name': d['name'], 'price': price, 'voice_cost': round(voice, 2),
+                    'sms_cost': round(sms_cost, 2), 'total': round(total, 2), 'margin': round(price - total, 2)})
+    db.close()
+    return out
+
+
+def get_abtests():
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    rows = db.execute("SELECT * FROM script_variants ORDER BY created_at DESC LIMIT 50").fetchall()
+    biz_names = {r['id']: r['name'] for r in db.execute("SELECT id, name FROM businesses").fetchall()}
+    out = []
+    for r in rows:
+        d = dict(r)
+        d['biz'] = biz_names.get(d['business_id'], '?')
+        calls = db.execute("SELECT COUNT(*) FROM call_log WHERE business_id=?", (d['business_id'],)).fetchone()[0]
+        try:
+            bookings = db.execute("SELECT COUNT(*) FROM appointments WHERE business_id=?", (d['business_id'],)).fetchone()[0]
+        except Exception:
+            bookings = 0
+        d['calls'] = calls
+        d['bookings'] = bookings
+        d['rate'] = round(bookings / calls * 100) if calls else None
+        out.append(d)
+    db.close()
+    return out
+
+
+def get_audit():
+    try:
+        init_tables()
+        db = sqlite3.connect(DB_PATH)
+        db.row_factory = sqlite3.Row
+        rows = db.execute("SELECT action, detail, created_at FROM admin_audit_log ORDER BY id DESC LIMIT 200").fetchall()
+        db.close()
+        return [dict(r) for r in rows]
+    except Exception:
+        return []
+
+
+def get_twofa():
+    try:
+        with open(TWOFA_PATH) as f:
+            d = json.load(f)
+        if d.get('enabled'):
+            return {'enabled': True}
+        if d.get('secret'):
+            try:
+                import qrcode
+                from pyotp import totp
+                uri = totp.TOTP(d['secret']).provisioning_uri(name='Diazites Admin', issuer_name='Diazites')
+                img = qrcode.make(uri)
+                buf = _io.BytesIO()
+                img.save(buf, format='PNG')
+                qr = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+                return {'enabled': False, 'secret': d['secret'], 'qr': qr}
+            except Exception:
+                return {'enabled': False, 'secret': d['secret']}
+    except Exception:
+        pass
+    return {'enabled': False}
+
+
+def admin_extra_data(tab):
+    init_tables()
+    data = {}
+    if tab == 'mrr':
+        data['mrr'] = get_mrr_data()
+    elif tab == 'coupons':
+        data['coupons'] = get_coupons()
+    elif tab == 'trials':
+        data['trials'] = get_trials()
+    elif tab == 'usage':
+        data['usage_rows'] = get_usage()
+    elif tab == 'scoreboard':
+        data['score_rows'] = get_scoreboard()
+    elif tab == 'transcripts':
+        q = request.args.get('q', '').strip()
+        data['tx_query'] = q
+        data['tx_rows'] = get_transcripts(q)
+    elif tab == 'health':
+        data['health_rows'] = get_health()
+    elif tab == 'backup':
+        data['backup_files'] = get_backup_files()
+    elif tab == 'inbox':
+        data['inbox_rows'] = get_inbox()
+    elif tab == 'costs':
+        data['cost_rows'] = get_costs()
+    elif tab == 'abtest':
+        data['ab_rows'] = get_abtests()
+    elif tab == 'audit':
+        data['audit_rows'] = get_audit()
+    elif tab == 'security':
+        data['twofa'] = get_twofa()
+    if tab in ('broadcast', 'abtest'):
+        data['health_rows'] = get_health()
+    return data
+
+
+@app.route('/admin/coupon-create', methods=['POST'])
+@admin_required
+def admin_coupon_create():
+    name = request.form.get('name', '').strip()
+    percent = int(request.form.get('percent', 50) or 50)
+    duration = int(request.form.get('duration', 1) or 1)
+    code = request.form.get('code', '').strip().upper()
+    key = get_stripe_key()
+    if not key:
+        flash('❌ Stripe not configured', 'error')
+        return redirect('/admin?tab=coupons')
+    try:
+        import stripe as stripe_lib
+        stripe_lib.api_key = key
+        coup = stripe_lib.Coupon.create(percent_off=percent, duration='repeating', duration_in_months=duration, name=name)
+        promo = stripe_lib.PromotionCode.create(coupon=coup['id'], code=code or None)
+        audit('coupon_create', f"{promo.get('code')} -{percent}% x{duration}mo")
+        flash(f"✅ Coupon {promo.get('code')} created (-{percent}%)", 'success')
+    except Exception as e:
+        flash(f'❌ Stripe error: {str(e)[:120]}', 'error')
+    return redirect('/admin?tab=coupons')
+
+
+@app.route('/admin/trial-extend/<bid>', methods=['POST'])
+@admin_required
+def admin_trial_extend(bid):
+    db = sqlite3.connect(DB_PATH)
+    row = db.execute("SELECT name, trial_end, stripe_subscription_id FROM businesses WHERE id=?", (bid,)).fetchone()
+    try:
+        new_end = (_dt.datetime.now() + _dt.timedelta(days=7)).isoformat()
+        if row and row[1]:
+            try:
+                new_end = (_dt.datetime.fromisoformat(str(row[1]).replace('Z', '')) + _dt.timedelta(days=7)).isoformat()
+            except Exception:
+                pass
+        db.execute("UPDATE businesses SET trial_end=? WHERE id=?", (new_end, bid))
+        db.commit()
+        if row and row[2]:
+            try:
+                import stripe as stripe_lib
+                stripe_lib.api_key = get_stripe_key()
+                stripe_lib.Subscription.modify(row[2], trial_end=int(_dt.datetime.fromisoformat(new_end.replace('Z', '')).timestamp()))
+            except Exception:
+                pass
+        audit('trial_extend', f"{row[0] if row else bid} +7d")
+        flash('✅ Trial extended 7 days', 'success')
+    except Exception as e:
+        flash(f'❌ {str(e)[:100]}', 'error')
+    db.close()
+    return redirect('/admin?tab=trials')
+
+
+@app.route('/admin/trial-nudge/<bid>', methods=['POST'])
+@admin_required
+def admin_trial_nudge(bid):
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    row = db.execute("SELECT name, owner_phone, email FROM businesses WHERE id=?", (bid,)).fetchone()
+    db.close()
+    if not row:
+        flash('❌ Business not found', 'error')
+        return redirect('/admin?tab=trials')
+    _load_env_keys()
+    msg = f"Hi {row['name']}! Your Diazites AI voice agent trial is ending soon. Upgrade to keep your number & agent active: diazites.online"
+    sent = False
+    try:
+        from smsgate_sms import send_sms
+        if row['owner_phone']:
+            send_sms(row['owner_phone'], msg, business_id=bid)
+            sent = True
+    except Exception as e:
+        flash(f'⚠️ SMS failed: {str(e)[:80]}', 'error')
+    audit('trial_nudge', f"{row['name']} -> {row['owner_phone']}")
+    flash('✅ Nudge sent' if sent else '⚠️ No SMS sent', 'success' if sent else 'error')
+    return redirect('/admin?tab=trials')
+
+
+@app.route('/admin/broadcast-send', methods=['POST'])
+@admin_required
+def admin_broadcast_send():
+    subject = request.form.get('subject', '').strip()
+    message = request.form.get('message', '').strip()
+    do_email = request.form.get('channel_email') == '1'
+    do_sms = request.form.get('channel_sms') == '1'
+    if not message:
+        flash('❌ Message is required', 'error')
+        return redirect('/admin?tab=broadcast')
+    _load_env_keys()
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    bizs = db.execute("SELECT id, name, email, owner_phone FROM businesses").fetchall()
+    db.close()
+    counts = {'email': 0, 'sms': 0}
+
+    def _send():
+        for b in bizs:
+            if do_email and b['email']:
+                try:
+                    from agentmail_email import send_agentmail
+                    send_agentmail(b['email'], subject or 'Diazites Update', message)
+                    counts['email'] += 1
+                except Exception:
+                    pass
+            if do_sms and b['owner_phone']:
+                try:
+                    from smsgate_sms import send_sms
+                    send_sms(b['owner_phone'], message[:480], business_id=b['id'])
+                    counts['sms'] += 1
+                except Exception:
+                    pass
+
+    t = threading.Thread(target=_send)
+    t.start()
+    audit('broadcast', f"to {len(bizs)} businesses (email={do_email}, sms={do_sms})")
+    flash(f'📣 Broadcast sending to {len(bizs)} businesses in background...', 'success')
+    return redirect('/admin?tab=broadcast')
+
+
+@app.route('/admin/backup-now', methods=['POST'])
+@admin_required
+def admin_backup_now():
+    try:
+        os.makedirs(BACKUP_DIR, exist_ok=True)
+        name = f"voice-agent-businesses-{_dt.datetime.now().strftime('%Y%m%d-%H%M%S')}.db"
+        shutil.copy(DB_PATH, os.path.join(BACKUP_DIR, name))
+        files = sorted(os.listdir(BACKUP_DIR))
+        for old in files[:-10]:
+            os.remove(os.path.join(BACKUP_DIR, old))
+        audit('backup_now', name)
+        flash(f'✅ Backup created: {name}', 'success')
+    except Exception as e:
+        flash(f'❌ {str(e)[:100]}', 'error')
+    return redirect('/admin?tab=backup')
+
+
+@app.route('/admin/backup-download/<name>')
+@admin_required
+def admin_backup_download(name):
+    fp = os.path.join(BACKUP_DIR, os.path.basename(name))
+    if os.path.exists(fp):
+        return send_file(fp, as_attachment=True)
+    flash('❌ Backup not found', 'error')
+    return redirect('/admin?tab=backup')
+
+
+@app.route('/admin/inbox-reply', methods=['POST'])
+@admin_required
+def admin_inbox_reply():
+    phone = request.form.get('phone', '').strip()
+    body = request.form.get('body', '').strip()
+    bid = request.form.get('business_id', '').strip()
+    if not phone or not body:
+        flash('❌ Phone and message required', 'error')
+        return redirect('/admin?tab=inbox')
+    _load_env_keys()
+    try:
+        from smsgate_sms import send_sms
+        ok = send_sms(phone, body, business_id=bid)
+        db = sqlite3.connect(DB_PATH)
+        db.execute("INSERT INTO outgoing_sms (business_id, phone, body, status) VALUES (?,?,?,'sent')", (bid, phone, body))
+        db.commit()
+        db.close()
+        audit('inbox_reply', f"{phone}: {body[:60]}")
+        flash('✅ Reply sent', 'success' if ok else 'warning')
+    except Exception as e:
+        flash(f'❌ {str(e)[:100]}', 'error')
+    return redirect('/admin?tab=inbox')
+
+
+@app.route('/admin/transcript-flag/<call_id>', methods=['POST'])
+@admin_required
+def admin_transcript_flag(call_id):
+    init_tables()
+    db = sqlite3.connect(DB_PATH)
+    exists = db.execute("SELECT 1 FROM call_flags WHERE call_id=?", (call_id,)).fetchone()
+    if exists:
+        db.execute("DELETE FROM call_flags WHERE call_id=?", (call_id,))
+        msg = 'unflagged'
+    else:
+        db.execute("INSERT INTO call_flags (call_id) VALUES (?)", (call_id,))
+        msg = 'flagged'
+    db.commit()
+    db.close()
+    audit('transcript_flag', f"{call_id} {msg}")
+    flash(f'✅ Call {msg}', 'success')
+    return redirect('/admin?tab=transcripts')
+
+
+@app.route('/admin/abtest-create', methods=['POST'])
+@admin_required
+def admin_abtest_create():
+    bid = request.form.get('business_id', '').strip()
+    name = request.form.get('variant_name', '').strip() or 'variant'
+    script = request.form.get('script', '').strip()
+    if not bid or not script:
+        flash('❌ Business and script required', 'error')
+        return redirect('/admin?tab=abtest')
+    db = sqlite3.connect(DB_PATH)
+    db.execute("INSERT INTO script_variants (business_id, name, script) VALUES (?,?,?)", (bid, name, script))
+    db.commit()
+    db.close()
+    audit('abtest_create', f"{bid} / {name}")
+    flash('✅ Variant created', 'success')
+    return redirect('/admin?tab=abtest')
+
+
+@app.route('/admin/abtest-activate/<vid>', methods=['POST'])
+@admin_required
+def admin_abtest_activate(vid):
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    v = db.execute("SELECT * FROM script_variants WHERE id=?", (vid,)).fetchone()
+    if not v:
+        db.close()
+        flash('❌ Variant not found', 'error')
+        return redirect('/admin?tab=abtest')
+    db.execute("UPDATE script_variants SET active=0 WHERE business_id=?", (v['business_id'],))
+    db.execute("UPDATE script_variants SET active=1 WHERE id=?", (vid,))
+    db.execute("UPDATE businesses SET script_template=? WHERE id=?", (v['script'], v['business_id']))
+    db.commit()
+    db.close()
+    audit('abtest_activate', f"variant {vid} for {v['business_id']}")
+    flash('✅ Variant activated (script applied to business)', 'success')
+    return redirect('/admin?tab=abtest')
+
+
+@app.route('/admin/security-2fa-setup', methods=['POST'])
+@admin_required
+def admin_2fa_setup():
+    try:
+        import pyotp
+        secret = pyotp.random_base32()
+        with open(TWOFA_PATH, 'w') as f:
+            json.dump({'enabled': False, 'secret': secret}, f)
+        audit('2fa_setup', 'QR generated')
+    except Exception as e:
+        flash(f'❌ pyotp missing: {str(e)[:80]}', 'error')
+    return redirect('/admin?tab=security')
+
+
+@app.route('/admin/security-2fa-verify', methods=['POST'])
+@admin_required
+def admin_2fa_verify():
+    code = request.form.get('code', '').strip()
+    try:
+        with open(TWOFA_PATH) as f:
+            d = json.load(f)
+        import pyotp
+        if pyotp.TOTP(d['secret']).verify(code):
+            d['enabled'] = True
+            with open(TWOFA_PATH, 'w') as f:
+                json.dump(d, f)
+            audit('2fa_enable', 'TOTP enabled')
+            flash('✅ 2FA enabled!', 'success')
+        else:
+            flash('❌ Invalid code', 'error')
+    except Exception as e:
+        flash(f'❌ {str(e)[:80]}', 'error')
+    return redirect('/admin?tab=security')
+
+
+@app.route('/admin/security-2fa-disable', methods=['POST'])
+@admin_required
+def admin_2fa_disable():
+    try:
+        os.remove(TWOFA_PATH)
+        audit('2fa_disable', 'TOTP disabled')
+        flash('✅ 2FA disabled', 'success')
+    except Exception:
+        flash('❌ No 2FA to disable', 'error')
+    return redirect('/admin?tab=security')
+
 
 if __name__ == '__main__':
     print("🚀 Diazites ADMIN Panel")
