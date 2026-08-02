@@ -7191,7 +7191,7 @@ def api_messages_webhook():
     if body:
         try:
             from ai_sms_reply import run_in_background
-            run_in_background(biz_id, from_number, body, None)
+            run_in_background(biz_id, from_number, body, None, to_number)
         except Exception as ai_e:
             print(f"⚠️ Twilio AI SMS trigger error: {ai_e}")
     return '<Response></Response>', 200

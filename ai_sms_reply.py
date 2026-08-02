@@ -291,8 +291,90 @@ def trigger_call_back(biz, phone):
         return None
 
 
-def handle_inbound_sms(bid, sender, body, lead_id=None):
-    """Main entry — called from the sms-gate webhook (background thread)."""
+def _normalize_phone(p):
+    """Strip +, spaces, dashes, parens for comparison."""
+    if not p:
+        return ""
+    return re.sub(r"[^0-9]", "", str(p))
+
+
+def _is_twilio_number(number):
+    """True if this number is a Twilio-owned line we can send SMS from."""
+    if not number:
+        return False
+    try:
+        import json as _j, os as _os
+        # Check the business's Twilio config
+        cfg_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'twilio_config.json')
+        if _os.path.exists(cfg_path):
+            cfg = _j.load(open(cfg_path))
+            if cfg.get('from_number') and _normalize_phone(cfg['from_number']) == _normalize_phone(number):
+                return bool(cfg.get('account_sid') and cfg.get('auth_token'))
+        # Also check env creds
+        return bool(_os.environ.get("TWILIO_ACCOUNT_SID") and _os.environ.get("TWILIO_AUTH_TOKEN"))
+    except Exception:
+        return False
+
+
+def _send_via_twilio(from_number, to_number, body, biz, lead_id):
+    """Send an SMS via Twilio from a specific owned number. Logs to outgoing_sms."""
+    import base64 as _b64
+    import urllib.parse as _up
+    import urllib.request as _ur
+    import urllib.error as _ue
+    import json as _j
+    import os as _os
+    import time as _t
+
+    try:
+        env_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '.env')
+        if _os.path.exists(env_path):
+            for line in open(env_path):
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    k, v = line.split('=', 1)
+                    _os.environ.setdefault(k.strip(), v.strip())
+        sid = _os.environ.get("TWILIO_ACCOUNT_SID")
+        tok = _os.environ.get("TWILIO_AUTH_TOKEN")
+        if not sid or not tok:
+            # Fall back to twilio_config.json
+            cfg = _j.load(open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'twilio_config.json')))
+            sid, tok = cfg.get('account_sid'), cfg.get('auth_token')
+        if not sid or not tok:
+            print("⚠️ Twilio not configured, skipping Twilio send")
+            return False
+        auth = _b64.b64encode(f"{sid}:{tok}".encode()).decode()
+        data = _up.urlencode({
+            "From": from_number, "To": to_number, "Body": body,
+        }).encode()
+        req = _ur.Request(
+            f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json",
+            data=data, method="POST",
+            headers={"Authorization": "Basic " + auth, "User-Agent": "curl/8.0"})
+        resp = _ur.urlopen(req, timeout=30)
+        result = _j.loads(resp.read().decode())
+        mid = result.get("sid", "")
+        print(f"✅ Twilio SMS sent to {to_number} from {from_number} — SID: {mid}")
+        # Log to outgoing_sms for reply-matching
+        try:
+            db = sqlite3.connect(DB_PATH)
+            db.execute(
+                "INSERT INTO outgoing_sms (id, business_id, lead_id, phone, body, message_id, sent_at) VALUES (?,?,?,?,?,?,?)",
+                (mid, biz.get("id") if biz else None, lead_id, to_number, body, mid,
+                 datetime.now().isoformat()))
+            db.commit()
+            db.close()
+        except Exception as _le:
+            print(f"⚠️ outgoing log failed: {_le}")
+        return True
+    except Exception as e:
+        print(f"❌ Twilio send error: {e}")
+        return False
+
+
+def handle_inbound_sms(bid, sender, body, lead_id=None, to_number=None):
+    """Main entry — called from the sms-gate webhook (background thread).
+    to_number = the number the customer texted (used to reply from the same line)."""
     try:
         if not bid or not sender or not body:
             return None
@@ -355,12 +437,19 @@ def handle_inbound_sms(bid, sender, body, lead_id=None):
             print("📞 CALLME detected — placing callback call")
             trigger_call_back(biz, sender)
 
-        # Send via sms-gate (logs to outgoing_sms → reply matching)
+        # Send reply — from the SAME number the customer texted when it's a
+        # Twilio-owned line (so the customer sees one coherent thread), else sms-gate.
         import sys
         sys.path.insert(0, "/root/voice-agent-manager")
-        from smsgate_sms import send_sms
-        ok = send_sms(sender, msg_text, business_id=bid, lead_id=lead_id)
-        print(f"🤖 AI SMS reply {'sent' if ok else 'FAILED'} to {sender}: {msg_text[:80]}")
+        ok = False
+        if to_number and _is_twilio_number(to_number):
+            ok = _send_via_twilio(to_number, sender, msg_text, biz, lead_id)
+            if ok:
+                print(f"🤖 AI SMS reply sent (Twilio, from {to_number}) to {sender}: {msg_text[:80]}")
+        if not ok:
+            from smsgate_sms import send_sms
+            ok = send_sms(sender, msg_text, business_id=bid, lead_id=lead_id)
+            print(f"🤖 AI SMS reply {'sent' if ok else 'FAILED'} (sms-gate) to {sender}: {msg_text[:80]}")
         return msg_text if ok else None
     except Exception as e:
         import traceback
@@ -369,6 +458,6 @@ def handle_inbound_sms(bid, sender, body, lead_id=None):
         return None
 
 
-def run_in_background(bid, sender, body, lead_id):
-    t = threading.Thread(target=handle_inbound_sms, args=(bid, sender, body, lead_id), daemon=True)
+def run_in_background(bid, sender, body, lead_id, to_number=None):
+    t = threading.Thread(target=handle_inbound_sms, args=(bid, sender, body, lead_id, to_number), daemon=True)
     t.start()
