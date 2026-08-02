@@ -5316,10 +5316,21 @@ def ensure_campaign_row(bid):
 
 def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
     """Make a single VAPI call with voicemail detection and token control."""
-    phone = lead['phone']
-    # Ensure E.164 format (must start with +)
-    if not phone.startswith('+'):
-        phone = '+' + phone
+    phone = str(lead['phone'] or '').strip()
+    # Ensure E.164 format (must start with + and country code)
+    if phone.startswith('+'):
+        pass  # already has country code
+    elif phone.startswith('00'):
+        phone = '+' + phone[2:]
+    else:
+        digits = ''.join(ch for ch in phone if ch.isdigit())
+        if len(digits) == 10:
+            # US/Canada number without country code -> +1
+            phone = '+1' + digits
+        elif len(digits) == 11 and digits.startswith('1'):
+            phone = '+' + digits
+        else:
+            phone = '+' + digits
     # sqlite3.Row has no .get() — convert early (biz conversion happens below)
     if not isinstance(lead, dict):
         lead = dict(lead)
