@@ -5776,13 +5776,12 @@ def run_campaign_bg(bid):
                 exhausted = c.fetchone()['cnt']
                 if retryable == 0:
                     log_campaign(bid, f'🎉 All {exhausted} leads reached max retries. Campaign complete.', 'info')
-                    c.execute("UPDATE campaigns SET status='completed', calls_made=0 WHERE business_id=?", (bid,))
+                    c.execute("UPDATE campaigns SET status='completed' WHERE business_id=?", (bid,))
                     db.commit()
                     db.close()
                     return
                 # Reset only retryable leads back to NEW for next cycle
                 c.execute("UPDATE leads SET state='NEW' WHERE business_id=? AND state='CALLED' AND (retry_count IS NULL OR retry_count < 1)", (bid,))
-                c.execute("UPDATE campaigns SET calls_made=0 WHERE business_id=?", (bid,))
                 db.commit()
                 log_campaign(bid, f'🔄 {retryable} leads reset to NEW for next cycle ({exhausted} exhausted). Cycle #{cycle_count}/{max_cycles}', 'info')
                 db.close()
