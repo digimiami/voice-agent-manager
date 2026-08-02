@@ -2876,7 +2876,7 @@ def dashboard():
                cl.transcript as call_transcript
         FROM appointments a
         LEFT JOIN leads l ON a.lead_id = l.id
-        LEFT JOIN call_log cl ON a.call_log_id = cl.id
+        LEFT JOIN call_log cl ON cl.vapi_call_id = a.call_log_id
         WHERE a.business_id = ? AND a.status = 'booked'
         ORDER BY a.appointment_time ASC LIMIT 20
     """, (bid,))
