@@ -8636,15 +8636,21 @@ def sms_gate_webhook():
             msg_id = data.get('id', '')
             received_at = data.get('createdAt', datetime.now().isoformat())
 
-        # Match to a business: FIRST try the outgoing-SMS log (reply to a message WE sent),
-        # then fall back to recipient matching.
+        # Match to a business: FIRST try recipient (their device number matches a business
+        # number — e.g. the demo line), then fall back to the outgoing-SMS reply log.
         bid = None
         lead_id = None
         db = get_db()
         db.row_factory = sqlite3.Row
         c = db.cursor()
-        if sender:
-            # Reply-matching: find the most recent SMS we sent to this sender
+        if recipient:
+            c.execute("SELECT id FROM businesses WHERE phone_number = ? OR vapi_phone_id = ? LIMIT 1",
+                      (recipient, recipient))
+            row = c.fetchone()
+            if row:
+                bid = row['id']
+        # Fallback: reply-matching — find the most recent SMS we sent to this sender
+        if not bid and sender:
             c.execute("""SELECT business_id, lead_id FROM outgoing_sms 
                          WHERE phone = ? AND business_id IS NOT NULL
                          ORDER BY sent_at DESC LIMIT 1""", (sender,))
@@ -8652,13 +8658,6 @@ def sms_gate_webhook():
             if row:
                 bid = row['business_id']
                 lead_id = row['lead_id']
-        # Fallback: match by recipient (their device number)
-        if not bid and recipient:
-            c.execute("SELECT id FROM businesses WHERE phone_number = ? OR vapi_phone_id = ? LIMIT 1",
-                      (recipient, recipient))
-            row = c.fetchone()
-            if row:
-                bid = row['id']
         # Fallback: try to match sender to an existing lead
         if not lead_id and bid and sender:
             c.execute("SELECT id FROM leads WHERE business_id = ? AND phone = ? LIMIT 1", (bid, sender))
