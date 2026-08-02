@@ -2942,8 +2942,13 @@ def dashboard():
                 return None, raw or ''
             if hasattr(day, 'date'):
                 day = day.date()
-            # Extract time
-            tm = cal_re.search(r'(\d{1,2})(?::(\d{2}))?\s*(am|pm)?', s)
+            # Extract time — prefer a number followed by am/pm ("2pm", "10 am"),
+            # so "july 28 at 2pm" picks 2pm not 28, and "7/28 at 4 pm" picks 4.
+            tm = None
+            for tpat in (r'(\d{1,2})(?::(\d{2}))?\s*(am|pm)', r'(\d{1,2})(?::(\d{2}))?\s*$'):
+                tm = cal_re.search(tpat, s)
+                if tm:
+                    break
             if tm:
                 hour = int(tm.group(1))
                 minute = int(tm.group(2) or 0)
