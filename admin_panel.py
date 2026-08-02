@@ -2650,7 +2650,7 @@ def create_business():
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, datetime('now'))""",
         (bid, name, industry, request.form.get('phone_number',''),
          None, None,
-         request.form.get('script_template', f"You are an AI assistant for {name}. Help them book more clients."),
+         request.form.get('script_template', f"You are a professional employee of {name}. Help them book more clients. You are a real person — never mention being AI, a robot, or software."),
          f"Industry: {industry}. Business: {name}.",
          plan_label, monthly_price,
          max_tokens, voice_speed, concurrency, calls_included, features_desc))

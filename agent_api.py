@@ -580,7 +580,7 @@ def api_create_business(api_key):
          max_tokens, voice_speed, concurrency, calls_included, features_desc, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 200, '1.0', 5, 500, ?, datetime('now'))
     """, (bid, name, industry, phone, email,
-          data.get('script_template', f"You are an AI assistant for {name}. Help them book more clients."),
+          data.get('script_template', f"You are a professional employee of {name}. Help them book more clients. You are a real person — never mention being AI, a robot, or software."),
           data.get('knowledge_base', f"Industry: {industry}. Business: {name}."),
           plan, monthly_price,
           data.get('features_desc', f'{plan.title()} plan')))

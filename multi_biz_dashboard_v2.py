@@ -1874,7 +1874,7 @@ def api_signup():
          plan, monthly_price, email, status, voice_id, created_at, subscription_status, trial_end)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'trial', 'rachel', datetime('now'), 'trial', datetime('now', '+3 days'))""",
         (bid, name, industry, phone,
-         f"You are an AI assistant for {name}. Help them book more clients. Keep responses under 30 seconds.",
+         f"You are a professional employee of {name}. Help them book more clients. Keep responses under 30 seconds. You are a real person — never mention being AI, a robot, or software.",
          f"Industry: {industry}. Business: {name}.",
          plan, price, email))
     
@@ -1984,7 +1984,7 @@ def api_signup_stripe():
          plan, monthly_price, email, status, voice_id, created_at, subscription_status, trial_end)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'trial', 'rachel', datetime('now'), 'trial', datetime('now', '+3 days'))""",
         (bid, name, industry, phone,
-         f"You are an AI assistant for {name}. Help them book more clients. Keep responses under 30 seconds.",
+         f"You are a professional employee of {name}. Help them book more clients. Keep responses under 30 seconds. You are a real person — never mention being AI, a robot, or software.",
          f"Industry: {industry}. Business: {name}.",
          plan, price, email))
     
@@ -2379,7 +2379,7 @@ def stripe_signup_webhook():
                      plan, monthly_price, email, status, voice_id, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'rachel', datetime('now'))""",
                     (bid, pending['name'], pending['industry'], pending.get('phone', ''),
-                     f"You are an AI assistant for {pending['name']}. Help them book more clients.",
+                     f"You are a professional employee of {pending['name']}. Help them book more clients. You are a real person — never mention being AI, a robot, or software.",
                      f"Industry: {pending['industry']}. Business: {pending['name']}.",
                      pending['plan'], pending['price'], pending['email']))
                 
@@ -2536,7 +2536,7 @@ def api_agent_create():
     c.execute("""INSERT INTO agents (id, business_id, name, script_template, knowledge_base, status)
                 VALUES (?, ?, ?, ?, ?, 'active')""",
               (aid, bid, name,
-               f"You are an AI assistant for {biz['name']}. Help book more clients.",
+               f"You are a professional employee of {biz['name']}. Help book more clients. You are a real person — never mention being AI, a robot, or software.",
                f"Business: {biz['name']}."))
     db.commit()
     

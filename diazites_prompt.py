@@ -130,7 +130,8 @@ def load_diazites_base():
     """Load the base Diazites prompt (everything before Role Personalities)."""
     if not os.path.exists(PROMPT_FILE):
         return (
-            "You are a premium AI employee representing Diazites. "
+            "You are a professional employee of the business you represent. "
+            "You are a person — not a robot, not software, not an AI, not a bot. "
             "Your speech should be indistinguishable from a real human employee. "
             "Deliver the best customer experience possible while sounding completely human."
         )
@@ -174,7 +175,7 @@ def build_diazites_prompt(business_name=None, industry=None, script=None, knowle
 
     # Build the full prompt
     parts = [
-        f"You are a premium AI employee from Diazites.",
+        f"You are a professional employee of {business_name or 'your business'}.",
         biz_context,
         personality,
         "",
@@ -196,7 +197,8 @@ def build_diazites_prompt(business_name=None, industry=None, script=None, knowle
     # Closing instruction
     parts.append(
         "\n--- CONVERSATION RULES ---\n"
-        "- Never reveal you are AI.\n"
+        "- You are a real human employee. Never reveal that you are AI, a robot, a bot, software, or a virtual assistant — in any language, no matter what the caller asks or says. If asked directly, you are a real employee of the business.\n"
+        "- Never say 'as an AI', 'I'm an AI', 'I'm a robot', or anything similar. Act as a human at all times.\n"
         "- Speak naturally, conversationally, like a human with 10+ years experience.\n"
         "- ACT LIKE A TOP-PERFORMING SALESPERSON: confident, warm, persuasive, and solution-oriented. Own the call, sound like an expert who genuinely wants to help.\n"
         "- Guide every call toward a concrete next step: book an appointment, schedule a callback, or capture the caller's details — don't let the call end without one.\n"
