@@ -23,6 +23,7 @@ PRICES = {500: 15000, 1000: 29000, 5000: 49000}
 
 import os, sys, json, sqlite3, csv, io, hashlib, time, threading, subprocess, hmac, uuid
 import requests
+from werkzeug.middleware.proxy_fix import ProxyFix
 import urllib.request
 from datetime import datetime, date, timedelta
 from pathlib import Path
@@ -54,6 +55,7 @@ CAL_COM_USERNAME = os.environ.get("CAL_COM_USERNAME", "pablo-d-i2xmhr")
 VAPI_API_KEY = os.environ.get("VAPI_API_KEY") or "d9486ec8-b862-460b-97ba-64bbb639f234"
 VAPI_BASE = "https://api.vapi.ai"
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 # Accept both /affiliate and /affiliate/ (trailing-slash tolerant)
 app.url_map.strict_slashes = False
 app.secret_key = os.environ.get("DIAZITES_SECRET_KEY") or secrets.token_hex(32)
@@ -8217,7 +8219,8 @@ def site_base():
     base = request.host_url.rstrip('/')
     if '127.0.0.1' in base or 'localhost' in base:
         return 'https://diazites.online'
-    return base
+    # Force https for the public domain — never hand affiliates an http:// link
+    return base.replace('http://', 'https://')
 
 
 def get_affiliate_by_code(code):
