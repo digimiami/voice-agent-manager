@@ -8352,17 +8352,20 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid #1a1a2e}
 <p style="color:#a1a1b5;font-size:14px;margin:0">Your affiliate code: <b>{{ aff.code }}</b></p>
 <div class="linkbox">🔗 {{ link }}</div>
 <div class="linkbox">📞 Demo line: <b>(786) 808-4099</b> — tell prospects to call it and hear Pablo answer</div>
-<div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
 <a class="btn" href="/affiliate/toolkit/social_kit.md">📱 Social Kit (reels + posts)</a>
 <a class="btn" href="/affiliate/toolkit/outreach_scripts.md">✉️ Cold Outreach Scripts</a>
 <a class="btn" href="/a/{{ aff.code }}">👀 Preview my page</a>
 </div>
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
-<a class="btn" href="/affiliate/toolkit/carousel-1.png">📸 Slide 1</a>
-<a class="btn" href="/affiliate/toolkit/carousel-2.png">📸 Slide 2</a>
-<a class="btn" href="/affiliate/toolkit/carousel-3.png">📸 Slide 3</a>
-<a class="btn" href="/affiliate/toolkit/carousel-4.png">📸 Slide 4</a>
-<a class="btn" href="/affiliate/toolkit/carousel-5.png">📸 Slide 5</a>
+<div style="margin:12px 0">
+<p style="font-size:13px;color:#a1a1b5;margin:0 0 10px"><b>📸 Instagram carousel</b> — tap any slide to view full size, or hold to save. Ready to post to your feed.</p>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">
+{% for n in range(1, 6) %}
+<a href="/affiliate/toolkit/carousel-{{ n }}.png" target="_blank" style="display:block;text-decoration:none">
+<img src="/affiliate/toolkit/carousel-{{ n }}.png" alt="Slide {{ n }}" loading="lazy" style="width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:12px;border:1px solid #252533;display:block">
+</a>
+{% endfor %}
+</div>
 </div>
 <button class="btn" onclick="copyLink()">📋 Copy Link</button> <span id="copied" class="copy">Copied!</span></div>
 <div class="card">
