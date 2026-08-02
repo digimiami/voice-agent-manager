@@ -1119,6 +1119,8 @@ def api_provision_phone(api_key, bid):
             script=script,
             knowledge_base=kb
         )
+        # Multilingual by default: auto-detect caller language & respond in it
+        full_script += "\n\nIMPORTANT: You are a MULTI-LINGUAL assistant. Detect the caller's language and respond in that same language. You speak: English, Spanish, French, German, Portuguese, Chinese, Arabic, Hindi, Korean, Japanese. Switch languages naturally when the caller switches."
         body = {
             "name": f"{name} Voice Agent",
             "model": {
@@ -1128,7 +1130,8 @@ def api_provision_phone(api_key, bid):
                 "maxTokens": max_tokens,
                 "systemPrompt": full_script
             },
-            "voice": {"provider": "11labs", "voiceId": voice_id},
+            "transcriber": {"provider": "openai", "model": "gpt-4o-transcribe"},
+            "voice": {"provider": "11labs", "voiceId": voice_id, "model": "eleven_multilingual_v2"},
             "firstMessage": f"Hi, this is {name}'s assistant. I'm calling because we help {industry} businesses. Am I catching you at a good time?",
             "firstMessageMode": "assistant-speaks-first",
             "silenceTimeoutSeconds": 10,

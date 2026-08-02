@@ -2491,6 +2491,8 @@ def setup_vapi(bid):
         script=script,
         knowledge_base=kb
     )
+    # Multilingual by default: auto-detect caller language & respond in it
+    full_script += "\n\nIMPORTANT: You are a MULTI-LINGUAL assistant. Detect the caller's language and respond in that same language. You speak: English, Spanish, French, German, Portuguese, Chinese, Arabic, Hindi, Korean, Japanese. Switch languages naturally when the caller switches."
     
     import subprocess, json
     result = subprocess.run([
@@ -2506,9 +2508,11 @@ def setup_vapi(bid):
                 "maxTokens": max_tokens,
                 "systemPrompt": full_script
             },
+            "transcriber": {"provider": "openai", "model": "gpt-4o-transcribe"},
             "voice": {
                 "provider": "11labs",
-                "voiceId": voice_id
+                "voiceId": voice_id,
+                "model": "eleven_multilingual_v2"
             },
             "firstMessage": f"Hi, this is {name}'s assistant from Diazites. We help {industry} businesses never miss a call. Do you have a moment?",
             "firstMessageMode": "assistant-speaks-first",
