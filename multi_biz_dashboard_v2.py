@@ -968,7 +968,7 @@ Diazites AI voice agents answer calls <strong class="text-[#f1f1f5]">24/7</stron
 <div class="text-[10px] text-[#7a7a8e] mb-2">Male · Warm · Natural</div>
 <div class="text-xs text-[#c084fc]" id="voice-status-sam">▶ Click to play</div>
 </div>
-<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('bella','Hello, this is Bella. I am your dedicated AI receptionist, ready to help your callers.','bella')">
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('bella','Hello, this is Bella. I handle your calls and make sure every caller is taken care of.','bella')">
 <div class="text-3xl mb-2" id="voice-icon-bella">🎤</div>
 <div class="font-semibold text-sm">Bella</div>
 <div class="text-[10px] text-[#7a7a8e] mb-2">Female · Melodic · Premium</div>
@@ -992,7 +992,7 @@ Diazites AI voice agents answer calls <strong class="text-[#f1f1f5]">24/7</stron
 <div class="text-[10px] text-[#7a7a8e] mb-2">Male · Authoritative · Premium</div>
 <div class="text-xs text-[#c084fc]" id="voice-status-arnold">▶ Click to play</div>
 </div>
-<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('patrick','Hey there! I am Patrick, your AI receptionist. I answer calls around the clock so you never miss a lead.','patrick')">
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('patrick','Hey there! I am Patrick. I answer calls around the clock so you never miss a lead.','patrick')">
 <div class="text-3xl mb-2" id="voice-icon-patrick">🎤</div>
 <div class="font-semibold text-sm">Patrick</div>
 <div class="text-[10px] text-[#7a7a8e] mb-2">Male · Professional · Premium</div>
@@ -1421,7 +1421,7 @@ p.play().then(function(){document.getElementById('voice-status-'+s).textContent=
 <div class="card p-8 text-center" style="border:1px solid #252533;background:#0c0c18;border-radius:16px">
 <div class="text-5xl mb-4">📞</div>
 <h3 class="text-xl font-bold mb-2">Diazites Demo Line</h3>
-<p class="text-[#7a7a8e] text-sm mb-5">"Hi, you've reached the Diazites demo line — I'm Pablo, an AI receptionist!"</p>
+<p class="text-[#7a7a8e] text-sm mb-5">"Hi, you've reached the Diazites demo line — I'm Pablo, the receptionist!"</p>
 <a href="tel:+17868084099" class="btn-primary inline-block py-4 px-8 text-lg rounded-2xl">📱 (786) 808-4099</a>
 <p class="text-xs text-[#5c5c70] mt-5">Works with any phone. Try asking: <i>"What can you do for my roofing business?"</i> — he speaks <b style="color:#c084fc">español</b>, português, français & more 🌎</p>
 </div>
@@ -3608,7 +3608,7 @@ html{scroll-behavior:smooth}
         <span class="text-xl" id="samIcon">▶️</span>
         <span>Play Sam (Male)</span>
       </button>
-      <button onclick="playVoiceDemo('emma','Hello! Emma speaking. I am your AI receptionist, ready to answer questions and book appointments 24/7.')" class="btn-outline flex items-center gap-3 px-8 py-4 text-base">
+      <button onclick="playVoiceDemo('emma','Hello! Emma speaking. I answer questions and book appointments 24/7. How can I help you today?')" class="btn-outline flex items-center gap-3 px-8 py-4 text-base">
         <span class="text-xl" id="emmaIcon">▶️</span>
         <span>Play Emma</span>
       </button>
@@ -3616,7 +3616,7 @@ html{scroll-behavior:smooth}
         <span class="text-xl" id="TX3LPaxmHKxFdv7VOQHJIcon">▶️</span>
         <span>Play Liam</span>
       </button>
-      <button onclick="playVoiceDemo('cgSgspJ2msm6clMCkdW9','Hi, this is Jessica! I am your friendly AI receptionist, ready to help your callers with anything they need.')" class="btn-outline flex items-center gap-3 px-8 py-4 text-base">
+      <button onclick="playVoiceDemo('cgSgspJ2msm6clMCkdW9','Hi, this is Jessica! I help your callers with anything they need.')" class="btn-outline flex items-center gap-3 px-8 py-4 text-base">
         <span class="text-xl" id="cgSgspJ2msm6clMCkdW9Icon">▶️</span>
         <span>Play Jessica</span>
       </button>
