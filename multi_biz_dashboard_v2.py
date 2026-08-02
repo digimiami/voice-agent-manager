@@ -2772,6 +2772,7 @@ def dashboard():
     biz = dict(biz)
     
     # Campaign status
+    ensure_campaign_row(bid)
     c.execute("SELECT * FROM campaigns WHERE business_id = ?", (bid,))
     camp = c.fetchone()
     campaign_status = camp['status'] if camp else 'idle'
@@ -4554,6 +4555,7 @@ def start_campaign():
         flash('No leads to call! Upload leads first.', 'error')
         return redirect('/')
     
+    ensure_campaign_row(bid)
     c.execute("UPDATE campaigns SET status = 'running', started_at = datetime('now') WHERE business_id = ?", (bid,))
     db.commit()
     
@@ -4581,6 +4583,7 @@ def schedule_campaign():
     start_date = request.form.get('schedule_start_date', '')
     db = get_db()
     c = db.cursor()
+    ensure_campaign_row(bid)
     c.execute("""UPDATE campaigns SET schedule_enabled=?, schedule_time=?, schedule_days=?, timezone=?, schedule_start_date=? WHERE business_id=?""",
               (enabled, time_val, days, tz, start_date, bid))
     db.commit()
@@ -5180,6 +5183,7 @@ def stop_campaign():
         return redirect('/?tab=leads')
     db = get_db()
     c = db.cursor()
+    ensure_campaign_row(bid)
     c.execute("UPDATE campaigns SET status = 'stopped' WHERE business_id = ?", (bid,))
     db.commit()
     campaign_status_cache[bid] = 'stopped'
@@ -5291,6 +5295,23 @@ def log_campaign(bid, message, level='info'):
         db.commit()
         db.close()
     except:
+        pass
+
+def ensure_campaign_row(bid):
+    """Create a campaign row for a business if it doesn't exist yet.
+    Businesses created outside the signup flow (admin, API) never get a
+    campaign row — without one, start/stop/overview all silently break."""
+    try:
+        db = sqlite3.connect(DB_PATH)
+        c = db.cursor()
+        row = c.execute("SELECT id FROM campaigns WHERE business_id = ?", (bid,)).fetchone()
+        if not row:
+            import uuid
+            cid = 'camp-' + str(uuid.uuid4())[:12]
+            c.execute("INSERT INTO campaigns (id, business_id, status) VALUES (?, ?, 'idle')", (cid, bid))
+            db.commit()
+        db.close()
+    except Exception:
         pass
 
 def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
