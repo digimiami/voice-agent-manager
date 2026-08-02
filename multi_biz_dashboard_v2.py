@@ -2966,12 +2966,17 @@ def dashboard():
     for apt in appointment_list:
         date_str, time_str = parse_appointment_time(apt.get('appointment_time'))
         calendar_events.append({
+            'id': apt.get('id') or '',
             'name': apt.get('prospect_name') or apt.get('lead_name') or 'Prospect',
             'phone': apt.get('phone') or '',
             'date': date_str,
             'time': time_str,
             'raw': apt.get('appointment_time') or '',
-            'notes': (apt.get('notes') or '')[:100],
+            'notes': (apt.get('notes') or ''),
+            'transcript': (apt.get('call_transcript') or '')[:600],
+            'created': (apt.get('created_at') or '')[:10],
+            'lead_name': apt.get('lead_name') or '',
+            'business_name': apt.get('business_name') or '',
             'call_log_id': apt.get('call_log_id') or '',
         })
     
@@ -7340,6 +7345,24 @@ def download_calendar(call_log_id):
         mimetype='text/calendar',
         headers={'Content-Disposition': f'attachment; filename=appointment_{call_log_id[:8]}.ics'}
     )
+
+@app.route('/api/appointment/notes', methods=['POST'])
+@login_required
+def appointment_save_notes():
+    """Save/update notes on a booked appointment."""
+    bid = session['business_id']
+    data = request.get_json(silent=True) or {}
+    apt_id = (data.get('id') or '').strip()
+    notes = (data.get('notes') or '').strip()[:2000]
+    if not apt_id:
+        return jsonify({'success': False, 'message': 'Missing appointment id'})
+    db = get_db()
+    c = db.cursor()
+    c.execute("UPDATE appointments SET notes=? WHERE id=? AND business_id=?", (notes, apt_id, bid))
+    db.commit()
+    if c.rowcount == 0:
+        return jsonify({'success': False, 'message': 'Appointment not found'})
+    return jsonify({'success': True, 'message': '✅ Notes saved', 'notes': notes})
 
 @app.route('/api/analytics')
 @login_required
