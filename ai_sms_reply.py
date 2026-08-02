@@ -437,19 +437,23 @@ def handle_inbound_sms(bid, sender, body, lead_id=None, to_number=None):
             print("📞 CALLME detected — placing callback call")
             trigger_call_back(biz, sender)
 
-        # Send reply — from the SAME number the customer texted when it's a
-        # Twilio-owned line (so the customer sees one coherent thread), else sms-gate.
+        # Send reply via sms-gate.app (PRIMARY — Twilio fails with 30034 on
+        # this number since VAPI's account isn't A2P-registered; sms-gate
+        # delivers reliably to real US phones via the SIM).
         import sys
         sys.path.insert(0, "/root/voice-agent-manager")
-        ok = False
-        if to_number and _is_twilio_number(to_number):
-            ok = _send_via_twilio(to_number, sender, msg_text, biz, lead_id)
-            if ok:
-                print(f"🤖 AI SMS reply sent (Twilio, from {to_number}) to {sender}: {msg_text[:80]}")
-        if not ok:
-            from smsgate_sms import send_sms
-            ok = send_sms(sender, msg_text, business_id=bid, lead_id=lead_id)
-            print(f"🤖 AI SMS reply {'sent' if ok else 'FAILED'} (sms-gate) to {sender}: {msg_text[:80]}")
+        from smsgate_sms import send_sms
+        ok = send_sms(sender, msg_text, business_id=bid, lead_id=lead_id)
+        if ok:
+            print(f"🤖 AI SMS reply sent (sms-gate) to {sender}: {msg_text[:80]}")
+        else:
+            # Last-resort fallback: Twilio (same number as inbound when possible)
+            if to_number and _is_twilio_number(to_number):
+                ok = _send_via_twilio(to_number, sender, msg_text, biz, lead_id)
+                if ok:
+                    print(f"🤖 AI SMS reply sent (Twilio fallback, from {to_number}) to {sender}: {msg_text[:80]}")
+            if not ok:
+                print(f"❌ AI SMS reply FAILED to {sender}")
         return msg_text if ok else None
     except Exception as e:
         import traceback
