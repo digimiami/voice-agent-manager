@@ -1002,6 +1002,78 @@ Diazites AI voice agents answer calls <strong class="text-[#f1f1f5]">24/7</stron
 <div class="text-[10px] text-[#7a7a8e] mb-2">Female · Friendly · Premium</div>
 <div class="text-xs text-[#c084fc]" id="voice-status-domi">▶ Click to play</div>
 </div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('pNInz6obpgDQGcFmaJgB','Hi, this is Adam. I answer every call, qualify every lead, and book appointments for your business.','pNInz6obpgDQGcFmaJgB')">
+<div class="text-3xl mb-2" id="voice-icon-pNInz6obpgDQGcFmaJgB">🎤</div>
+<div class="font-semibold text-sm">Adam</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Male · Confident · Premium</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-pNInz6obpgDQGcFmaJgB">▶ Click to play</div>
+</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('onwK4e9ZLuTAKqWW03F9','Hello, this is Daniel. I handle your calls professionally so no customer is ever left waiting.','onwK4e9ZLuTAKqWW03F9')">
+<div class="text-3xl mb-2" id="voice-icon-onwK4e9ZLuTAKqWW03F9">🎤</div>
+<div class="font-semibold text-sm">Daniel</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Male · Steady · Premium</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-onwK4e9ZLuTAKqWW03F9">▶ Click to play</div>
+</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('IKne3meq5aSn9XLyUdCD','Hey, this is Charlie. I pick up every call and make sure you never miss an opportunity.','IKne3meq5aSn9XLyUdCD')">
+<div class="text-3xl mb-2" id="voice-icon-IKne3meq5aSn9XLyUdCD">🎤</div>
+<div class="font-semibold text-sm">Charlie</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Male · Deep · Premium</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-IKne3meq5aSn9XLyUdCD">▶ Click to play</div>
+</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('cjVigY5qzO86Huf0OWal','Hi there, this is Eric. I answer calls around the clock and book appointments on the spot.','cjVigY5qzO86Huf0OWal')">
+<div class="text-3xl mb-2" id="voice-icon-cjVigY5qzO86Huf0OWal">🎤</div>
+<div class="font-semibold text-sm">Eric</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Male · Smooth · Premium</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-cjVigY5qzO86Huf0OWal">▶ Click to play</div>
+</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('JBFqnCBsd6RMkjVDRZzb','Good day, this is George. Let me take care of your calls so you can focus on your customers.','JBFqnCBsd6RMkjVDRZzb')">
+<div class="text-3xl mb-2" id="voice-icon-JBFqnCBsd6RMkjVDRZzb">🎤</div>
+<div class="font-semibold text-sm">George</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Male · Captivating · Premium</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-JBFqnCBsd6RMkjVDRZzb">▶ Click to play</div>
+</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('TX3LPaxmHKxFdv7VOQHJ','Whats up, this is Liam. I never miss a call and I make sure every lead gets followed up.','TX3LPaxmHKxFdv7VOQHJ')">
+<div class="text-3xl mb-2" id="voice-icon-TX3LPaxmHKxFdv7VOQHJ">🎤</div>
+<div class="font-semibold text-sm">Liam</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Male · Energetic · Premium</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-TX3LPaxmHKxFdv7VOQHJ">▶ Click to play</div>
+</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('bIHbv24MWmeRgasZH58o','Hi, this is Will. I keep things simple: answer, qualify, and book. Thats it.','bIHbv24MWmeRgasZH58o')">
+<div class="text-3xl mb-2" id="voice-icon-bIHbv24MWmeRgasZH58o">🎤</div>
+<div class="font-semibold text-sm">Will</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Male · Relaxed · Premium</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-bIHbv24MWmeRgasZH58o">▶ Click to play</div>
+</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('iP95p4xoKVk53GoZ742B','Hey, Im Chris. Your callers get a friendly, professional voice every single time.','iP95p4xoKVk53GoZ742B')">
+<div class="text-3xl mb-2" id="voice-icon-iP95p4xoKVk53GoZ742B">🎤</div>
+<div class="font-semibold text-sm">Chris</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Male · Charming · Premium</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-iP95p4xoKVk53GoZ742B">▶ Click to play</div>
+</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('XrExE9yKIg1WjnnlVkGX','Hello, this is Matilda. Welcome to the business. How may I assist you today?','XrExE9yKIg1WjnnlVkGX')">
+<div class="text-3xl mb-2" id="voice-icon-XrExE9yKIg1WjnnlVkGX">🎤</div>
+<div class="font-semibold text-sm">Matilda</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Female · Professional · Premium</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-XrExE9yKIg1WjnnlVkGX">▶ Click to play</div>
+</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('EXAVITQu4vr4xnSDxMaL','Hi, Im Sarah. Dont worry about missed calls anymore. Im here to help every customer.','EXAVITQu4vr4xnSDxMaL')">
+<div class="text-3xl mb-2" id="voice-icon-EXAVITQu4vr4xnSDxMaL">🎤</div>
+<div class="font-semibold text-sm">Sarah</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Female · Reassuring · Premium</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-EXAVITQu4vr4xnSDxMaL">▶ Click to play</div>
+</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('N2lVS1w4EtoT3dr4eOWO','Hey, this is Callum. I make sure every caller gets a fast, friendly answer.','N2lVS1w4EtoT3dr4eOWO')">
+<div class="text-3xl mb-2" id="voice-icon-N2lVS1w4EtoT3dr4eOWO">🎤</div>
+<div class="font-semibold text-sm">Callum</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Male · Husky · Premium</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-N2lVS1w4EtoT3dr4eOWO">▶ Click to play</div>
+</div>
+<div class="audio-card text-center cursor-pointer" onclick="playVoiceSample('nPczCjzI2devNBz1zQrb','Good day, this is Brian. I answer every call with a professional tone and follow up on every lead.','nPczCjzI2devNBz1zQrb')">
+<div class="text-3xl mb-2" id="voice-icon-nPczCjzI2devNBz1zQrb">🎤</div>
+<div class="font-semibold text-sm">Brian</div>
+<div class="text-[10px] text-[#7a7a8e] mb-2">Male · Resonant · Premium</div>
+<div class="text-xs text-[#c084fc]" id="voice-status-nPczCjzI2devNBz1zQrb">▶ Click to play</div>
+</div>
 </div>
 </section>
 
@@ -6312,6 +6384,7 @@ def test_voice():
         "nPczCjzI2devNBz1zQrb": "en-US-RogerNeural",        # Brian → resonant male
         "pqHfZKP75CvOlQylNhV4": "en-US-BrianNeural",        # Bill → wise male
         "FGY2WhTYpPnrIDTdsKH5": "en-US-AriaNeural",          # Laura → enthusiast female
+        "pNInz6obpgDQGcFmaJgB": "en-US-RogerNeural",         # Adam → confident male
     }
     
     edge_voice = EDGE_VOICE_MAP.get(voice_id, "en-US-BrianNeural")
