@@ -1179,6 +1179,11 @@ setTimeout(refreshMonitor, 500);
         html += '</div></div>';
         html += '<div class="flex gap-2">';
         html += '<button onclick="editAgent(\'' + a.id + '\')" class="btn-secondary text-xs" style="padding:4px 10px">✏️ Edit</button>';
+        if (a.phone_number) {
+          html += '<span class="text-xs text-[#4ade80] flex items-center" style="padding:4px 8px">📱 ' + escHtml(a.phone_number) + '</span>';
+        } else {
+          html += '<button onclick="buyAgentNumber(\'' + a.id + '\',\'' + (a.name || '').replace(/'/g,"\\'") + '\')" class="btn-primary text-xs" style="padding:4px 10px">📱 Get Number</button>';
+        }
         html += '<button onclick="deleteAgent(\'' + a.id + '\',\'' + (a.name || '').replace(/'/g,"\\'") + '\')" class="btn-outline text-xs text-red-400" style="padding:4px 10px">🗑️</button>';
         html += '</div></div>';
 
@@ -1283,6 +1288,25 @@ setTimeout(refreshMonitor, 500);
       if (d.success) { loadAgents(); }
       else { alert(d.error || 'Error deleting agent'); }
     }).catch(function(){ alert('Error deleting agent'); });
+  }
+
+  function buyAgentNumber(aid, name) {
+    if (!confirm('Buy a new phone number for "' + name + '"? This costs $1-2/mo and is assigned to this agent instantly.')) return;
+    var btn = event.target;
+    btn.disabled = true;
+    btn.textContent = '⏳ Buying...';
+    fetch('/api/agents/buy-number', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({agent_id: aid, area_code: ''})
+    }).then(function(r){return r.json()}).then(function(d){
+      if (d.success) { alert(d.message); loadAgents(); }
+      else { alert(d.error || 'Error buying number'); btn.disabled = false; btn.textContent = '📱 Get Number'; }
+    }).catch(function(){
+      alert('Error buying number');
+      btn.disabled = false;
+      btn.textContent = '📱 Get Number';
+    });
   }
 
   function generateKBAgent() {

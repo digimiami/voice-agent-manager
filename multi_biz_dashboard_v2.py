@@ -2592,6 +2592,76 @@ def api_agent_delete(agent_id):
     db.commit()
     return jsonify({'success': True, 'message': '🗑️ Agent deleted'})
 
+@app.route('/api/agents/buy-number', methods=['POST'])
+@login_required
+def api_agent_buy_number():
+    """Buy a phone number from Twilio and assign it to a specific agent."""
+    bid = session.get('business_id', '')
+    data = request.get_json(silent=True) or {}
+    aid = data.get('agent_id', '')
+    area_code = (data.get('area_code') or '').strip() or None
+
+    if not aid:
+        return jsonify({'success': False, 'error': 'Agent ID required'}), 400
+
+    db = get_db()
+    c = db.cursor()
+    agent = c.execute("SELECT * FROM agents WHERE id=? AND business_id=?", (aid, bid)).fetchone()
+    if not agent:
+        db.close()
+        return jsonify({'success': False, 'error': 'Agent not found'}), 404
+
+    # Agent needs a VAPI assistant to bind the number to
+    assistant_id = agent['vapi_assistant_id']
+    if not assistant_id:
+        db.close()
+        return jsonify({'success': False, 'error': 'Agent has no VAPI assistant yet. Save the agent first.'}), 400
+
+    # Check they haven't already got a number
+    if agent['phone_number']:
+        db.close()
+        return jsonify({'success': False, 'error': f'Agent already has {agent["phone_number"]}'}), 400
+
+    from twilio_helper import buy_twilio_number, register_with_vapi, search_available_numbers
+
+    # Search for a number
+    nums, error = search_available_numbers(area_code, limit=10)
+    if error:
+        nums, error = search_available_numbers(None, limit=10)
+        if error:
+            db.close()
+            return jsonify({'success': False, 'error': f'Twilio search failed: {error}'}), 500
+
+    # Prefer a Miami/nice number
+    target = None
+    for n in nums:
+        if (n.get('locality') or '').lower() in ('miami', 'north dade', 'north miami'):
+            target = n
+            break
+    if not target:
+        target = nums[0]
+    phone_to_buy = target['phone_number']
+
+    # Buy from Twilio
+    twilio_result, error = buy_twilio_number(phone_to_buy)
+    if error:
+        db.close()
+        return jsonify({'success': False, 'error': f'Twilio purchase failed: {error}'}), 500
+    bought_number = twilio_result.get('phone_number', phone_to_buy)
+
+    # Register with VAPI bound to this agent's assistant
+    vapi_result, error = register_with_vapi(bought_number, assistant_id)
+    if error:
+        db.close()
+        return jsonify({'success': False, 'error': f'Bought {bought_number} but Vapi registration failed: {error}'}), 500
+    vapi_phone_id = vapi_result.get('id', '')
+
+    c.execute("UPDATE agents SET phone_number=?, vapi_phone_id=? WHERE id=?", (bought_number, vapi_phone_id, aid))
+    db.commit()
+    db.close()
+    return jsonify({'success': True, 'message': f'✅ {bought_number} bought & assigned to {agent["name"]}!',
+                    'phone_number': bought_number})
+
 # ── AI CHATBOT API (Multi-Provider) ──
 
 CHATBOT_PROMPT = """You are a sales assistant for Diazites, a Voice AI SaaS platform. Answer questions about:
