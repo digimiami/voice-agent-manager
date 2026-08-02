@@ -7131,66 +7131,69 @@ def api_messages_send():
 
 @app.route('/api/messages/webhook', methods=['POST'])
 def api_messages_webhook():
-    """Twilio webhook endpoint for incoming SMS."""
+    """Twilio webhook endpoint for incoming SMS — routes to the same AI reply
+    engine as sms-gate (business match by to_number -> run_in_background)."""
     # Twilio sends form-encoded data
-    from_number = request.form.get('From', '')
-    to_number = request.form.get('To', '')
+    from_number = request.form.get('From', '').strip()
+    to_number = request.form.get('To', '').strip()
     body = request.form.get('Body', '').strip()
-    message_sid = request.form.get('MessageSid', '')
-    
+    message_sid = request.form.get('MessageSid', '').strip()
+
     if not from_number or not body:
         return '<Response></Response>', 200
-    
+
     init_messages_table()
-    
-    # Find which business this number belongs to
     db = get_db()
+    db.row_factory = sqlite3.Row
     c = db.cursor()
-    c.execute("SELECT id FROM businesses WHERE vapi_phone_id IS NOT NULL")
-    
-    # Match by to_number against Twilio config
-    twilio_config = load_twilio_config()
+
+    # Match business by the number the customer texted (to_number).
     biz_id = None
-    
-    if twilio_config.get('from_number') and twilio_config['from_number'] == to_number:
+    if to_number:
+        c.execute("SELECT id FROM businesses WHERE phone_number = ? OR vapi_phone_id = ? LIMIT 1",
+                  (to_number, to_number))
+        row = c.fetchone()
+        if row:
+            biz_id = row['id']
+    # Fallback: reply-matching via outgoing_sms (same as sms-gate path)
+    if not biz_id and from_number:
+        c.execute("""SELECT business_id FROM outgoing_sms 
+                     WHERE phone = ? AND business_id IS NOT NULL
+                     ORDER BY sent_at DESC LIMIT 1""", (from_number,))
+        row = c.fetchone()
+        if row:
+            biz_id = row['business_id']
+    # Last resort: only business
+    if not biz_id:
         c.execute("SELECT id FROM businesses LIMIT 1")
-        biz = c.fetchone()
-        if biz:
-            biz_id = biz['id']
-    
-    # If no match by Twilio config, try matching by phone number in business records
+        row = c.fetchone()
+        if row:
+            biz_id = row['id']
     if not biz_id:
-        # Look for businesses that might have this number
-        c.execute("""
-            SELECT id FROM businesses 
-            WHERE vapi_phone_id IS NOT NULL 
-            ORDER BY RANDOM() LIMIT 1
-        """)
-        biz = c.fetchone()
-        if biz:
-            biz_id = biz['id']
-    
-    if not biz_id:
-        # If we really can't find the business, use a generic catch-all
-        c.execute("SELECT id FROM businesses ORDER BY RANDOM() LIMIT 1")
-        biz = c.fetchone()
-        if biz:
-            biz_id = biz['id']
-        else:
-            db.close()
-            return '<Response></Response>', 200
-    
-    # Create a thread_id based on the conversation pair
-    thread_id = f"twilio_{hash(from_number + to_number + biz_id) & 0x7fffffff}"
-    
-    # Store the inbound message
-    c.execute("""
-        INSERT INTO messages (business_id, thread_id, from_number, to_number, body, direction, status)
-        VALUES (?, ?, ?, ?, ?, 'inbound', 'unread')
-    """, (biz_id, thread_id, from_number, to_number, body))
-    db.commit()
+        db.close()
+        return '<Response></Response>', 200
+
+    # Store in incoming_sms (same table the inbox + AI engine read)
+    try:
+        import hashlib as _smh
+        msg_id = message_sid or f"twilio_{_smh.md5((from_number + body).encode()).hexdigest()[:12]}"
+        c.execute("""INSERT OR IGNORE INTO incoming_sms 
+                     (id, business_id, sender, recipient, body, msg_type, received_at)
+                     VALUES (?, ?, ?, ?, ?, 'SMS', ?)""",
+                  (msg_id, biz_id, from_number, to_number, body,
+                   datetime.now().isoformat()))
+        db.commit()
+    except Exception as _se:
+        print(f"⚠️ Twilio webhook store error: {_se}")
     db.close()
-    
+
+    # AI SMS reply (same engine as sms-gate)
+    if body:
+        try:
+            from ai_sms_reply import run_in_background
+            run_in_background(biz_id, from_number, body, None)
+        except Exception as ai_e:
+            print(f"⚠️ Twilio AI SMS trigger error: {ai_e}")
     return '<Response></Response>', 200
 
 @app.route('/api/messages/mark-read', methods=['POST'])
