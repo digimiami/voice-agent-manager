@@ -8444,7 +8444,9 @@ def affiliate_landing_page(code):
 def affiliate_toolkit(name):
     fp = os.path.join(TOOLKIT_DIR, os.path.basename(name))
     if os.path.exists(fp):
-        return send_file(fp, mimetype='text/markdown', as_attachment=False)
+        ext = os.path.splitext(name)[1].lower()
+        mimetype = 'image/png' if ext == '.png' else 'image/jpeg' if ext in ('.jpg', '.jpeg') else 'text/markdown'
+        return send_file(fp, mimetype=mimetype, as_attachment=False)
     return "Not found", 404
 
 
