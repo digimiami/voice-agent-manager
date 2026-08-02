@@ -2881,6 +2881,94 @@ def dashboard():
         ORDER BY a.appointment_time ASC LIMIT 20
     """, (bid,))
     appointment_list = [dict(r) for r in c.fetchall()]
+
+    # Parse NLP appointment times ("tomorrow at 5pm", "monday at 10 am", "july 28 at 2pm")
+    # into real dates for the calendar view.
+    import re as cal_re
+    from datetime import datetime as cal_dt, timedelta as cal_td
+
+    def parse_appointment_time(raw, biz_tz='America/New_York'):
+        """Convert NLP appointment time to (date_str YYYY-MM-DD, time_str HH:MM) or (None, raw)."""
+        try:
+            s = (raw or '').strip().lower()
+            if not s:
+                return None, raw or ''
+            now = cal_dt.now()
+            day = None
+            # Relative days
+            if 'tomorrow' in s:
+                day = now + cal_td(days=1)
+            elif 'today' in s or 'tonight' in s:
+                day = now
+            elif 'next week' in s:
+                day = now + cal_td(days=7)
+            else:
+                # Weekday names
+                day_map = {'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
+                           'friday': 4, 'saturday': 5, 'sunday': 6}
+                for name, idx in day_map.items():
+                    if name in s:
+                        days_ahead = (idx - now.weekday()) % 7
+                        if 'next' in s:
+                            days_ahead += 7
+                        day = (now + cal_td(days=days_ahead)).date()
+                        break
+                # Month names ("july 28")
+                if day is None:
+                    months = {'january': 1, 'february': 2, 'march': 3, 'april': 4, 'may': 5, 'june': 6,
+                              'july': 7, 'august': 8, 'september': 9, 'october': 10, 'november': 11, 'december': 12}
+                    for mname, mnum in months.items():
+                        mm = cal_re.search(mname + r'\s+(\d{1,2})', s)
+                        if mm:
+                            dnum = int(mm.group(1))
+                            try:
+                                day = cal_dt(now.year, mnum, dnum).date()
+                            except ValueError:
+                                return None, raw or ''
+                            break
+                # Numeric dates ("7/28", "7/28/26")
+                if day is None:
+                    nm = cal_re.search(r'(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?', s)
+                    if nm:
+                        mo, da = int(nm.group(1)), int(nm.group(2))
+                        yr = int(nm.group(3)) if nm.group(3) else now.year
+                        if yr < 100:
+                            yr += 2000
+                        try:
+                            day = cal_dt(yr, mo, da).date()
+                        except ValueError:
+                            return None, raw or ''
+            if day is None:
+                return None, raw or ''
+            if hasattr(day, 'date'):
+                day = day.date()
+            # Extract time
+            tm = cal_re.search(r'(\d{1,2})(?::(\d{2}))?\s*(am|pm)?', s)
+            if tm:
+                hour = int(tm.group(1))
+                minute = int(tm.group(2) or 0)
+                ampm = tm.group(3)
+                if ampm == 'pm' and hour < 12:
+                    hour += 12
+                elif ampm == 'am' and hour == 12:
+                    hour = 0
+                return day.isoformat(), '{:02d}:{:02d}'.format(hour, minute)
+            return day.isoformat(), ''
+        except Exception:
+            return None, raw or ''
+
+    calendar_events = []
+    for apt in appointment_list:
+        date_str, time_str = parse_appointment_time(apt.get('appointment_time'))
+        calendar_events.append({
+            'name': apt.get('prospect_name') or apt.get('lead_name') or 'Prospect',
+            'phone': apt.get('phone') or '',
+            'date': date_str,
+            'time': time_str,
+            'raw': apt.get('appointment_time') or '',
+            'notes': (apt.get('notes') or '')[:100],
+            'call_log_id': apt.get('call_log_id') or '',
+        })
     
     # AI Product Factory data
     c.execute("SELECT * FROM products ORDER BY created_at DESC LIMIT 50")
@@ -2972,6 +3060,7 @@ def dashboard():
         leads=leads, followups=followups, assigned_numbers=assigned_numbers,
         voices=get_available_voices(),
         appointments=appointment_list,
+        calendar_events=calendar_events,
         languages={l["code"]: l["name"] for l in LANGUAGES},
         schedule=schedule,
         factory_products=factory_products,

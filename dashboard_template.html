@@ -1923,8 +1923,8 @@ setTimeout(refreshMonitor, 500);
       <div class="text-xs text-[#7a7a8e] mt-1">📅 Upcoming Appointments</div>
     </div>
     <div class="card text-center">
-      <div class="stat-value" style="background:linear-gradient(135deg,#38bdf8,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent">{{ appointments|selectattr('appointment_time','defined')|list|length }}</div>
-      <div class="text-xs text-[#7a7a8e] mt-1">⏰ Scheduled</div>
+      <div class="stat-value" style="background:linear-gradient(135deg,#38bdf8,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent">{{ calendar_events|selectattr('date','defined')|selectattr('date')|list|length }}</div>
+      <div class="text-xs text-[#7a7a8e] mt-1">⏰ On Calendar</div>
     </div>
     <div class="card text-center">
       <div class="stat-value" style="background:linear-gradient(135deg,#4ade80,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent">{{ stats.appointments or 0 }}</div>
@@ -1932,6 +1932,40 @@ setTimeout(refreshMonitor, 500);
     </div>
   </div>
 
+  <!-- View toggle -->
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="font-bold text-lg">📅 Appointments</h3>
+    <div class="flex gap-1 bg-[#1a1a28] rounded-xl p-1 border border-[#252533]">
+      <button onclick="calView('list')" id="calBtnList" class="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all">📋 List</button>
+      <button onclick="calView('month')" id="calBtnMonth" class="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all">🗓️ Calendar</button>
+    </div>
+  </div>
+
+  <!-- CALENDAR (month grid) view -->
+  <div id="calMonthView" class="hidden">
+    <div class="card mb-4">
+      <div class="flex items-center justify-between mb-4">
+        <button onclick="calPrev()" class="btn-outline text-xs px-3 py-1.5">←</button>
+        <h3 id="calMonthLabel" class="font-bold text-sm"></h3>
+        <button onclick="calNext()" class="btn-outline text-xs px-3 py-1.5">→</button>
+      </div>
+      <div class="grid grid-cols-7 gap-1 mb-1">
+        {% for d in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] %}
+        <div class="text-center text-[10px] font-semibold text-[#5c5c70] py-1">{{ d }}</div>
+        {% endfor %}
+      </div>
+      <div id="calGrid" class="grid grid-cols-7 gap-1"></div>
+    </div>
+
+    <!-- Selected-day appointments -->
+    <div id="calDayDetail" class="card hidden mb-4">
+      <h4 class="font-bold text-sm mb-3" id="calDayTitle">📅 Appointments</h4>
+      <div id="calDayList" class="space-y-2"></div>
+    </div>
+  </div>
+
+  <!-- LIST view -->
+  <div id="calListView">
   <!-- Appointment List -->
   <div class="card">
     <div class="flex items-center justify-between mb-4">
@@ -1978,6 +2012,88 @@ setTimeout(refreshMonitor, 500);
     </div>
     {% endif %}
   </div>
+  </div>
+
+  <script>
+  var CAL_EVENTS = {{ calendar_events|tojson }};
+  var calCursor = new Date();
+  var calSelected = null;
+
+  function calView(v) {
+    document.getElementById('calMonthView').classList.toggle('hidden', v !== 'month');
+    document.getElementById('calListView').classList.toggle('hidden', v !== 'list');
+    document.getElementById('calBtnMonth').style.background = v === 'month' ? 'linear-gradient(135deg,#a855f7,#ec4899)' : '';
+    document.getElementById('calBtnMonth').style.color = v === 'month' ? '#fff' : '';
+    document.getElementById('calBtnList').style.background = v === 'list' ? 'linear-gradient(135deg,#a855f7,#ec4899)' : '';
+    document.getElementById('calBtnList').style.color = v === 'list' ? '#fff' : '';
+    if (v === 'month') calRender();
+  }
+
+  function calEventsFor(dateStr) {
+    return (CAL_EVENTS || []).filter(function(e){ return e.date === dateStr; });
+  }
+
+  function calRender() {
+    var y = calCursor.getFullYear(), m = calCursor.getMonth();
+    var label = calCursor.toLocaleDateString('en-US', {month: 'long', year: 'numeric'});
+    document.getElementById('calMonthLabel').textContent = label;
+    var grid = document.getElementById('calGrid');
+    grid.innerHTML = '';
+    var first = new Date(y, m, 1);
+    var startPad = first.getDay();
+    var daysInMonth = new Date(y, m + 1, 0).getDate();
+    var todayStr = new Date().toISOString().slice(0, 10);
+    for (var i = 0; i < startPad; i++) {
+      var pad = document.createElement('div');
+      pad.className = 'min-h-[64px] rounded-xl bg-[#12121a]/40';
+      grid.appendChild(pad);
+    }
+    for (var d = 1; d <= daysInMonth; d++) {
+      var dateStr = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      var evs = calEventsFor(dateStr);
+      var cell = document.createElement('div');
+      cell.className = 'min-h-[64px] rounded-xl p-1.5 cursor-pointer border transition-all ' +
+        (dateStr === todayStr ? 'border-[#a855f7]/60 bg-[#a855f7]/10' : 'border-[#252533] bg-[#1a1a26] hover:border-[#a855f7]/40');
+      cell.onclick = function(ds){ return function(){ calSelect(ds); }; }(dateStr);
+      var dayNum = '<div class="text-xs font-bold ' + (dateStr === todayStr ? 'text-[#c084fc]' : 'text-[#cbd5e1]') + '">' + d + '</div>';
+      var dots = '';
+      for (var j = 0; j < Math.min(evs.length, 3); j++) {
+        dots += '<div class="mt-0.5 text-[9px] leading-tight truncate rounded px-1 py-0.5" style="background:#a855f720;color:#c084fc">' +
+                (evs[j].time ? evs[j].time + ' ' : '') + escHtml(evs[j].name) + '</div>';
+      }
+      if (evs.length > 3) dots += '<div class="text-[9px] text-[#5c5c70] mt-0.5">+' + (evs.length - 3) + ' more</div>';
+      cell.innerHTML = dayNum + dots;
+      grid.appendChild(cell);
+    }
+  }
+
+  function calSelect(dateStr) {
+    calSelected = dateStr;
+    var evs = calEventsFor(dateStr);
+    var detail = document.getElementById('calDayDetail');
+    var list = document.getElementById('calDayList');
+    var d = new Date(dateStr + 'T00:00:00');
+    document.getElementById('calDayTitle').textContent = '📅 ' + d.toLocaleDateString('en-US', {weekday: 'long', month: 'long', day: 'numeric'});
+    list.innerHTML = '';
+    if (!evs.length) {
+      list.innerHTML = '<div class="text-xs text-[#5c5c70] text-center py-4">No appointments this day.</div>';
+    }
+    evs.forEach(function(e){
+      var card = document.createElement('div');
+      card.className = 'bg-[#1a1a26] rounded-xl p-3 border border-[#252533]';
+      var dl = e.call_log_id ? '<a href="/calendar/download/' + e.call_log_id + '" class="text-[10px] text-[#38bdf8] ml-2">📥 .ics</a>' : '';
+      card.innerHTML = '<div class="flex items-center justify-between"><div class="text-sm font-semibold">' + escHtml(e.name) + '</div>' +
+        '<div class="text-xs text-[#c084fc] font-mono">' + (e.time || e.raw || 'TBD') + dl + '</div></div>' +
+        '<div class="text-xs text-[#7a7a8e] mt-1">' + escHtml(e.phone) + '</div>' +
+        (e.notes ? '<div class="text-xs text-[#94a3b8] mt-1">' + escHtml(e.notes) + '</div>' : '');
+      list.appendChild(card);
+    });
+    detail.classList.remove('hidden');
+  }
+
+  function calPrev() { calCursor.setMonth(calCursor.getMonth() - 1); calRender(); }
+  function calNext() { calCursor.setMonth(calCursor.getMonth() + 1); calRender(); }
+  </script>
 
   <!-- ======== TAB: BILLING ======== -->
   {% elif tab == 'billing' %}
