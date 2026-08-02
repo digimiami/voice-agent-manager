@@ -14,7 +14,7 @@ Admin login: http://localhost:8086/admin
 Password:    admin123
 """
 
-import os, sys, json, sqlite3, csv, io, hashlib, time, threading, subprocess, uuid
+import os, sys, json, sqlite3, csv, io, hashlib, time, threading, subprocess, uuid, urllib.request, urllib.error
 from datetime import datetime, date, timedelta
 from pathlib import Path
 from flask import Flask, render_template_string, jsonify, request, redirect, session, url_for, flash, send_file
@@ -2708,7 +2708,37 @@ def load_smtp_config():
         return {'host': '', 'port': '587', 'tls': '1', 'email': '', 'password': ''}
 
 def send_email(to, subject, body):
-    """Send email via configured SMTP."""
+    """Send email — AgentMail first (verified working), Resend SMTP fallback."""
+    # 1) AgentMail (proven path: appointment confirmations use it)
+    try:
+        key = os.environ.get("AGENTMAIL_API_KEY", "")
+        if not key:
+            for _p in ("/root/.env", "/root/voice-agent-manager/.env"):
+                try:
+                    with open(_p) as _f:
+                        for _line in _f:
+                            _line = _line.strip()
+                            if _line.startswith("AGENTMAIL_API_KEY="):
+                                key = _line.split("=", 1)[1].strip().strip('"').strip("'")
+                                break
+                except Exception:
+                    continue
+                if key:
+                    break
+        if key:
+            payload = {"to": to, "subject": subject, "text": body}
+            req = urllib.request.Request(
+                "https://api.agentmail.to/v0/inboxes/aiworkers@agentmail.to/messages/send",
+                data=json.dumps(payload).encode(),
+                headers={"Authorization": "Bearer " + key, "Content-Type": "application/json",
+                         "User-Agent": "DiazitesAdmin/1.0"},
+                method="POST")
+            urllib.request.urlopen(req, timeout=15)
+            print(f"📧 AgentMail: {subject} -> {to}")
+            return
+    except Exception as e:
+        print(f"⚠️ AgentMail failed ({e}), falling back to SMTP")
+    # 2) Resend SMTP fallback
     config = load_smtp_config()
     if not config.get('host') or not config.get('email'):
         raise Exception('SMTP not configured. Go to Email Config tab.')
