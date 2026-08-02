@@ -103,7 +103,7 @@ def update_assistant_language(assistant_id, lang_code, api_key):
         "voice": {
             "provider": "11labs",
             "voiceId": voice_id,
-            "model": "eleven_multilingual_v2",
+            "model": "eleven_v3",
             "speed": voice_speed,
             "stability": voice_stability,
             "similarityBoost": voice_similarity

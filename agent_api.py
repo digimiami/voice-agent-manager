@@ -1131,7 +1131,7 @@ def api_provision_phone(api_key, bid):
                 "systemPrompt": full_script
             },
             "transcriber": {"provider": "openai", "model": "gpt-4o-transcribe"},
-            "voice": {"provider": "11labs", "voiceId": voice_id, "model": "eleven_multilingual_v2"},
+            "voice": {"provider": "11labs", "voiceId": voice_id, "model": "eleven_v3"},
             "firstMessage": f"Hi, this is {name}'s assistant. I'm calling because we help {industry} businesses. Am I catching you at a good time?",
             "firstMessageMode": "assistant-speaks-first",
             "silenceTimeoutSeconds": 10,

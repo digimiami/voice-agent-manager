@@ -2512,7 +2512,7 @@ def setup_vapi(bid):
             "voice": {
                 "provider": "11labs",
                 "voiceId": voice_id,
-                "model": "eleven_multilingual_v2"
+                "model": "eleven_v3"
             },
             "firstMessage": f"Hi, this is {name}'s assistant from Diazites. We help {industry} businesses never miss a call. Do you have a moment?",
             "firstMessageMode": "assistant-speaks-first",
