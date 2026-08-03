@@ -598,7 +598,11 @@ def run_calls(max_calls=None, delay=None):
                 "assistantId": aid,
                 "phoneNumberId": phone_id,
                 "customer": {"number": r["phone"], "name": (r["business_name"] or "")[:40]},
-                "assistantOverrides": {"model": {"systemPrompt": script}},
+                "assistantOverrides": {"model": {
+                    "provider": "xai", "model": "grok-4.3",
+                    "maxTokens": 300, "temperature": 0.3,
+                    "systemPrompt": script,
+                }},
             })
             if d.get("id"):
                 db = _db()
