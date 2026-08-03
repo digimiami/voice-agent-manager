@@ -1919,25 +1919,28 @@ setTimeout(refreshMonitor, 500);
   <!-- Stats row -->
   <div class="grid grid-cols-3 gap-4 mb-6">
     <div class="card text-center">
-      <div class="stat-value">{{ appointments|length }}</div>
+      <div class="stat-value">{{ appointments|selectattr('status','equalto','booked')|list|length }}</div>
       <div class="text-xs text-[#7a7a8e] mt-1">📅 Upcoming Appointments</div>
     </div>
     <div class="card text-center">
-      <div class="stat-value" style="background:linear-gradient(135deg,#38bdf8,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent">{{ calendar_events|selectattr('date','defined')|selectattr('date')|list|length }}</div>
-      <div class="text-xs text-[#7a7a8e] mt-1">⏰ On Calendar</div>
+      <div class="stat-value" style="background:linear-gradient(135deg,#4ade80,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent">{{ appointments|selectattr('status','equalto','completed')|list|length }}</div>
+      <div class="text-xs text-[#7a7a8e] mt-1">✅ Completed</div>
     </div>
     <div class="card text-center">
-      <div class="stat-value" style="background:linear-gradient(135deg,#4ade80,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent">{{ stats.appointments or 0 }}</div>
-      <div class="text-xs text-[#7a7a8e] mt-1">📊 Total Booked</div>
+      <div class="stat-value" style="background:linear-gradient(135deg,#38bdf8,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent">{{ appointments|length }}</div>
+      <div class="text-xs text-[#7a7a8e] mt-1">📊 Total</div>
     </div>
   </div>
 
   <!-- View toggle -->
   <div class="flex items-center justify-between mb-4">
     <h3 class="font-bold text-lg">📅 Appointments</h3>
-    <div class="flex gap-1 bg-[#1a1a28] rounded-xl p-1 border border-[#252533]">
-      <button onclick="calView('list')" id="calBtnList" class="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all">📋 List</button>
-      <button onclick="calView('month')" id="calBtnMonth" class="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all">🗓️ Calendar</button>
+    <div class="flex items-center gap-2">
+      <button onclick="showAddAptModal()" class="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all" style="background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff">➕ Add Appointment</button>
+      <div class="flex gap-1 bg-[#1a1a28] rounded-xl p-1 border border-[#252533]">
+        <button onclick="calView('list')" id="calBtnList" class="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all">📋 List</button>
+        <button onclick="calView('month')" id="calBtnMonth" class="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all">🗓️ Calendar</button>
+      </div>
     </div>
   </div>
 
@@ -1955,6 +1958,11 @@ setTimeout(refreshMonitor, 500);
         {% endfor %}
       </div>
       <div id="calGrid" class="grid grid-cols-7 gap-1"></div>
+      <div class="flex items-center gap-4 text-[10px] text-[#7a7a8e] mt-3 pt-3 border-t border-[#252533]">
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#a855f7;margin-right:4px"></span>Upcoming</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#22c55e;margin-right:4px"></span>Completed</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#252533;border:1px solid #3a3a4c;margin-right:4px"></span>📝 Has notes</span>
+      </div>
     </div>
 
     <!-- Selected-day appointments -->
@@ -1975,17 +1983,21 @@ setTimeout(refreshMonitor, 500);
     {% if appointments %}
     <div class="space-y-3">
       {% for apt in appointments %}
-      <div class="bg-[#1a1a26] rounded-xl p-4 border border-[#252533] hover:border-[#a855f7]/30 transition-all">
+      <div class="bg-[#1a1a26] rounded-xl p-4 border {% if apt.status == 'completed' %}border-[#22c55e]/30{% else %}border-[#252533]{% endif %} hover:border-[#a855f7]/30 transition-all">
         <div class="flex items-start justify-between mb-2">
           <div>
-            <div class="font-semibold text-sm flex items-center gap-2">
+            <div class="font-semibold text-sm flex items-center gap-2 {% if apt.status == 'completed' %}line-through opacity-60{% endif %}">
               <span class="w-8 h-8 rounded-full bg-[#a855f7]/20 flex items-center justify-center text-sm">👤</span>
               {{ apt.prospect_name or apt.lead_name or 'Prospect' }}
             </div>
             <div class="text-xs text-[#7a7a8e] mt-1">{{ apt.phone or '' }}</div>
           </div>
           <div class="text-right">
-            <div class="badge badge-success text-xs">📅 Booked</div>
+            {% if apt.status == 'completed' %}
+            <span class="badge text-xs" style="background:#22c55e20;color:#4ade80">✅ Completed</span>
+            {% else %}
+            <span class="badge badge-success text-xs">📅 Booked</span>
+            {% endif %}
             <div class="text-xs text-[#7a7a8e] mt-1">{{ apt.appointment_time or 'No time set' }}</div>
           </div>
         </div>
@@ -1994,13 +2006,19 @@ setTimeout(refreshMonitor, 500);
           <span class="text-[#64748b]">📝 Notes:</span> {{ apt.notes[:200] }}
         </div>
         {% endif %}
-        {% if apt.call_log_id %}
-        <div class="mt-2 text-right">
-          <a href="/calendar/download/{{ apt.call_log_id }}" class="text-xs text-[#38bdf8] hover:underline">
+        <div class="flex items-center gap-2 mt-3">
+          {% if apt.status == 'completed' %}
+          <button onclick="aptAction('reopen','{{ apt.id }}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold" style="background:#1a1a28;border:1px solid #252533;color:#cbd5e1">↩️ Reopen</button>
+          {% else %}
+          <button onclick="aptAction('complete','{{ apt.id }}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold" style="background:#22c55e20;border:1px solid #22c55e40;color:#4ade80">✅ Mark Complete</button>
+          {% endif %}
+          <button onclick="aptAction('delete','{{ apt.id }}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold" style="background:#ef444410;border:1px solid #ef444440;color:#f87171">🗑️ Delete</button>
+          {% if apt.call_log_id %}
+          <a href="/calendar/download/{{ apt.call_log_id }}" class="ml-auto text-xs text-[#38bdf8] hover:underline">
             <i class="fas fa-download mr-1"></i>📥 Download .ics
           </a>
+          {% endif %}
         </div>
-        {% endif %}
       </div>
       {% endfor %}
     </div>
@@ -2058,8 +2076,12 @@ setTimeout(refreshMonitor, 500);
       var dayNum = '<div class="text-xs font-bold ' + (dateStr === todayStr ? 'text-[#c084fc]' : 'text-[#cbd5e1]') + '">' + d + '</div>';
       var dots = '';
       for (var j = 0; j < Math.min(evs.length, 3); j++) {
-        dots += '<div class="mt-0.5 text-[9px] leading-tight truncate rounded px-1 py-0.5" style="background:#a855f720;color:#c084fc">' +
-                (evs[j].time ? evs[j].time + ' ' : '') + escHtml(evs[j].name) + '</div>';
+        var ev = evs[j];
+        var done = ev.status === 'completed';
+        var noteMark = ev.notes ? ' 📝' : '';
+        dots += '<div class="mt-0.5 text-[9px] leading-tight truncate rounded px-1 py-0.5" style="' +
+                (done ? 'background:#22c55e20;color:#4ade80' : 'background:#a855f720;color:#c084fc') + '">' +
+                (done ? '✓ ' : '') + (ev.time ? ev.time + ' ' : '') + escHtml(ev.name) + noteMark + '</div>';
       }
       if (evs.length > 3) dots += '<div class="text-[9px] text-[#5c5c70] mt-0.5">+' + (evs.length - 3) + ' more</div>';
       cell.innerHTML = dayNum + dots;
@@ -2080,24 +2102,34 @@ setTimeout(refreshMonitor, 500);
     }
     evs.forEach(function(e){
       var card = document.createElement('div');
-      card.className = 'bg-[#1a1a26] rounded-xl p-4 border border-[#252533]';
+      card.className = 'bg-[#1a1a26] rounded-xl p-4 border ' + (e.status === 'completed' ? 'border-[#22c55e]/30' : 'border-[#252533]');
       var dl = e.call_log_id ? '<a href="/calendar/download/' + e.call_log_id + '" class="text-[10px] text-[#38bdf8] ml-2">📥 Download .ics</a>' : '';
       var bizLine = e.business_name ? '<div class="text-[11px] text-[#64748b] mt-0.5">🏢 ' + escHtml(e.business_name) + '</div>' : '';
       var leadLine = e.lead_name && e.lead_name !== e.name ? '<div class="text-[11px] text-[#64748b] mt-0.5">👤 Lead: ' + escHtml(e.lead_name) + '</div>' : '';
       var createdLine = e.created ? '<div class="text-[11px] text-[#64748b] mt-0.5">🗓️ Booked on ' + escHtml(e.created) + '</div>' : '';
       var rawLine = e.raw ? '<div class="text-[11px] text-[#64748b] mt-0.5">🕐 Said: "' + escHtml(e.raw) + '"</div>' : '';
+      var done = e.status === 'completed';
+      var statusBadge = done
+        ? '<span class="badge text-xs" style="background:#22c55e20;color:#4ade80">✅ Completed</span>'
+        : '<span class="badge badge-success text-xs">📅 Booked</span>';
+      var actionBtns = '<div class="flex items-center gap-2 mt-3">' +
+        (done
+          ? '<button onclick="aptAction(\'reopen\',\'' + e.id + '\')" class="px-3 py-1.5 rounded-lg text-xs font-semibold" style="background:#1a1a28;border:1px solid #252533;color:#cbd5e1">↩️ Reopen</button>'
+          : '<button onclick="aptAction(\'complete\',\'' + e.id + '\')" class="px-3 py-1.5 rounded-lg text-xs font-semibold" style="background:#22c55e20;border:1px solid #22c55e40;color:#4ade80">✅ Mark Complete</button>') +
+        '<button onclick="aptAction(\'delete\',\'' + e.id + '\')" class="px-3 py-1.5 rounded-lg text-xs font-semibold" style="background:#ef444410;border:1px solid #ef444440;color:#f87171">🗑️ Delete</button>' +
+        '</div>';
       var transcriptBlock = e.transcript ? '<div class="mt-3"><div class="text-[10px] font-semibold text-[#5c5c70] uppercase mb-1">📝 Call transcript</div><div class="text-[11px] text-[#94a3b8] bg-[#12121a] rounded-lg p-2.5 max-h-28 overflow-y-auto leading-relaxed">' + escHtml(e.transcript) + '</div></div>' : '';
       var notesBlock = '<div class="mt-3"><div class="text-[10px] font-semibold text-[#5c5c70] uppercase mb-1">📋 Notes (click to edit)</div>' +
         '<textarea id="aptNotes_' + e.id + '" rows="3" class="w-full px-3 py-2 bg-[#12121a] rounded-lg border border-[#252533] text-xs leading-relaxed" placeholder="Add notes about this appointment...">' + escHtml(e.notes) + '</textarea>' +
         '<div class="flex items-center gap-2 mt-2"><button onclick="saveAptNotes(\'' + e.id + '\')" class="px-4 py-1.5 rounded-lg text-xs font-semibold" style="background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff">💾 Save Notes</button>' +
         '<span id="aptNotesStatus_' + e.id + '" class="text-[11px] text-[#4ade80]"></span></div></div>';
       card.innerHTML = '<div class="flex items-start justify-between gap-2"><div class="min-w-0">' +
-        '<div class="text-sm font-semibold">' + escHtml(e.name) + '</div>' +
+        '<div class="text-sm font-semibold' + (done ? ' line-through opacity-60' : '') + '">' + escHtml(e.name) + '</div>' +
         '<div class="text-xs text-[#c084fc] font-mono mt-0.5">' + (e.time || e.raw || 'TBD') + '</div>' +
         bizLine + leadLine + createdLine + rawLine +
         '<div class="text-xs text-[#7a7a8e] mt-0.5">📞 ' + escHtml(e.phone) + '</div>' +
-        '</div><div class="text-right shrink-0">' + dl + '</div></div>' +
-        notesBlock + transcriptBlock;
+        '</div><div class="text-right shrink-0">' + statusBadge + '<div class="mt-1">' + dl + '</div></div></div>' +
+        actionBtns + notesBlock + transcriptBlock;
       list.appendChild(card);
     });
     detail.classList.remove('hidden');
@@ -2126,7 +2158,91 @@ setTimeout(refreshMonitor, 500);
 
   function calPrev() { calCursor.setMonth(calCursor.getMonth() - 1); calRender(); }
   function calNext() { calCursor.setMonth(calCursor.getMonth() + 1); calRender(); }
+
+  // ── Add / complete / reopen / delete appointments ──
+  function showAddAptModal(){
+    var el = document.getElementById('addAptModal');
+    if (!el) return;
+    var now = new Date();
+    var pad = function(n){ return String(n).padStart(2, '0'); };
+    var d = document.getElementById('addAptDate');
+    if (d) d.value = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+    var t = document.getElementById('addAptTime');
+    if (t) t.value = pad((now.getHours() + 1) % 24) + ':00';
+    ['addAptName','addAptPhone','addAptNotes'].forEach(function(id){
+      var e = document.getElementById(id);
+      if (e) e.value = '';
+    });
+    var err = document.getElementById('addAptError');
+    if (err) err.classList.add('hidden');
+    el.classList.add('show');
+    var n = document.getElementById('addAptName');
+    if (n) setTimeout(function(){ n.focus(); }, 50);
+  }
+  function closeAddAptModal(){
+    var el = document.getElementById('addAptModal');
+    if (el) el.classList.remove('show');
+  }
+  function submitAddApt(){
+    var nameEl = document.getElementById('addAptName');
+    var btn = document.getElementById('addAptBtn');
+    var err = document.getElementById('addAptError');
+    if (!nameEl || !nameEl.value.trim()){
+      if (err){ err.textContent = 'Name is required'; err.classList.remove('hidden'); }
+      return;
+    }
+    var payload = {
+      name: nameEl.value.trim(),
+      phone: (document.getElementById('addAptPhone') || {}).value || '',
+      date: (document.getElementById('addAptDate') || {}).value || '',
+      time: (document.getElementById('addAptTime') || {}).value || '',
+      notes: (document.getElementById('addAptNotes') || {}).value || ''
+    };
+    btn.disabled = true; btn.textContent = 'Adding...';
+    fetch('/api/appointment/add', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        btn.disabled = false; btn.textContent = '+ Add';
+        if (d.success){ closeAddAptModal(); location.reload(); }
+        else { if (err){ err.textContent = d.message || 'Failed'; err.classList.remove('hidden'); } }
+      })
+      .catch(function(){
+        btn.disabled = false; btn.textContent = '+ Add';
+        if (err){ err.textContent = 'Network error'; err.classList.remove('hidden'); }
+      });
+  }
+  function aptAction(action, aptId){
+    var url = action === 'complete' ? '/api/appointment/complete'
+            : action === 'reopen' ? '/api/appointment/reopen'
+            : '/api/appointment/delete';
+    var msg = action === 'complete' ? 'Mark this appointment as completed?'
+            : action === 'reopen' ? 'Reopen this appointment?'
+            : 'Delete this appointment?';
+    if (!confirm(msg)) return;
+    fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id: aptId})})
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if (d.success) location.reload(); else alert(d.message || 'Failed'); })
+      .catch(function(){ alert('Network error'); });
+  }
   </script>
+
+  <!-- Add Appointment modal -->
+  <div id="addAptModal" class="modal-overlay" onclick="if(event.target===this)closeAddAptModal()">
+    <div class="modal-content">
+      <div class="flex justify-between items-center mb-4"><h3 class="font-bold">➕ Add Appointment</h3><button onclick="closeAddAptModal()" class="text-[#5c5c70] hover:text-white" style="font-size:24px;background:none;border:none;cursor:pointer">&times;</button></div>
+      <div class="space-y-3">
+        <input type="text" id="addAptName" placeholder="Name *">
+        <input type="text" id="addAptPhone" placeholder="Phone">
+        <div class="grid grid-cols-2 gap-2">
+          <input type="date" id="addAptDate" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px;font-family:inherit">
+          <input type="time" id="addAptTime" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px;font-family:inherit">
+        </div>
+        <textarea id="addAptNotes" rows="3" placeholder="Notes (optional)" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px;resize:vertical;font-family:inherit"></textarea>
+        <p id="addAptError" class="hidden text-red-400 text-xs"></p>
+      </div>
+      <div class="flex gap-2 mt-5"><button onclick="closeAddAptModal()" class="btn-secondary flex-1">Cancel</button><button id="addAptBtn" onclick="submitAddApt()" class="btn-primary flex-1">+ Add</button></div>
+    </div>
+  </div>
 
   <!-- ======== TAB: BILLING ======== -->
   {% elif tab == 'billing' %}

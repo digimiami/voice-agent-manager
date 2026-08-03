@@ -2869,16 +2869,16 @@ def dashboard():
             assigned_numbers.append({'number': data.get('number','?'), 'name': data.get('name','')})
         except: pass
     
-    # Upcoming appointments
+    # Appointments — booked + completed for the calendar view
     c.execute("""
-        SELECT a.*, a.prospect_name, a.phone, a.appointment_time, a.notes,
+        SELECT a.*, a.prospect_name, a.phone, a.appointment_time, a.notes, a.status,
                l.name as lead_name, l.business_name,
                cl.transcript as call_transcript
         FROM appointments a
         LEFT JOIN leads l ON a.lead_id = l.id
         LEFT JOIN call_log cl ON cl.vapi_call_id = a.call_log_id
-        WHERE a.business_id = ? AND a.status = 'booked'
-        ORDER BY a.appointment_time ASC LIMIT 20
+        WHERE a.business_id = ?
+        ORDER BY a.appointment_time ASC LIMIT 200
     """, (bid,))
     appointment_list = [dict(r) for r in c.fetchall()]
 
@@ -2938,17 +2938,27 @@ def dashboard():
                             day = cal_dt(yr, mo, da).date()
                         except ValueError:
                             return None, raw or ''
+                # ISO dates ("2026-08-05")
+                if day is None:
+                    im = cal_re.search(r'(\d{4})-(\d{1,2})-(\d{1,2})', s)
+                    if im:
+                        try:
+                            day = cal_dt(int(im.group(1)), int(im.group(2)), int(im.group(3))).date()
+                        except ValueError:
+                            return None, raw or ''
             if day is None:
                 return None, raw or ''
             if hasattr(day, 'date'):
                 day = day.date()
-            # Extract time — prefer a number followed by am/pm ("2pm", "10 am"),
-            # so "july 28 at 2pm" picks 2pm not 28, and "7/28 at 4 pm" picks 4.
+            # Extract time — only when the string actually mentions a time
+            # ("at 2pm", "10 am", "3:30 PM", "14:00"). Plain dates like
+            # "2026-08-05" must NOT pick "05" up as a time.
             tm = None
-            for tpat in (r'(\d{1,2})(?::(\d{2}))?\s*(am|pm)', r'(\d{1,2})(?::(\d{2}))?\s*$'):
-                tm = cal_re.search(tpat, s)
-                if tm:
-                    break
+            if ' at ' in s or 'am' in s or 'pm' in s:
+                for tpat in (r'(\d{1,2})(?::(\d{2}))?\s*(am|pm)', r'(\d{1,2})(?::(\d{2}))?\s*$'):
+                    tm = cal_re.search(tpat, s)
+                    if tm:
+                        break
             if tm:
                 hour = int(tm.group(1))
                 minute = int(tm.group(2) or 0)
@@ -2978,6 +2988,7 @@ def dashboard():
             'lead_name': apt.get('lead_name') or '',
             'business_name': apt.get('business_name') or '',
             'call_log_id': apt.get('call_log_id') or '',
+            'status': apt.get('status') or 'booked',
         })
     
     # AI Product Factory data
@@ -7366,6 +7377,92 @@ def appointment_save_notes():
     if c.rowcount == 0:
         return jsonify({'success': False, 'message': 'Appointment not found'})
     return jsonify({'success': True, 'message': '✅ Notes saved', 'notes': notes})
+
+@app.route('/api/appointment/add', methods=['POST'])
+@login_required
+def appointment_add():
+    """Manually add an appointment to the calendar."""
+    bid = session['business_id']
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()[:120]
+    phone = (data.get('phone') or '').strip()[:30]
+    date_str = (data.get('date') or '').strip()
+    time_str = (data.get('time') or '').strip()
+    notes = (data.get('notes') or '').strip()[:2000]
+    if not name:
+        return jsonify({'success': False, 'message': 'Name is required'})
+    # Build an NLP-friendly appointment_time string ("2026-08-05 at 2:00 PM")
+    if date_str:
+        try:
+            datetime.strptime(date_str, '%Y-%m-%d')
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Invalid date'})
+        t_part = ''
+        if time_str:
+            try:
+                datetime.strptime(time_str, '%H:%M')
+            except ValueError:
+                return jsonify({'success': False, 'message': 'Invalid time'})
+            h, m = map(int, time_str.split(':'))
+            ampm = 'AM' if h < 12 else 'PM'
+            h12 = h % 12 or 12
+            t_part = f' at {h12}:{m:02d} {ampm}'
+        apt_time = date_str + t_part
+    else:
+        apt_time = (data.get('appointment_time') or '').strip()[:200]
+    apt_id = 'apt_' + uuid.uuid4().hex[:10]
+    db = get_db(); c = db.cursor()
+    c.execute(
+        "INSERT INTO appointments (id, business_id, prospect_name, phone, appointment_time, notes, status) "
+        "VALUES (?,?,?,?,?,?,'booked')",
+        (apt_id, bid, name, phone, apt_time, notes))
+    db.commit()
+    return jsonify({'success': True, 'message': '✅ Appointment added', 'id': apt_id})
+
+@app.route('/api/appointment/complete', methods=['POST'])
+@login_required
+def appointment_complete():
+    """Mark an appointment as completed."""
+    bid = session['business_id']
+    apt_id = ((request.get_json(silent=True) or {}).get('id') or '').strip()
+    if not apt_id:
+        return jsonify({'success': False, 'message': 'Missing appointment id'})
+    db = get_db(); c = db.cursor()
+    c.execute("UPDATE appointments SET status='completed' WHERE id=? AND business_id=?", (apt_id, bid))
+    db.commit()
+    if c.rowcount == 0:
+        return jsonify({'success': False, 'message': 'Appointment not found'})
+    return jsonify({'success': True, 'message': '✅ Marked as completed'})
+
+@app.route('/api/appointment/reopen', methods=['POST'])
+@login_required
+def appointment_reopen():
+    """Reopen a completed appointment."""
+    bid = session['business_id']
+    apt_id = ((request.get_json(silent=True) or {}).get('id') or '').strip()
+    if not apt_id:
+        return jsonify({'success': False, 'message': 'Missing appointment id'})
+    db = get_db(); c = db.cursor()
+    c.execute("UPDATE appointments SET status='booked' WHERE id=? AND business_id=?", (apt_id, bid))
+    db.commit()
+    if c.rowcount == 0:
+        return jsonify({'success': False, 'message': 'Appointment not found'})
+    return jsonify({'success': True, 'message': '↩️ Reopened'})
+
+@app.route('/api/appointment/delete', methods=['POST'])
+@login_required
+def appointment_delete():
+    """Delete an appointment."""
+    bid = session['business_id']
+    apt_id = ((request.get_json(silent=True) or {}).get('id') or '').strip()
+    if not apt_id:
+        return jsonify({'success': False, 'message': 'Missing appointment id'})
+    db = get_db(); c = db.cursor()
+    c.execute("DELETE FROM appointments WHERE id=? AND business_id=?", (apt_id, bid))
+    db.commit()
+    if c.rowcount == 0:
+        return jsonify({'success': False, 'message': 'Appointment not found'})
+    return jsonify({'success': True, 'message': '🗑️ Deleted'})
 
 @app.route('/api/analytics')
 @login_required
