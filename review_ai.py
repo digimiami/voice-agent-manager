@@ -476,8 +476,8 @@ def scrape_prospects(city=None, state=None, categories=None, max_per=None):
         _running["scrape"] = True
         _stop_flag.clear()
         s = get_settings()
-        city = city or s["city"]
-        state = state or s["state"]
+        cty = city or s["city"]
+        st = state or s["state"]
         cats = [c.strip() for c in (categories or s["categories"]).split(",") if c.strip()]
         maxp = int(max_per or s["max_per_category"] or 15)
         try:
@@ -485,7 +485,7 @@ def scrape_prospects(city=None, state=None, categories=None, max_per=None):
                 sc = ReviewScraper(headless=True)
                 await sc._init()
                 try:
-                    return await sc.search(city, state, cats, maxp)
+                    return await sc.search(cty, st, cats, maxp)
                 finally:
                     await sc._close()
             found = asyncio.run(_run())
