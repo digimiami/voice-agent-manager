@@ -196,7 +196,8 @@ ADMIN_HTML = """<!DOCTYPE html>
                 ('security', 'shield-alt', 'Security'),
                 ('agent-tars', 'robot', 'Agent TARS'),
                 ('agent-api', 'key', 'Agent API'),
-                ('affiliates', 'hand-holding-usd', 'Affiliates')
+                ('affiliates', 'hand-holding-usd', 'Affiliates'),
+                ('reviews-ai', 'star', 'Review AI')
             ] %}
             {% for key, icon, label in admin_tabs %}
             <a href="?tab={{ key }}" class="sidebar-item flex items-center gap-2 {% if tab == key %}active{% endif %}">
@@ -2237,6 +2238,181 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
             {% endif %}
             {% endif %}
         </div>
+        {% elif tab == 'reviews-ai' %}
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold">⭐ Review AI — Google Review Response Service</h2>
+            <span id="raRunningBadge" class="text-xs font-semibold px-3 py-1.5 rounded-lg" style="background:#1a1a28;border:1px solid #252533;color:#94a3b8">…</span>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-5 gap-3 mb-6">
+            <div class="card text-center"><div class="stat-value">{{ ra_stats.total }}</div><div class="text-xs text-[#64748b] mt-1">🎯 Found</div></div>
+            <div class="card text-center"><div class="stat-value" style="color:#60a5fa">{{ ra_stats.new }}</div><div class="text-xs text-[#64748b] mt-1">🆕 To Call</div></div>
+            <div class="card text-center"><div class="stat-value" style="color:#c084fc">{{ ra_stats.called }}</div><div class="text-xs text-[#64748b] mt-1">📞 Called</div></div>
+            <div class="card text-center"><div class="stat-value" style="color:#4ade80">{{ ra_stats.interested }}</div><div class="text-xs text-[#64748b] mt-1">🔥 Interested</div></div>
+            <div class="card text-center"><div class="stat-value" style="color:#f87171">{{ ra_stats.no_answer }}</div><div class="text-xs text-[#64748b] mt-1">📵 No Answer</div></div>
+        </div>
+
+        <!-- Actions -->
+        <div class="card mb-6">
+            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <h3 class="font-bold">⚡ Actions</h3>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <form method="POST" action="/admin/review-ai/scrape" class="inline"><button class="btn-primary text-xs" style="padding:8px 14px">🔍 Find Prospects</button></form>
+                    <form method="POST" action="/admin/review-ai/count-unanswered" class="inline"><button class="btn-secondary text-xs" style="padding:8px 14px">🔢 Count Unanswered</button></form>
+                    <form method="POST" action="/admin/review-ai/call" class="inline flex items-center gap-1">
+                        <input type="number" name="max_calls" placeholder="calls" min="1" max="20" value="{{ ra_settings.max_calls_per_run }}" style="width:70px;padding:8px 10px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
+                        <button class="text-xs font-semibold" style="padding:8px 14px;border-radius:8px;background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff">📞 Call Next N</button>
+                    </form>
+                    <form method="POST" action="/admin/review-ai/sync" class="inline"><button class="btn-secondary text-xs" style="padding:8px 14px">📊 Sync Outcomes</button></form>
+                    <form method="POST" action="/admin/review-ai/stop" class="inline"><button class="btn-danger text-xs" style="padding:8px 14px">⏹ Stop</button></form>
+                </div>
+            </div>
+            <div class="text-[11px] text-[#64748b] mb-2">Live log:</div>
+            <div id="raLog" class="bg-[#0c0c18] rounded-lg p-3 text-[11px] font-mono text-[#94a3b8] max-h-32 overflow-y-auto" style="white-space:pre-wrap">{% for l in ra_log %}{{ l }}
+{% endfor %}</div>
+        </div>
+
+        <!-- Settings -->
+        <div class="card mb-6">
+            <h3 class="font-bold mb-3">⚙️ Settings</h3>
+            <form method="POST" action="/admin/review-ai/save-settings">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                    <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">City</label><input name="city" value="{{ ra_settings.city }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px"></div>
+                    <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">State</label><input name="state" value="{{ ra_settings.state }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px"></div>
+                    <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">Max per category</label><input name="max_per_category" value="{{ ra_settings.max_per_category }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px"></div>
+                    <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">Pricing</label><input name="pricing" value="{{ ra_settings.pricing }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="text-[10px] text-[#64748b] uppercase font-semibold">Categories (comma separated)</label>
+                    <input name="categories" value="{{ ra_settings.categories }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px">
+                </div>
+                <div class="mb-3">
+                    <label class="text-[10px] text-[#64748b] uppercase font-semibold">Call script (placeholders: {business_name} {unanswered} {pricing} {phone})</label>
+                    <textarea name="script" rows="7" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px;font-family:monospace">{{ ra_settings.script }}</textarea>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                    <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">Voice</label><input name="voice_id" value="{{ ra_settings.voice_id }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px"></div>
+                    <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">Max calls / run</label><input name="max_calls_per_run" value="{{ ra_settings.max_calls_per_run }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px"></div>
+                    <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">Delay (sec)</label><input name="delay_seconds" value="{{ ra_settings.delay_seconds }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px"></div>
+                    <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">Enabled</label>
+                        <select name="enabled" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px">
+                            <option value="1" {% if ra_settings.enabled == '1' %}selected{% endif %}>✅ ON</option>
+                            <option value="0" {% if ra_settings.enabled != '1' %}selected{% endif %}>⛔ OFF</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button class="btn-primary text-sm">💾 Save Settings</button>
+                    <span class="text-[11px] text-[#64748b]">Assistant: {% if ra_settings.assistant_id %}<span class="text-green-400 font-mono">{{ ra_settings.assistant_id[:16] }}…</span>{% else %}<span class="text-yellow-400">not created yet (auto-creates on first call)</span>{% endif %}</span>
+                </div>
+            </form>
+        </div>
+
+        <!-- Prospects -->
+        <div class="card mb-6">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold">🎯 Prospects ({{ ra_prospects|length }})</h3>
+                <input id="raSearch" oninput="raFilter()" placeholder="🔍 filter…" style="padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px;width:180px">
+            </div>
+            <div class="overflow-x-auto">
+            <table class="table-auto w-full text-xs">
+                <thead><tr><th>Business</th><th>Phone</th><th>⭐</th><th>Reviews</th><th>Unanswered</th><th>Status</th><th>Last Call</th><th></th></tr></thead>
+                <tbody>
+                {% for p in ra_prospects %}
+                <tr class="ra-row" data-search="{{ p.business_name }} {{ p.phone }} {{ p.category }}">
+                    <td class="font-semibold">{{ p.business_name[:34] }}<div class="text-[10px] text-[#5c5c70]">{{ p.category }} · {{ p.city }}</div></td>
+                    <td class="font-mono">{{ p.phone }}</td>
+                    <td>{% if p.rating %}⭐ {{ p.rating }}{% else %}—{% endif %}</td>
+                    <td>{{ p.review_count or '—' }}</td>
+                    <td>{% if p.unanswered_count is not none %}<b class="text-[#fbbf24]">{{ p.unanswered_count }}</b>{% else %}<span class="text-[#5c5c70]">…</span>{% endif %}</td>
+                    <td>
+                        {% if p.status == 'new' %}<span class="badge badge-active">🆕 New</span>
+                        {% elif p.status == 'called' %}<span class="badge" style="background:#8b5cf620;color:#c084fc">📞 Called</span>
+                        {% elif p.status == 'interested' %}<span class="badge" style="background:#22c55e20;color:#4ade80">🔥 Interested</span>
+                        {% elif p.status == 'not_interested' %}<span class="badge badge-inactive">🙅 No</span>
+                        {% elif p.status == 'no_answer' %}<span class="badge badge-error">📵 No Ans</span>
+                        {% elif p.status == 'do_not_call' %}<span class="badge badge-error">🚫 DNC</span>
+                        {% else %}<span class="badge">{{ p.status }}</span>{% endif %}
+                    </td>
+                    <td class="text-[#5c5c70]">{{ (p.last_outcome or '')[:16] }}{% if p.last_call_at %}<div class="text-[10px]">{{ p.last_call_at[:16] }}</div>{% endif %}</td>
+                    <td class="whitespace-nowrap">
+                        {% if p.status == 'interested' %}<button class="btn-primary text-[10px]" style="padding:4px 8px" onclick="raSample('{{ p.id }}')">📤 Sample SMS</button>{% endif %}
+                        <button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="raAction('reset','{{ p.id }}')">↺</button>
+                        <button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="raAction('dnc','{{ p.id }}')">🚫</button>
+                        <button class="btn-danger text-[10px]" style="padding:4px 8px" onclick="raAction('delete','{{ p.id }}')">🗑</button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" class="text-center text-[#5c5c70] py-8">No prospects yet — hit 🔍 Find Prospects</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        </div>
+
+        <!-- Calls log -->
+        <div class="card">
+            <h3 class="font-bold mb-3">📞 Call Log ({{ ra_calls|length }})</h3>
+            <div class="overflow-x-auto">
+            <table class="table-auto w-full text-xs">
+                <thead><tr><th>#</th><th>Business</th><th>Status</th><th>Cost</th><th>Dur</th><th>Time</th></tr></thead>
+                <tbody>
+                {% for c in ra_calls %}
+                <tr>
+                    <td class="text-[#5c5c70]">{{ c.id }}</td>
+                    <td class="font-semibold">{{ (c.business_name or '')[:30] }}</td>
+                    <td>{% if c.status == 'interested' %}<span class="badge" style="background:#22c55e20;color:#4ade80">🔥 {{ c.status }}</span>{% elif c.status == 'placed' %}<span class="badge" style="background:#8b5cf620;color:#c084fc">⏳ {{ c.status }}</span>{% else %}<span class="badge">{{ c.status }}</span>{% endif %}</td>
+                    <td class="font-mono">${{ '%.2f'|format(c.cost or 0) }}</td>
+                    <td>{{ c.duration or 0 }}s</td>
+                    <td class="text-[#5c5c70]">{{ (c.created_at or '')[:16] }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        </div>
+
+        <script>
+        function raFilter(){
+            var q = document.getElementById('raSearch').value.toLowerCase();
+            document.querySelectorAll('.ra-row').forEach(function(r){
+                r.style.display = (r.getAttribute('data-search')||'').toLowerCase().indexOf(q) !== -1 ? '' : 'none';
+            });
+        }
+        function raAction(kind, id){
+            var msg = kind === 'delete' ? 'Delete this prospect?' : kind === 'dnc' ? 'Mark do-not-call?' : 'Reset to new?';
+            if (!confirm(msg)) return;
+            fetch('/admin/review-ai/' + kind + '/' + id, {method: 'POST'}).then(function(r){ return r.json(); })
+              .then(function(){ location.reload(); }).catch(function(){ alert('Failed'); });
+        }
+        function raSample(id){
+            if (!confirm('Send the free sample review-response SMS now?')) return;
+            fetch('/admin/review-ai/sample-sms/' + id, {method: 'POST'}).then(function(r){ return r.json(); })
+              .then(function(d){ alert(d.message); }).catch(function(){ alert('Failed'); });
+        }
+        function raPoll(){
+            fetch('/admin/review-ai/status').then(function(r){ return r.json(); }).then(function(d){
+                var r = d.running || {};
+                var parts = [];
+                if (r.scrape) parts.push('🔍 scraping');
+                if (r.count) parts.push('🔢 counting');
+                if (r.calls) parts.push('📞 calling');
+                var badge = document.getElementById('raRunningBadge');
+                if (parts.length){
+                    badge.textContent = '⏳ ' + parts.join(' · ');
+                    badge.style.color = '#fbbf24'; badge.style.borderColor = '#f59e0b40';
+                } else {
+                    badge.textContent = '● Idle';
+                    badge.style.color = '#4ade80'; badge.style.borderColor = '#22c55e40';
+                }
+                var log = document.getElementById('raLog');
+                if (d.log && d.log.length){ log.textContent = d.log.join('\n'); log.scrollTop = log.scrollHeight; }
+            }).catch(function(){});
+        }
+        raPoll();
+        setInterval(raPoll, 6000);
+        </script>
         {% endif %}
     </div>
 
@@ -4148,6 +4324,9 @@ def admin_extra_data(tab):
         data['audit_rows'] = get_audit()
     elif tab == 'security':
         data['twofa'] = get_twofa()
+    elif tab == 'reviews-ai':
+        import review_ai
+        data.update(review_ai.tab_data())
     if tab in ('broadcast', 'abtest'):
         data['health_rows'] = get_health()
     return data
@@ -4424,6 +4603,147 @@ def admin_2fa_disable():
     except Exception:
         flash('❌ No 2FA to disable', 'error')
     return redirect('/admin?tab=security')
+
+
+# ── REVIEW AI (Google review responses service) ──
+
+@app.route('/admin/review-ai/save-settings', methods=['POST'])
+@admin_required
+def admin_review_ai_save_settings():
+    import review_ai
+    s = review_ai.get_settings()
+    updates = {
+        'city': request.form.get('city', s['city']).strip(),
+        'state': request.form.get('state', s['state']).strip().upper(),
+        'categories': request.form.get('categories', s['categories']).strip(),
+        'max_per_category': request.form.get('max_per_category', s['max_per_category']).strip(),
+        'pricing': request.form.get('pricing', s['pricing']).strip(),
+        'script': request.form.get('script', s['script']),
+        'voice_id': request.form.get('voice_id', s['voice_id']).strip(),
+        'enabled': '1' if request.form.get('enabled') else '0',
+        'max_calls_per_run': request.form.get('max_calls_per_run', s['max_calls_per_run']).strip(),
+        'delay_seconds': request.form.get('delay_seconds', s['delay_seconds']).strip(),
+    }
+    review_ai.save_settings(updates)
+    audit('review_ai_save', f"city={updates['city']} pricing={updates['pricing']} enabled={updates['enabled']}")
+    flash('✅ Review AI settings saved', 'success')
+    return redirect('/admin?tab=reviews-ai')
+
+
+@app.route('/admin/review-ai/scrape', methods=['POST'])
+@admin_required
+def admin_review_ai_scrape():
+    import review_ai
+    if review_ai.running_state()['scrape']:
+        flash('⚠️ Scrape already running', 'warning')
+        return redirect('/admin?tab=reviews-ai')
+    review_ai.scrape_prospects()
+    flash('🔍 Prospect search started (background) — refresh in a minute', 'success')
+    return redirect('/admin?tab=reviews-ai')
+
+
+@app.route('/admin/review-ai/count-unanswered', methods=['POST'])
+@admin_required
+def admin_review_ai_count():
+    import review_ai
+    if review_ai.running_state()['count']:
+        flash('⚠️ Counting already running', 'warning')
+        return redirect('/admin?tab=reviews-ai')
+    review_ai.count_unanswered_all()
+    flash('🔢 Unanswered review counting started (background)', 'success')
+    return redirect('/admin?tab=reviews-ai')
+
+
+@app.route('/admin/review-ai/call', methods=['POST'])
+@admin_required
+def admin_review_ai_call():
+    import review_ai
+    s = review_ai.get_settings()
+    if s.get('enabled') != '1':
+        flash('❌ Review AI is disabled — enable it in settings first', 'error')
+        return redirect('/admin?tab=reviews-ai')
+    if review_ai.running_state()['calls']:
+        flash('⚠️ Call run already in progress', 'warning')
+        return redirect('/admin?tab=reviews-ai')
+    n = request.form.get('max_calls', '') or ''
+    review_ai.run_calls(max_calls=int(n) if n.isdigit() else None)
+    flash('📞 Call run started (background)', 'success')
+    return redirect('/admin?tab=reviews-ai')
+
+
+@app.route('/admin/review-ai/stop', methods=['POST'])
+@admin_required
+def admin_review_ai_stop():
+    import review_ai
+    review_ai.stop_all()
+    flash('⏹ Stop signal sent', 'success')
+    return redirect('/admin?tab=reviews-ai')
+
+
+@app.route('/admin/review-ai/sync', methods=['POST'])
+@admin_required
+def admin_review_ai_sync():
+    import review_ai
+    try:
+        review_ai.sync_call_outcomes()
+        flash('📊 Call outcomes synced', 'success')
+    except Exception as e:
+        flash(f'❌ Sync error: {str(e)[:120]}', 'error')
+    return redirect('/admin?tab=reviews-ai')
+
+
+@app.route('/admin/review-ai/dnc/<pid>', methods=['POST'])
+@admin_required
+def admin_review_ai_dnc(pid):
+    import review_ai
+    db = review_ai._db()
+    db.execute("UPDATE review_prospects SET status='do_not_call' WHERE id=?", (pid,))
+    db.commit()
+    db.close()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/review-ai/sample-sms/<pid>', methods=['POST'])
+@admin_required
+def admin_review_ai_sample_sms(pid):
+    import review_ai
+    return jsonify(review_ai.send_sample_sms(pid))
+
+
+@app.route('/admin/review-ai/reset/<pid>', methods=['POST'])
+@admin_required
+def admin_review_ai_reset(pid):
+    """Reset a prospect to 'new' so it can be called again."""
+    import review_ai
+    db = review_ai._db()
+    db.execute("UPDATE review_prospects SET status='new', last_outcome=NULL WHERE id=?", (pid,))
+    db.commit()
+    db.close()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/review-ai/delete/<pid>', methods=['POST'])
+@admin_required
+def admin_review_ai_delete(pid):
+    import review_ai
+    db = review_ai._db()
+    db.execute("DELETE FROM review_ai_calls WHERE prospect_id=?", (pid,))
+    db.execute("DELETE FROM review_prospects WHERE id=?", (pid,))
+    db.commit()
+    db.close()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/review-ai/status')
+@admin_required
+def admin_review_ai_status():
+    import review_ai
+    d = review_ai.tab_data()
+    return jsonify({
+        'running': d['ra_running'],
+        'stats': d['ra_stats'],
+        'log': d['ra_log'][-12:],
+    })
 
 
 if __name__ == '__main__':
