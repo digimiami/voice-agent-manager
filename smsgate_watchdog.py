@@ -11,7 +11,7 @@ import sys
 sys.path.insert(0, "/root/voice-agent-manager")
 from smsgate_sms import get_access_token, _headers, BASE_URL
 
-OFFLINE_MINUTES = 10
+OFFLINE_MINUTES = 30  # device heartbeats every ~15 min — 10 min false-alarms constantly
 STATE_FILE = "/root/.hermes/scripts/.smsgate_state"
 
 
