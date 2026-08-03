@@ -1950,8 +1950,12 @@ setTimeout(refreshMonitor, 500);
     </div>
     <div class="flex items-center justify-between mt-3">
       <span id="reminderStatus" class="text-[11px] {% if biz_info.sms_reminders == '1' %}text-[#4ade80]{% else %}text-[#5c5c70]{% endif %}">{% if biz_info.sms_reminders == '1' %}● Reminders ON — 12h before, business hours only{% else %}○ Reminders OFF — toggle on to enable{% endif %}</span>
-      <button id="reminderSaveBtn" onclick="saveReminderSettings()" class="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all" style="background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff">💾 Save Settings</button>
+      <div class="flex items-center gap-2">
+        <button id="reminderSendNowBtn" onclick="sendRemindersNow()" class="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all" style="background:#1a1a28;border:1px solid #22c55e40;color:#4ade80">📤 Send Reminders Now</button>
+        <button id="reminderSaveBtn" onclick="saveReminderSettings()" class="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all" style="background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff">💾 Save Settings</button>
+      </div>
     </div>
+    <div class="mt-2 text-[10px] text-[#5c5c70]">📤 Sends reminders for all appointments that are within the 12-hour window right now — same rules as automatic sending.</div>
   </div>
 
   <!-- Stats row -->
@@ -2237,6 +2241,25 @@ setTimeout(refreshMonitor, 500);
       })
       .catch(function(){
         btn.disabled = false; btn.textContent = '💾 Save Settings';
+        if (st){ st.textContent = '❌ Network error'; st.style.color = '#ef4444'; }
+      });
+  }
+  function sendRemindersNow(){
+    var btn = document.getElementById('reminderSendNowBtn');
+    var st = document.getElementById('reminderStatus');
+    if (!confirm('Send reminders now for all appointments in the 12h window?')) return;
+    btn.disabled = true; btn.textContent = 'Sending...';
+    fetch('/api/reminders/send-now', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        btn.disabled = false; btn.textContent = '📤 Send Reminders Now';
+        if (st){
+          st.textContent = d.success ? '✅ ' + d.message : '❌ ' + (d.message || 'Failed');
+          st.style.color = d.success ? '#4ade80' : '#ef4444';
+        }
+      })
+      .catch(function(){
+        btn.disabled = false; btn.textContent = '📤 Send Reminders Now';
         if (st){ st.textContent = '❌ Network error'; st.style.color = '#ef4444'; }
       });
   }

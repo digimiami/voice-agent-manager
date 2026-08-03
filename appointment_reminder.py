@@ -97,6 +97,21 @@ def scheduled_send_time(appt_dt, open_t, close_t):
 
 
 def main():
+    sent, skipped = run_reminders()
+    for s in sent:
+        print(f"📅 Reminder sent: {s[1]} @ {s[2]} (biz {s[3]})")
+    if sent:
+        print(f"📅 Appointment reminders sent: {len(sent)}")
+
+
+def run_reminders(business_id=None):
+    """Scan due appointments and send reminders.
+
+    Returns (sent, skipped) where sent is a list of
+    (id, phone, appointment_time, biz_name) tuples.
+    Optionally restrict to a single business (used by the dashboard's
+    "Send Reminders Now" button).
+    """
     now_utc = datetime.datetime.now(datetime.timezone.utc)
     conn = sqlite3.connect(DB)
     conn.row_factory = sqlite3.Row
@@ -108,12 +123,21 @@ def main():
         conn.execute("ALTER TABLE appointments ADD COLUMN reminder_sent_at TEXT DEFAULT NULL")
         conn.commit()
 
-    rows = conn.execute(
-        "SELECT a.id, a.business_id, a.phone, a.prospect_name, a.appointment_time, "
-        "       b.name AS biz_name, b.timezone, b.call_window_start, b.call_window_end "
-        "FROM appointments a JOIN businesses b ON a.business_id = b.id "
-        "WHERE a.status='booked' AND b.sms_reminders=1 "
-        "AND (a.reminder_sent_at IS NULL OR a.reminder_sent_at = '')").fetchall()
+    if business_id:
+        rows = conn.execute(
+            "SELECT a.id, a.business_id, a.phone, a.prospect_name, a.appointment_time, "
+            "       b.name AS biz_name, b.timezone, b.call_window_start, b.call_window_end "
+            "FROM appointments a JOIN businesses b ON a.business_id = b.id "
+            "WHERE a.status='booked' AND b.sms_reminders=1 AND a.business_id=? "
+            "AND (a.reminder_sent_at IS NULL OR a.reminder_sent_at = '')",
+            (business_id,)).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT a.id, a.business_id, a.phone, a.prospect_name, a.appointment_time, "
+            "       b.name AS biz_name, b.timezone, b.call_window_start, b.call_window_end "
+            "FROM appointments a JOIN businesses b ON a.business_id = b.id "
+            "WHERE a.status='booked' AND b.sms_reminders=1 "
+            "AND (a.reminder_sent_at IS NULL OR a.reminder_sent_at = '')").fetchall()
 
     sent = []
     skipped = []
@@ -148,16 +172,14 @@ def main():
                 conn.execute("UPDATE appointments SET reminder_sent_at=? WHERE id=?",
                              (now_utc.isoformat(), r["id"]))
                 conn.commit()
-                sent.append((r["id"], r["appointment_time"]))
-                print(f"📅 Reminder sent: {r['phone']} @ {r['appointment_time']} (biz {r['biz_name']})")
+                sent.append((r["id"], r["phone"], r["appointment_time"], r["biz_name"]))
             else:
                 skipped.append((r["id"], "send-failed"))
         except Exception as e:
             skipped.append((r["id"], str(e)[:40]))
 
     conn.close()
-    if sent:
-        print(f"📅 Appointment reminders sent: {len(sent)}")
+    return sent, skipped
 
 
 if __name__ == "__main__":
