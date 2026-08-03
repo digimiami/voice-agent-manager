@@ -2989,6 +2989,7 @@ def dashboard():
             'business_name': apt.get('business_name') or '',
             'call_log_id': apt.get('call_log_id') or '',
             'status': apt.get('status') or 'booked',
+            'reminder_sent': apt.get('reminder_sent_at') or '',
         })
     
     # AI Product Factory data
@@ -7463,6 +7464,27 @@ def appointment_delete():
     if c.rowcount == 0:
         return jsonify({'success': False, 'message': 'Appointment not found'})
     return jsonify({'success': True, 'message': '🗑️ Deleted'})
+
+@app.route('/api/reminder-settings', methods=['POST'])
+@login_required
+def api_reminder_settings():
+    """Save auto-appointment-reminder settings (on/off + business hours)."""
+    bid = session['business_id']
+    data = request.get_json(silent=True) or {}
+    enabled = '1' if data.get('enabled') else '0'
+    start = (data.get('start') or '09:00').strip()
+    end = (data.get('end') or '17:00').strip()
+    for v in (start, end):
+        try:
+            datetime.strptime(v, '%H:%M')
+        except ValueError:
+            return jsonify({'success': False, 'message': f'Invalid time format: {v}'})
+    db = get_db(); c = db.cursor()
+    c.execute(
+        "UPDATE businesses SET sms_reminders=?, call_window_start=?, call_window_end=? WHERE id=?",
+        (enabled, start, end, bid))
+    db.commit()
+    return jsonify({'success': True, 'message': '✅ Reminder settings saved'})
 
 @app.route('/api/analytics')
 @login_required

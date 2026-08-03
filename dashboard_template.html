@@ -1916,6 +1916,44 @@ setTimeout(refreshMonitor, 500);
   <!-- ======== TAB: CALENDAR ======== -->
   {% elif tab == 'calendar' %}
 
+  <style>
+  /* Auto-reminder toggle switch */
+  .rem-switch{position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0}
+  .rem-switch input{opacity:0;width:0;height:0}
+  .rem-switch .slider{position:absolute;cursor:pointer;inset:0;background:#252533;border-radius:26px;transition:0.25s}
+  .rem-switch .slider:before{content:"";position:absolute;height:20px;width:20px;left:3px;top:3px;background:#8a8aa0;border-radius:50%;transition:0.25s}
+  .rem-switch input:checked + .slider{background:linear-gradient(135deg,#a855f7,#ec4899)}
+  .rem-switch input:checked + .slider:before{transform:translateX(20px);background:#fff}
+  </style>
+
+  <!-- Auto reminders card -->
+  <div class="card mb-4" style="border:1px solid {% if biz_info.sms_reminders == '1' %}#a855f7/40{% else %}#252533{% endif %}">
+    <div class="flex items-start justify-between gap-3 mb-3">
+      <div>
+        <h3 class="font-bold text-sm">🔔 Auto Appointment Reminders</h3>
+        <p class="text-xs text-[#7a7a8e] mt-1">Texts the customer automatically <b style="color:#c084fc">12 hours before</b> each appointment — only during your business hours. No messages at night. 📵</p>
+      </div>
+      <label class="rem-switch" title="Turn auto reminders on/off">
+        <input type="checkbox" id="reminderToggle" {% if biz_info.sms_reminders == '1' %}checked{% endif %} onchange="reminderToggleChanged()">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div id="reminderHoursBox" class="grid grid-cols-2 gap-2 {% if biz_info.sms_reminders != '1' %}opacity-40 pointer-events-none{% endif %}">
+      <div>
+        <label class="text-[10px] text-[#64748b] uppercase font-semibold block mb-1">Business hours start</label>
+        <input type="time" id="reminderStart" value="{{ biz_info.call_window_start or '09:00' }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px;font-family:inherit">
+      </div>
+      <div>
+        <label class="text-[10px] text-[#64748b] uppercase font-semibold block mb-1">Business hours end</label>
+        <input type="time" id="reminderEnd" value="{{ biz_info.call_window_end or '17:00' }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px;font-family:inherit">
+      </div>
+    </div>
+    <div class="flex items-center justify-between mt-3">
+      <span id="reminderStatus" class="text-[11px] {% if biz_info.sms_reminders == '1' %}text-[#4ade80]{% else %}text-[#5c5c70]{% endif %}">{% if biz_info.sms_reminders == '1' %}● Reminders ON — 12h before, business hours only{% else %}○ Reminders OFF — toggle on to enable{% endif %}</span>
+      <button id="reminderSaveBtn" onclick="saveReminderSettings()" class="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all" style="background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff">💾 Save Settings</button>
+    </div>
+  </div>
+
   <!-- Stats row -->
   <div class="grid grid-cols-3 gap-4 mb-6">
     <div class="card text-center">
@@ -1999,6 +2037,9 @@ setTimeout(refreshMonitor, 500);
             <span class="badge badge-success text-xs">📅 Booked</span>
             {% endif %}
             <div class="text-xs text-[#7a7a8e] mt-1">{{ apt.appointment_time or 'No time set' }}</div>
+            {% if apt.reminder_sent_at %}
+            <div class="text-[11px] text-[#4ade80] mt-1">🔔 Reminder sent {{ apt.reminder_sent_at[:16] }}</div>
+            {% endif %}
           </div>
         </div>
         {% if apt.notes %}
@@ -2108,6 +2149,7 @@ setTimeout(refreshMonitor, 500);
       var leadLine = e.lead_name && e.lead_name !== e.name ? '<div class="text-[11px] text-[#64748b] mt-0.5">👤 Lead: ' + escHtml(e.lead_name) + '</div>' : '';
       var createdLine = e.created ? '<div class="text-[11px] text-[#64748b] mt-0.5">🗓️ Booked on ' + escHtml(e.created) + '</div>' : '';
       var rawLine = e.raw ? '<div class="text-[11px] text-[#64748b] mt-0.5">🕐 Said: "' + escHtml(e.raw) + '"</div>' : '';
+      var remLine = e.reminder_sent ? '<div class="text-[11px] text-[#4ade80] mt-0.5">🔔 Reminder sent ' + escHtml(String(e.reminder_sent).slice(0, 16)) + '</div>' : '';
       var done = e.status === 'completed';
       var statusBadge = done
         ? '<span class="badge text-xs" style="background:#22c55e20;color:#4ade80">✅ Completed</span>'
@@ -2126,7 +2168,7 @@ setTimeout(refreshMonitor, 500);
       card.innerHTML = '<div class="flex items-start justify-between gap-2"><div class="min-w-0">' +
         '<div class="text-sm font-semibold' + (done ? ' line-through opacity-60' : '') + '">' + escHtml(e.name) + '</div>' +
         '<div class="text-xs text-[#c084fc] font-mono mt-0.5">' + (e.time || e.raw || 'TBD') + '</div>' +
-        bizLine + leadLine + createdLine + rawLine +
+        bizLine + leadLine + createdLine + rawLine + remLine +
         '<div class="text-xs text-[#7a7a8e] mt-0.5">📞 ' + escHtml(e.phone) + '</div>' +
         '</div><div class="text-right shrink-0">' + statusBadge + '<div class="mt-1">' + dl + '</div></div></div>' +
         actionBtns + notesBlock + transcriptBlock;
@@ -2158,6 +2200,46 @@ setTimeout(refreshMonitor, 500);
 
   function calPrev() { calCursor.setMonth(calCursor.getMonth() - 1); calRender(); }
   function calNext() { calCursor.setMonth(calCursor.getMonth() + 1); calRender(); }
+
+  // ── Auto reminders toggle / save ──
+  function reminderToggleChanged(){
+    var on = document.getElementById('reminderToggle').checked;
+    var box = document.getElementById('reminderHoursBox');
+    var st = document.getElementById('reminderStatus');
+    if (box) box.classList.toggle('opacity-40', !on);
+    if (box) box.classList.toggle('pointer-events-none', !on);
+    if (st){
+      st.textContent = on ? '● Reminders ON — 12h before, business hours only' : '○ Reminders OFF — toggle on to enable';
+      st.style.color = on ? '#4ade80' : '#5c5c70';
+    }
+  }
+  function saveReminderSettings(){
+    var btn = document.getElementById('reminderSaveBtn');
+    var st = document.getElementById('reminderStatus');
+    var enabled = document.getElementById('reminderToggle').checked;
+    var start = (document.getElementById('reminderStart') || {}).value || '09:00';
+    var end = (document.getElementById('reminderEnd') || {}).value || '17:00';
+    if (!start || !end){
+      if (st){ st.textContent = '❌ Set both business hours'; st.style.color = '#ef4444'; }
+      return;
+    }
+    btn.disabled = true; btn.textContent = 'Saving...';
+    fetch('/api/reminder-settings', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({enabled: enabled, start: start, end: end})})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        btn.disabled = false; btn.textContent = '💾 Save Settings';
+        if (st){
+          st.textContent = d.success ? '✅ ' + d.message : '❌ ' + (d.message || 'Failed');
+          st.style.color = d.success ? '#4ade80' : '#ef4444';
+        }
+        if (d.success) setTimeout(function(){ location.reload(); }, 800);
+      })
+      .catch(function(){
+        btn.disabled = false; btn.textContent = '💾 Save Settings';
+        if (st){ st.textContent = '❌ Network error'; st.style.color = '#ef4444'; }
+      });
+  }
 
   // ── Add / complete / reopen / delete appointments ──
   function showAddAptModal(){
