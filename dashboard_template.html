@@ -2004,6 +2004,7 @@ setTimeout(refreshMonitor, 500);
         <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#a855f7;margin-right:4px"></span>Upcoming</span>
         <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#22c55e;margin-right:4px"></span>Completed</span>
         <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#252533;border:1px solid #3a3a4c;margin-right:4px"></span>📝 Has notes</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#38bdf8;margin-right:4px"></span>🤖 AI Confirmed</span>
       </div>
     </div>
 
@@ -2035,6 +2036,9 @@ setTimeout(refreshMonitor, 500);
             <div class="text-xs text-[#7a7a8e] mt-1">{{ apt.phone or '' }}</div>
           </div>
           <div class="text-right">
+            {% if apt.source == 'ai' %}
+            <span class="badge text-xs mb-1" style="background:#38bdf820;color:#38bdf8">🤖 AI Confirmed</span>
+            {% endif %}
             {% if apt.status == 'completed' %}
             <span class="badge text-xs" style="background:#22c55e20;color:#4ade80">✅ Completed</span>
             {% else %}
@@ -2124,9 +2128,10 @@ setTimeout(refreshMonitor, 500);
         var ev = evs[j];
         var done = ev.status === 'completed';
         var noteMark = ev.notes ? ' 📝' : '';
+        var aiMark = ev.source === 'ai' ? '🤖 ' : '';
         dots += '<div class="mt-0.5 text-[9px] leading-tight truncate rounded px-1 py-0.5" style="' +
                 (done ? 'background:#22c55e20;color:#4ade80' : 'background:#a855f720;color:#c084fc') + '">' +
-                (done ? '✓ ' : '') + (ev.time ? ev.time + ' ' : '') + escHtml(ev.name) + noteMark + '</div>';
+                (done ? '✓ ' : '') + aiMark + (ev.time ? ev.time + ' ' : '') + escHtml(ev.name) + noteMark + '</div>';
       }
       if (evs.length > 3) dots += '<div class="text-[9px] text-[#5c5c70] mt-0.5">+' + (evs.length - 3) + ' more</div>';
       cell.innerHTML = dayNum + dots;
@@ -2155,6 +2160,7 @@ setTimeout(refreshMonitor, 500);
       var rawLine = e.raw ? '<div class="text-[11px] text-[#64748b] mt-0.5">🕐 Said: "' + escHtml(e.raw) + '"</div>' : '';
       var remLine = e.reminder_sent ? '<div class="text-[11px] text-[#4ade80] mt-0.5">🔔 Reminder sent ' + escHtml(String(e.reminder_sent).slice(0, 16)) + '</div>' : '';
       var done = e.status === 'completed';
+      var aiBadge = e.source === 'ai' ? '<span class="badge text-xs" style="background:#38bdf820;color:#38bdf8">🤖 AI Confirmed</span>' : '';
       var statusBadge = done
         ? '<span class="badge text-xs" style="background:#22c55e20;color:#4ade80">✅ Completed</span>'
         : '<span class="badge badge-success text-xs">📅 Booked</span>';
@@ -2174,7 +2180,7 @@ setTimeout(refreshMonitor, 500);
         '<div class="text-xs text-[#c084fc] font-mono mt-0.5">' + (e.time || e.raw || 'TBD') + '</div>' +
         bizLine + leadLine + createdLine + rawLine + remLine +
         '<div class="text-xs text-[#7a7a8e] mt-0.5">📞 ' + escHtml(e.phone) + '</div>' +
-        '</div><div class="text-right shrink-0">' + statusBadge + '<div class="mt-1">' + dl + '</div></div></div>' +
+        '</div><div class="text-right shrink-0">' + aiBadge + '<div class="mt-1">' + statusBadge + '</div><div class="mt-1">' + dl + '</div></div></div>' +
         actionBtns + notesBlock + transcriptBlock;
       list.appendChild(card);
     });

@@ -2877,7 +2877,7 @@ def dashboard():
         FROM appointments a
         LEFT JOIN leads l ON a.lead_id = l.id
         LEFT JOIN call_log cl ON cl.vapi_call_id = a.call_log_id
-        WHERE a.business_id = ?
+        WHERE a.business_id = ? AND a.status != 'cancelled'
         ORDER BY a.appointment_time ASC LIMIT 200
     """, (bid,))
     appointment_list = [dict(r) for r in c.fetchall()]
@@ -2990,6 +2990,7 @@ def dashboard():
             'call_log_id': apt.get('call_log_id') or '',
             'status': apt.get('status') or 'booked',
             'reminder_sent': apt.get('reminder_sent_at') or '',
+            'source': apt.get('source') or 'manual',
         })
     
     # AI Product Factory data
@@ -5672,8 +5673,8 @@ def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
                         
                         appt_id = str(appt_uuid.uuid4())[:12]
                         c3.execute("""INSERT OR IGNORE INTO appointments 
-                            (id, business_id, lead_id, call_log_id, prospect_name, phone, appointment_time, notes, status)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'booked')""",
+                            (id, business_id, lead_id, call_log_id, prospect_name, phone, appointment_time, notes, status, source)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'booked', 'ai')""",
                             (appt_id, biz_id, lead_id, call_row[0] if call_row else '', 
                              prospect_name[:100], lead_phone, appointment_time or 'TBD',
                              transcript[:500]))
@@ -9308,6 +9309,26 @@ def api_me_reactivate_key(key_id):
     if affected == 0:
         return jsonify({'error': 'Key not found'}), 404
     return jsonify({'success': True, 'message': 'Key reactivated'})
+
+def migrate_appointments_source():
+    """One-time migration: add source column (ai/manual) to appointments + backfill."""
+    try:
+        db = sqlite3.connect(DB_PATH)
+        c = db.cursor()
+        cols = [r[1] for r in c.execute("PRAGMA table_info(appointments)")]
+        if "source" not in cols:
+            c.execute("ALTER TABLE appointments ADD COLUMN source TEXT DEFAULT 'manual'")
+            # Backfill existing AI-created rows: voice bookings (have call_log_id)
+            # and SMS AI bookings (notes tagged 'Booked via SMS AI')
+            c.execute("UPDATE appointments SET source='ai' WHERE call_log_id IS NOT NULL AND call_log_id != ''")
+            c.execute("UPDATE appointments SET source='ai' WHERE notes LIKE 'Booked via SMS AI%'")
+            db.commit()
+            print("✅ appointments.source migration applied")
+        db.close()
+    except Exception as e:
+        print(f"⚠️ appointments.source migration skipped: {e}")
+
+migrate_appointments_source()
 
 threading.Thread(target=campaign_scheduler, daemon=True).start()
 

@@ -193,8 +193,8 @@ def save_appointment(biz_id, lead_id, sender, appointment_time, notes=""):
         appt_id = str(uuid.uuid4())[:12]
         conn.execute(
             """INSERT OR IGNORE INTO appointments
-               (id, business_id, lead_id, call_log_id, prospect_name, phone, appointment_time, notes, status)
-               VALUES (?, ?, ?, '', ?, ?, ?, ?, 'booked')""",
+               (id, business_id, lead_id, call_log_id, prospect_name, phone, appointment_time, notes, status, source)
+               VALUES (?, ?, ?, '', ?, ?, ?, ?, 'booked', 'ai')""",
             (appt_id, biz_id, lead_id or "", "SMS Booking", sender, appointment_time, notes[:200]))
         if lead_id:
             conn.execute("UPDATE leads SET state='INTERESTED' WHERE id=? AND state NOT IN ('INTERESTED','BOOKED')",
