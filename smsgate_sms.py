@@ -98,9 +98,13 @@ def _clean_phone(to_phone):
     return cleaned
 
 
-def send_sms(to_phone, message, business_id=None, lead_id=None):
+def send_sms(to_phone, message, business_id=None, lead_id=None, priority=100):
     """Send an SMS via sms-gate.app. Returns True on success (202).
-    business_id/lead_id are logged so inbound replies can be matched back."""
+    business_id/lead_id are logged so inbound replies can be matched back.
+    priority: High (100-127) bypasses rate limits/delays — verified 2026-08-02
+    that priority=0 gets STUCK on the flapping C25_Ultra (device rate-limits
+    same/low-priority messages), while priority>=100 sends in seconds.
+    All Diazites AI SMS are time-sensitive customer replies -> high priority."""
     if not to_phone or not message:
         print("❌ send_sms: missing phone or message")
         return False
@@ -115,7 +119,7 @@ def send_sms(to_phone, message, business_id=None, lead_id=None):
         "phoneNumbers": [cleaned],
         "textMessage": {"text": message},
         "deviceId": DEVICE_ID,
-        "priority": 0,
+        "priority": priority,
     }
 
     try:
