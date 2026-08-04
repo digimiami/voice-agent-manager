@@ -2369,6 +2369,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                         <input type="number" name="max_calls" placeholder="calls" min="1" max="20" value="{{ ra_settings.max_calls_per_run }}" style="width:70px;padding:8px 10px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
                         <button class="text-xs font-semibold" style="padding:8px 14px;border-radius:8px;background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff">📞 Call Next N</button>
                     </form>
+                    <form method="POST" action="/admin/review-ai/verify" class="inline"><button class="btn-secondary text-xs" style="padding:8px 14px">📱 Verify Numbers</button></form>
                     <form method="POST" action="/admin/review-ai/sync" class="inline"><button class="btn-secondary text-xs" style="padding:8px 14px">📊 Sync Outcomes</button></form>
                     <form method="POST" action="/admin/review-ai/stop" class="inline"><button class="btn-danger text-xs" style="padding:8px 14px">⏹ Stop</button></form>
                 </div>
@@ -2436,12 +2437,13 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
             {% if ra_followup %}
             <div class="overflow-x-auto">
             <table class="table-auto w-full text-xs">
-                <thead><tr><th>Business</th><th>Phone</th><th>Service</th><th>Package</th><th>Called</th><th>Call</th><th></th></tr></thead>
+                <thead><tr><th>Business</th><th>Phone</th><th>Line</th><th>Service</th><th>Package</th><th>Called</th><th>Call</th><th></th></tr></thead>
                 <tbody>
                 {% for p in ra_followup %}
                 <tr>
                     <td class="font-semibold">{{ p.business_name[:32] }}</td>
                     <td class="font-mono">{{ p.phone }}</td>
+                    <td>{% if p.line_type == 'mobile' %}<span class="text-[10px]" style="color:#4ade80">📱</span>{% elif p.line_type == 'landline' %}<span class="text-[10px]" style="color:#fbbf24">🏢</span>{% elif p.line_type %}<span class="text-[10px]" style="color:#c084fc">📠</span>{% else %}<span class="text-[10px] text-[#5c5c70]">…</span>{% endif %}</td>
                     <td>{% if p.service == 'website' %}🌐 Web{% else %}⭐ Reviews{% endif %}</td>
                     <td>{% if p.sample_sent_at %}<span style="color:#4ade80">✅ {{ p.sample_sent_at[:16] }}</span>{% else %}<span class="text-[#fbbf24]">pending</span>{% endif %}</td>
                     <td class="text-[#5c5c70]">{{ (p.last_call_at or '')[:16] }}</td>
@@ -2469,12 +2471,13 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
             </div>
             <div class="overflow-x-auto">
             <table class="table-auto w-full text-xs">
-                <thead><tr><th>Business</th><th>Phone</th><th>⭐</th><th>Reviews</th><th>Unanswered</th><th>🌐</th><th>Status</th><th>Last Call</th><th></th></tr></thead>
+                <thead><tr><th>Business</th><th>Phone</th><th>Line</th><th>⭐</th><th>Reviews</th><th>Unanswered</th><th>🌐</th><th>Status</th><th>Last Call</th><th></th></tr></thead>
                 <tbody>
                 {% for p in ra_prospects %}
                 <tr class="ra-row" data-search="{{ p.business_name }} {{ p.phone }} {{ p.category }}">
                     <td class="font-semibold">{{ p.business_name[:34] }}<div class="text-[10px] text-[#5c5c70]">{{ p.category }} · {{ p.city }}</div></td>
                     <td class="font-mono">{{ p.phone }}</td>
+                    <td>{% if p.line_type == 'mobile' %}<span class="text-[10px]" style="color:#4ade80">📱</span>{% elif p.line_type == 'landline' %}<span class="text-[10px]" style="color:#fbbf24">🏢</span>{% elif p.line_type %}<span class="text-[10px]" style="color:#c084fc">📠</span>{% else %}<span class="text-[10px] text-[#5c5c70]">…</span>{% endif %}</td>
                     <td>{% if p.rating %}⭐ {{ p.rating }}{% else %}—{% endif %}</td>
                     <td>{{ p.review_count or '—' }}</td>
                     <td>{% if p.unanswered_count is not none %}<b class="text-[#fbbf24]">{{ p.unanswered_count }}</b>{% else %}<span class="text-[#5c5c70]">…</span>{% endif %}</td>
@@ -5096,6 +5099,18 @@ def website_service_signup():
     import review_ai
     ok, _ = review_ai.signup_lead(request.form, service='website')
     return redirect('/website-service?thankyou=1' if ok else '/website-service?error=1')
+
+
+@app.route('/admin/review-ai/verify', methods=['POST'])
+@admin_required
+def admin_review_ai_verify():
+    import review_ai
+    try:
+        n = review_ai.verify_prospects()
+        flash(f'📱 Number verification: {n} numbers classified', 'success')
+    except Exception as e:
+        flash(f'❌ Verify error: {str(e)[:120]}', 'error')
+    return redirect('/admin?tab=reviews-ai')
 
 
 @app.route('/admin/review-ai/call', methods=['POST'])

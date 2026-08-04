@@ -181,6 +181,14 @@ def init_tables():
             db.execute("ALTER TABLE review_ai_calls ADD COLUMN recording_path TEXT")
     except Exception:
         pass
+    try:
+        pcols = [r[1] for r in db.execute("PRAGMA table_info(review_prospects)")]
+        if "line_type" not in pcols:
+            db.execute("ALTER TABLE review_prospects ADD COLUMN line_type TEXT")
+        if "verified_at" not in pcols:
+            db.execute("ALTER TABLE review_prospects ADD COLUMN verified_at TEXT")
+    except Exception:
+        pass
     db.execute("""CREATE TABLE IF NOT EXISTS review_ai_messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         prospect_id TEXT, channel TEXT, to_addr TEXT, body TEXT,
@@ -942,6 +950,12 @@ def send_sample_sms(prospect_id):
     if not row:
         return {"success": False, "message": "Prospect not found"}
     try:
+        if row["line_type"] == "landline":
+            db.close()
+            return {"success": False, "message": "⚠️ Landline — SMS can't be delivered (email package sent instead)"}
+    except Exception:
+        pass
+    try:
         from smsgate_sms import send_sms
         s = get_settings()
         biz = row["business_name"] or "your business"
@@ -1349,6 +1363,84 @@ def signup_lead(form, service="reviews"):
     except Exception:
         pass
     return True, lid
+
+
+def _twilio_creds():
+    sid = os.environ.get("TWILIO_ACCOUNT_SID", "")
+    tok = os.environ.get("TWILIO_AUTH_TOKEN", "")
+    if not sid or not tok:
+        try:
+            with open("/root/.env") as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith("TWILIO_ACCOUNT_SID="):
+                        sid = line.split("=", 1)[1].strip().strip('"')
+                    elif line.startswith("TWILIO_AUTH_TOKEN="):
+                        tok = line.split("=", 1)[1].strip().strip('"')
+        except Exception:
+            pass
+    return sid, tok
+
+
+def verify_mobile(phone):
+    """Twilio Lookup v2 — line type (mobile/landline/voip). Free for US/CA numbers."""
+    import base64, json, urllib.request, urllib.parse
+    sid, tok = _twilio_creds()
+    if not sid or not tok or not phone:
+        return None
+    p = phone.strip()
+    digits = re.sub(r"\D", "", p)
+    if p.startswith("+"):
+        e164 = p
+    elif len(digits) == 10:
+        e164 = "+1" + digits
+    elif len(digits) == 11 and digits.startswith("1"):
+        e164 = "+" + digits
+    else:
+        return None
+    url = f"https://lookups.twilio.com/v2/PhoneNumbers/{urllib.parse.quote(e164)}?Fields=line_type_intelligence"
+    auth = base64.b64encode(f"{sid}:{tok}".encode()).decode()
+    req = urllib.request.Request(url, headers={"Authorization": "Basic " + auth})
+    try:
+        resp = urllib.request.urlopen(req, timeout=15)
+        d = json.loads(resp.read())
+        lt = d.get("line_type_intelligence") or {}
+        if isinstance(lt, dict):
+            lt = lt.get("type") or d.get("line_type") or "unknown"
+        return {"line_type": lt if isinstance(lt, str) else "unknown",
+                "country": d.get("country_code"), "national": d.get("national_format"),
+                "e164": d.get("phone_number")}
+    except Exception:
+        return None
+
+
+def verify_prospects(ids=None):
+    """Batch-verify line types for prospects missing them (or the given ids). Returns count."""
+    db = _db()
+    if ids:
+        rows = db.execute(
+            "SELECT id, phone FROM review_prospects WHERE id IN (%s) AND phone != ''"
+            % ",".join("?" * len(ids)), ids).fetchall()
+    else:
+        rows = db.execute(
+            "SELECT id, phone FROM review_prospects WHERE phone != '' "
+            "AND (line_type IS NULL OR line_type='')").fetchall()
+    db.close()
+    n = 0
+    for r in rows:
+        try:
+            res = verify_mobile(r["phone"])
+            if res:
+                db = _db()
+                db.execute("UPDATE review_prospects SET line_type=?, verified_at=datetime('now') WHERE id=?",
+                           (res["line_type"], r["id"]))
+                db.commit()
+                db.close()
+                n += 1
+        except Exception:
+            continue
+    log(f"📱 Number verification: {n} numbers classified")
+    return n
 
 
 def stop_all():
