@@ -48,6 +48,23 @@ Offer (important): "Want me to send you a free sample response for your latest r
 
 Keep the entire call under 2 minutes. End politely every time."""
 
+DEFAULT_WEBSITE_SCRIPT = """You are calling the owner of a local business that does NOT have a website. Be warm, brief, and completely human — never mention being AI, a bot, or software.
+
+Opening line — say it naturally, using the customer's business name:
+"Hi! Quick call — I noticed {business_name} doesn't have a website yet. I build websites for local businesses — mobile-friendly, fast, with your services, hours, contact info and your Google reviews on it — and it's {website_pricing}. Would you like a free preview of what your site would look like?"
+
+If they ask what it includes:
+- Modern mobile-first design that works great on phones (most customers search from their phone).
+- Your services, hours, contact info, map, directions, and a link to your Google reviews.
+- Hosting, maintenance, and updates handled — you don't have to do anything.
+- They own the site and everything in it.
+
+Offer (important): "Want me to send you a free preview of what your website would look like? No commitment."
+- If they say YES: thank them warmly, confirm their number is {phone}, and tell them the preview is coming.
+- If they say no or not interested: be friendly, thank them for their time, and hang up. Do NOT push, argue, or pressure.
+
+Keep the entire call under 2 minutes. End politely every time."""
+
 DEFAULT_SETTINGS = {
     "city": "Miami",
     "state": "FL",
@@ -55,6 +72,9 @@ DEFAULT_SETTINGS = {
     "max_per_category": "15",
     "pricing": "$99/mo",
     "script": DEFAULT_SCRIPT,
+    "service": "reviews",
+    "website_pricing": "$499",
+    "website_script": DEFAULT_WEBSITE_SCRIPT,
     "voice_id": "mark",
     "enabled": "1",
     "max_calls_per_run": "5",
@@ -84,7 +104,7 @@ def init_tables():
         id TEXT PRIMARY KEY,
         business_name TEXT, phone TEXT, category TEXT, address TEXT,
         rating REAL, review_count INTEGER, unanswered_count INTEGER,
-        place_url TEXT, city TEXT, state TEXT,
+        place_url TEXT, website TEXT, city TEXT, state TEXT,
         status TEXT DEFAULT 'new',
         last_call_id TEXT, last_outcome TEXT, last_call_at TEXT,
         sample_sent_at TEXT,
@@ -99,6 +119,13 @@ def init_tables():
         key TEXT PRIMARY KEY, value TEXT
     );
     """)
+    # guarded migration: website column on older DBs
+    try:
+        cols = [r[1] for r in db.execute("PRAGMA table_info(review_prospects)")]
+        if "website" not in cols:
+            db.execute("ALTER TABLE review_prospects ADD COLUMN website TEXT")
+    except Exception:
+        pass
     db.commit()
     db.close()
 
@@ -232,11 +259,21 @@ def unanswered_text(prospect):
 
 
 def personalize(prospect, script):
+    s = get_settings()
     return (script
             .replace("{business_name}", str(prospect.get("business_name") or "your business"))
             .replace("{unanswered}", unanswered_text(prospect))
-            .replace("{pricing}", str(get_settings().get("pricing", "$99/mo")))
+            .replace("{pricing}", str(s.get("pricing", "$99/mo")))
+            .replace("{website_pricing}", str(s.get("website_pricing", "$499")))
             .replace("{phone}", str(prospect.get("phone") or "")))
+
+
+def active_script():
+    """Script + pricing for the currently selected service mode."""
+    s = get_settings()
+    if s.get("service") == "website":
+        return s.get("website_script") or DEFAULT_WEBSITE_SCRIPT
+    return s.get("script") or DEFAULT_SCRIPT
 
 
 # ─────────────────── Scraper (Playwright) ───────────────────
@@ -390,6 +427,26 @@ class ReviewScraper:
                     addr = await self.page.query_selector('[data-item-id="address"]')
                     if addr:
                         address = (await addr.inner_text()).strip()
+                    website = ""
+                    web_els = await self.page.query_selector_all(
+                        'a[data-tooltip*="Open website"], a[data-tooltip*="Website"], '
+                        'a[data-tooltip*="Webseite"], a[data-tooltip*="Webseite öffnen"], '
+                        'a[aria-label*="Website"], a[aria-label*="Webseite"]')
+                    for el in web_els:
+                        href = await el.get_attribute("href") or ""
+                        if "google" not in href.lower() and "maps" not in href.lower():
+                            website = href
+                            break
+                    if not website:
+                        # fallback: any external http link visible in the info panel
+                        ext = await self.page.query_selector_all(
+                            'div[data-attrid="website"] a, a[jsname*="website"], '
+                            'button[data-tooltip*="site"] + a[href^="http"]')
+                        for el in ext:
+                            href = await el.get_attribute("href") or ""
+                            if "google" not in href.lower() and "maps" not in href.lower():
+                                website = href
+                                break
                     processed += 1
                     if name and phone:
                         found.append({
@@ -397,9 +454,10 @@ class ReviewScraper:
                             "category": cat, "address": address[:180],
                             "rating": rating or None,
                             "review_count": rev_count or None,
-                            "place_url": place_url or "", "city": city, "state": state,
+                            "place_url": place_url or "", "website": website,
+                            "city": city, "state": state,
                         })
-                        log(f"  ✅ {name[:38]} | {_clean_phone(phone)} | ⭐{rating or '?'} ({rev_count or '?'})")
+                        log(f"  ✅ {name[:34]} | {_clean_phone(phone)} | ⭐{rating or '?'} ({rev_count or '?'}) | 🌐{'yes' if website else 'NO'}")
                     else:
                         log(f"  ⚠️ skipped: name={name[:20]!r} phone={phone[:16]!r}")
                 except Exception as e:
@@ -494,16 +552,16 @@ def scrape_prospects(city=None, state=None, categories=None, max_per=None):
             for f in found:
                 exists = db.execute("SELECT id FROM review_prospects WHERE phone=?", (f["phone"],)).fetchone()
                 if exists:
-                    db.execute("UPDATE review_prospects SET review_count=?, rating=?, place_url=? WHERE id=?",
-                               (f["review_count"], f["rating"], f["place_url"], exists["id"]))
+                    db.execute("UPDATE review_prospects SET review_count=?, rating=?, place_url=?, website=? WHERE id=?",
+                               (f["review_count"], f["rating"], f["place_url"], f.get("website") or "", exists["id"]))
                     continue
                 db.execute(
                     "INSERT INTO review_prospects (id, business_name, phone, category, address, "
-                    "rating, review_count, place_url, city, state, status) "
-                    "VALUES (?,?,?,?,?,?,?,?,?,?, 'new')",
+                    "rating, review_count, place_url, website, city, state, status) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?, 'new')",
                     ("rp_" + uuid.uuid4().hex[:10], f["business_name"], f["phone"], f["category"],
                      f["address"], f["rating"], f["review_count"], f["place_url"],
-                     f["city"], f["state"]))
+                     f.get("website") or "", f["city"], f["state"]))
                 added += 1
             db.commit()
             db.close()
@@ -581,18 +639,24 @@ def run_calls(max_calls=None, delay=None):
             _running["calls"] = False
             return
         phone_id = s["phone_number_id"]
-        db = _db()
-        rows = db.execute(
-            "SELECT * FROM review_prospects WHERE status='new' ORDER BY created_at LIMIT ?",
-            (maxc,)).fetchall()
-        db.close()
-        log(f"📞 Placing up to {len(rows)} calls (assistant {aid[:8]}…, phone {phone_id[:8]}…)")
+        service = s.get("service", "reviews")
+        # website mode: only call businesses with NO website
+        if service == "website":
+            rows = _db().execute(
+                "SELECT * FROM review_prospects WHERE status='new' AND "
+                "(website IS NULL OR website='') ORDER BY created_at LIMIT ?",
+                (maxc,)).fetchall()
+        else:
+            rows = _db().execute(
+                "SELECT * FROM review_prospects WHERE status='new' ORDER BY created_at LIMIT ?",
+                (maxc,)).fetchall()
+        log(f"📞 Placing up to {len(rows)} calls ({service} mode, assistant {aid[:8]}…, phone {phone_id[:8]}…)")
         placed = 0
         for r in rows:
             if _stop_flag.is_set():
                 log("⏹ Stopped by user")
                 break
-            script = personalize(dict(r), s.get("script", DEFAULT_SCRIPT))
+            script = personalize(dict(r), active_script())
             # personalize the system prompt on the fly per prospect
             d = _vapi("POST", "/call", {
                 "assistantId": aid,
@@ -676,12 +740,19 @@ def send_sample_sms(prospect_id):
         return {"success": False, "message": "Prospect not found"}
     try:
         from smsgate_sms import send_sms
+        s = get_settings()
         biz = row["business_name"] or "your business"
-        body = (f"Hi! Here's the free sample review response we'd post for {biz}: "
-                f"“Thank you for your feedback! We really appreciate you taking the time to share "
-                f"your experience — it helps us keep improving every day. 🙌 — The {biz} Team” "
-                f"If you like it, we can handle all your reviews for {get_settings().get('pricing', '$99/mo')} — "
-                f"you approve everything before it's posted.")
+        if s.get("service") == "website":
+            body = (f"Hi! Here's the free website preview for {biz} — a mobile-friendly one-pager with "
+                    f"your services, hours, contact info and Google reviews, ready in 48 hours. "
+                    f"Full site is {s.get('website_pricing', '$499')} — you own it. "
+                    f"Want me to start on yours?")
+        else:
+            body = (f"Hi! Here's the free sample review response we'd post for {biz}: "
+                    f"“Thank you for your feedback! We really appreciate you taking the time to share "
+                    f"your experience — it helps us keep improving every day. 🙌 — The {biz} Team” "
+                    f"If you like it, we can handle all your reviews for {s.get('pricing', '$99/mo')} — "
+                    f"you approve everything before it's posted.")
         ok = send_sms(row["phone"], body)
         if ok:
             db.execute("UPDATE review_prospects SET sample_sent_at=datetime('now') WHERE id=?", (prospect_id,))
@@ -711,6 +782,7 @@ def tab_data():
         "called": db.execute("SELECT COUNT(*) FROM review_prospects WHERE status='called'").fetchone()[0],
         "interested": db.execute("SELECT COUNT(*) FROM review_prospects WHERE status='interested'").fetchone()[0],
         "no_answer": db.execute("SELECT COUNT(*) FROM review_prospects WHERE status='no_answer'").fetchone()[0],
+        "no_website": db.execute("SELECT COUNT(*) FROM review_prospects WHERE website IS NULL OR website=''").fetchone()[0],
     }
     calls = [dict(r) for r in db.execute(
         "SELECT rc.*, p.business_name FROM review_ai_calls rc "

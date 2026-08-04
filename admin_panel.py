@@ -2240,17 +2240,18 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
         </div>
         {% elif tab == 'reviews-ai' %}
         <div class="flex items-center justify-between mb-6">
-            <h2 class="text-xl font-bold">⭐ Review AI — Google Review Response Service</h2>
+            <h2 class="text-xl font-bold">{% if ra_settings.service == 'website' %}🌐 Review AI — Web Development Outreach{% else %}⭐ Review AI — Google Review Response Service{% endif %}</h2>
             <span id="raRunningBadge" class="text-xs font-semibold px-3 py-1.5 rounded-lg" style="background:#1a1a28;border:1px solid #252533;color:#94a3b8">…</span>
         </div>
 
         <!-- Stats -->
-        <div class="grid grid-cols-5 gap-3 mb-6">
+        <div class="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
             <div class="card text-center"><div class="stat-value">{{ ra_stats.total }}</div><div class="text-xs text-[#64748b] mt-1">🎯 Found</div></div>
             <div class="card text-center"><div class="stat-value" style="color:#60a5fa">{{ ra_stats.new }}</div><div class="text-xs text-[#64748b] mt-1">🆕 To Call</div></div>
             <div class="card text-center"><div class="stat-value" style="color:#c084fc">{{ ra_stats.called }}</div><div class="text-xs text-[#64748b] mt-1">📞 Called</div></div>
             <div class="card text-center"><div class="stat-value" style="color:#4ade80">{{ ra_stats.interested }}</div><div class="text-xs text-[#64748b] mt-1">🔥 Interested</div></div>
             <div class="card text-center"><div class="stat-value" style="color:#f87171">{{ ra_stats.no_answer }}</div><div class="text-xs text-[#64748b] mt-1">📵 No Answer</div></div>
+            <div class="card text-center"><div class="stat-value" style="color:#38bdf8">{{ ra_stats.no_website }}</div><div class="text-xs text-[#64748b] mt-1">🌐 No Website</div></div>
         </div>
 
         <!-- Actions -->
@@ -2259,7 +2260,9 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                 <h3 class="font-bold">⚡ Actions</h3>
                 <div class="flex items-center gap-2 flex-wrap">
                     <form method="POST" action="/admin/review-ai/scrape" class="inline"><button class="btn-primary text-xs" style="padding:8px 14px">🔍 Find Prospects</button></form>
+                    {% if ra_settings.service != 'website' %}
                     <form method="POST" action="/admin/review-ai/count-unanswered" class="inline"><button class="btn-secondary text-xs" style="padding:8px 14px">🔢 Count Unanswered</button></form>
+                    {% endif %}
                     <form method="POST" action="/admin/review-ai/call" class="inline flex items-center gap-1">
                         <input type="number" name="max_calls" placeholder="calls" min="1" max="20" value="{{ ra_settings.max_calls_per_run }}" style="width:70px;padding:8px 10px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
                         <button class="text-xs font-semibold" style="padding:8px 14px;border-radius:8px;background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff">📞 Call Next N</button>
@@ -2277,19 +2280,30 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
         <div class="card mb-6">
             <h3 class="font-bold mb-3">⚙️ Settings</h3>
             <form method="POST" action="/admin/review-ai/save-settings">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
                     <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">City</label><input name="city" value="{{ ra_settings.city }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px"></div>
                     <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">State</label><input name="state" value="{{ ra_settings.state }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px"></div>
                     <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">Max per category</label><input name="max_per_category" value="{{ ra_settings.max_per_category }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px"></div>
-                    <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">Pricing</label><input name="pricing" value="{{ ra_settings.pricing }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px"></div>
+                    <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">Service (call pitch)</label>
+                        <select name="service" id="raService" onchange="raServiceChanged()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px">
+                            <option value="reviews" {% if ra_settings.service != 'website' %}selected{% endif %}>⭐ Review Responses</option>
+                            <option value="website" {% if ra_settings.service == 'website' %}selected{% endif %}>🌐 Web Development</option>
+                        </select>
+                    </div>
+                    <div id="raPricingCell"><label class="text-[10px] text-[#64748b] uppercase font-semibold">Pricing</label><input name="pricing" value="{{ ra_settings.pricing }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px"></div>
+                    <div id="raWebPricingCell" style="display:none"><label class="text-[10px] text-[#64748b] uppercase font-semibold">Website pricing</label><input name="website_pricing" value="{{ ra_settings.website_pricing }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px"></div>
                 </div>
                 <div class="mb-3">
                     <label class="text-[10px] text-[#64748b] uppercase font-semibold">Categories (comma separated)</label>
                     <input name="categories" value="{{ ra_settings.categories }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px">
                 </div>
-                <div class="mb-3">
-                    <label class="text-[10px] text-[#64748b] uppercase font-semibold">Call script (placeholders: {business_name} {unanswered} {pricing} {phone})</label>
+                <div id="raReviewsBox" class="mb-3">
+                    <label class="text-[10px] text-[#64748b] uppercase font-semibold">Review-response call script (placeholders: {business_name} {unanswered} {pricing} {phone})</label>
                     <textarea name="script" rows="7" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px;font-family:monospace">{{ ra_settings.script }}</textarea>
+                </div>
+                <div id="raWebsiteBox" class="mb-3" style="display:none">
+                    <label class="text-[10px] text-[#64748b] uppercase font-semibold">Web-dev call script (placeholders: {business_name} {website_pricing} {phone}) — calls only businesses with NO website</label>
+                    <textarea name="website_script" rows="7" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px;font-family:monospace">{{ ra_settings.website_script }}</textarea>
                 </div>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                     <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">Voice</label><input name="voice_id" value="{{ ra_settings.voice_id }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px"></div>
@@ -2317,7 +2331,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
             </div>
             <div class="overflow-x-auto">
             <table class="table-auto w-full text-xs">
-                <thead><tr><th>Business</th><th>Phone</th><th>⭐</th><th>Reviews</th><th>Unanswered</th><th>Status</th><th>Last Call</th><th></th></tr></thead>
+                <thead><tr><th>Business</th><th>Phone</th><th>⭐</th><th>Reviews</th><th>Unanswered</th><th>🌐</th><th>Status</th><th>Last Call</th><th></th></tr></thead>
                 <tbody>
                 {% for p in ra_prospects %}
                 <tr class="ra-row" data-search="{{ p.business_name }} {{ p.phone }} {{ p.category }}">
@@ -2326,6 +2340,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                     <td>{% if p.rating %}⭐ {{ p.rating }}{% else %}—{% endif %}</td>
                     <td>{{ p.review_count or '—' }}</td>
                     <td>{% if p.unanswered_count is not none %}<b class="text-[#fbbf24]">{{ p.unanswered_count }}</b>{% else %}<span class="text-[#5c5c70]">…</span>{% endif %}</td>
+                    <td>{% if p.website %}<span title="{{ p.website }}" style="color:#4ade80">✅</span>{% else %}<b style="color:#f87171">❌</b>{% endif %}</td>
                     <td>
                         {% if p.status == 'new' %}<span class="badge badge-active">🆕 New</span>
                         {% elif p.status == 'called' %}<span class="badge" style="background:#8b5cf620;color:#c084fc">📞 Called</span>
@@ -2374,6 +2389,14 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
         </div>
 
         <script>
+        function raServiceChanged(){
+            var w = document.getElementById('raService').value === 'website';
+            document.getElementById('raReviewsBox').style.display = w ? 'none' : '';
+            document.getElementById('raWebsiteBox').style.display = w ? '' : 'none';
+            document.getElementById('raPricingCell').style.display = w ? 'none' : '';
+            document.getElementById('raWebPricingCell').style.display = w ? '' : 'none';
+        }
+        raServiceChanged();
         function raFilter(){
             var q = document.getElementById('raSearch').value.toLowerCase();
             document.querySelectorAll('.ra-row').forEach(function(r){
@@ -4619,6 +4642,9 @@ def admin_review_ai_save_settings():
         'max_per_category': request.form.get('max_per_category', s['max_per_category']).strip(),
         'pricing': request.form.get('pricing', s['pricing']).strip(),
         'script': request.form.get('script', s['script']),
+        'service': request.form.get('service', s['service']),
+        'website_pricing': request.form.get('website_pricing', s['website_pricing']).strip(),
+        'website_script': request.form.get('website_script', s['website_script']),
         'voice_id': request.form.get('voice_id', s['voice_id']).strip(),
         'enabled': '1' if request.form.get('enabled') else '0',
         'max_calls_per_run': request.form.get('max_calls_per_run', s['max_calls_per_run']).strip(),
