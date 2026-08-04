@@ -797,11 +797,13 @@ def sync_call_outcomes():
             res = send_sample_sms(r["id"])
             log(f"  📤 Auto-package → {r['business_name'][:30]}: {res.get('message', 'sent')}")
             if email_captured:
+                # prefer the prospect's stored email (set via signup/manual); fall back to what the agent captured
+                send_to = (r["email"] or "").strip() or email_captured
                 lead = {"business_name": r["business_name"], "contact_name": r["business_name"],
-                        "email": email_captured, "phone": r["phone"],
+                        "email": send_to, "phone": r["phone"],
                         "service": r["service"] or s.get("service", "reviews")}
                 ok = send_package_email(lead)
-                log(f"  📧 Auto-email → {r['business_name'][:30]}: {'sent' if ok else 'FAILED'}")
+                log(f"  📧 Auto-email → {r['business_name'][:30]} ({send_to}): {'sent' if ok else 'FAILED'}")
         except Exception as e:
             log(f"  ❌ Auto-package failed: {e}")
     log(f"📊 Synced {updated} call outcome(s)")
