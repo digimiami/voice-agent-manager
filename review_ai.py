@@ -760,9 +760,14 @@ def sync_call_outcomes():
         transcript = " ".join([m.get("message", "") for m in (d.get("messages") or [])])[:800]
         text = (summary + " " + transcript).lower()
         if ended in ("customer-ended-call", "assistant-ended-call"):
-            if any(w in text for w in ("interested", "yes, send", "send me", "sounds good", "sign me up", "that works")):
+            t = text
+            strong_yes = any(w in t for w in (
+                "interested", "yes, send", "yes please", "send me", "sounds good", "sign me up",
+                "that works", "i'd love", "that would be great", "please do", "go ahead", "send it"))
+            import re as _re
+            if strong_yes or _re.search(r"\b(yes|sure|definitely|absolutely)\b", t):
                 status = "interested"
-            elif any(w in text for w in ("not interested", "no thanks", "no thank you", "don't need", "not for me", "stop calling")):
+            elif any(w in t for w in ("not interested", "no thanks", "no thank you", "don't need", "not for me", "stop calling")):
                 status = "not_interested"
             else:
                 status = "called"
