@@ -1,2 +1,0 @@
-[17:34:03] 📞 Campaign started (reviews mode, assistant 9cd2be54…, up to 0 calls, delay 90s)
-[17:34:03] 📞 Campaign complete: 0 calls placed

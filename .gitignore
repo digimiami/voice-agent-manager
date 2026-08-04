@@ -41,3 +41,7 @@ maps_*.png
 admin_2fa.json
 user_2fa.json
 *.log
+
+# review-ai runner runtime files
+review_ai_log.txt
+review_ai_runner_state.json
