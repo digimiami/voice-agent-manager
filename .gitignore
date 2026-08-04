@@ -38,3 +38,6 @@ static/lead_template.csv
 # Generated
 notion_*.json
 maps_*.png
+admin_2fa.json
+user_2fa.json
+*.log
