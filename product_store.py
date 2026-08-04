@@ -22,6 +22,40 @@ def get_db():
     db.row_factory = sqlite3.Row
     return db
 
+
+def init_bundle_tables():
+    """Bundle tables (idempotent)."""
+    db = sqlite3.connect(DB_PATH)
+    db.execute("""CREATE TABLE IF NOT EXISTS bundles (
+        id TEXT PRIMARY KEY, slug TEXT UNIQUE, title TEXT, tagline TEXT,
+        description TEXT, price REAL, status TEXT DEFAULT 'published',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+    db.execute("""CREATE TABLE IF NOT EXISTS bundle_items (
+        bundle_id TEXT, product_id TEXT, position INTEGER DEFAULT 0,
+        PRIMARY KEY (bundle_id, product_id))""")
+    db.commit()
+    db.close()
+
+
+def get_bundle(bid):
+    db = get_db()
+    b = db.execute("SELECT * FROM bundles WHERE id=?", (bid,)).fetchone()
+    db.close()
+    return dict(b) if b else None
+
+
+def get_bundle_items(bid):
+    """Included products of a bundle, ordered by position."""
+    db = get_db()
+    rows = db.execute(
+        "SELECT p.* FROM bundle_items bi JOIN products p ON p.id = bi.product_id "
+        "WHERE bi.bundle_id=? ORDER BY bi.position", (bid,)).fetchall()
+    db.close()
+    return [dict(r) for r in rows]
+
+
+init_bundle_tables()
+
 def init_api_keys_table():
     """Ensure api_keys table exists."""
     conn = sqlite3.connect(DB_PATH)
@@ -102,6 +136,65 @@ def product_type_gradient(ptype):
 
 PRODUCT_TYPE_LABELS = {k: v['label'] for k, v in PRODUCT_TYPE_META.items()}
 
+# ── Conversion Tracking (GA4 + Meta Pixel + Google Ads) — env-configured ──
+def _load_tracking_ids():
+    ids = {'ga4': '', 'pixel': '', 'gads': '', 'gads_label': ''}
+    for p in ("/root/.env", "/root/voice-agent-manager/.env"):
+        try:
+            for line in open(p):
+                line = line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                k, v = line.split('=', 1)
+                k = k.strip(); v = v.strip().strip('"').strip("'")
+                if k == 'GA4_MEASUREMENT_ID': ids['ga4'] = v
+                elif k == 'META_PIXEL_ID': ids['pixel'] = v
+                elif k == 'GOOGLE_ADS_ID': ids['gads'] = v
+                elif k == 'GOOGLE_ADS_LABEL': ids['gads_label'] = v
+        except Exception:
+            pass
+    return ids
+
+_TRACK = _load_tracking_ids()
+
+_track_scripts = []
+if _TRACK['ga4']:
+    _track_scripts.append(f'''<script async src="https://www.googletagmanager.com/gtag/js?id={_TRACK['ga4']}"></script>''')
+if _TRACK['pixel']:
+    _track_scripts.append(f'''<script>
+!function(f,b,e,v,n,t,s){{if(f.fbq)return;n=f.fbq=function(){{n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)}};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '{_TRACK['pixel']}');
+fbq('track', 'PageView');
+</script>''')
+_track_helpers = f'''<script>
+window.SZ_TRACKING = {json.dumps(_TRACK)};
+window.dataLayer = window.dataLayer || [];
+window.__events = window.__events || [];
+function gtag(){{dataLayer.push(arguments);}}
+gtag('js', new Date());
+{("gtag('config', '" + _TRACK['ga4'] + "');") if _TRACK['ga4'] else ''}
+{("gtag('config', 'AW-" + _TRACK['gads'] + (("/" + _TRACK['gads_label']) if _TRACK['gads_label'] else "") + "');") if _TRACK['gads'] else ''}
+window.szTrack = function(name, params) {{
+  params = params || {{}};
+  if (window.gtag) gtag('event', name, params);
+  if (window.fbq) fbq('track', name, params);
+  window.__events.push({{n: name, p: params}});
+}};
+window.szPurchase = function(value, currency, txnId, items) {{
+  window.szTrack('purchase', {{value: value, currency: currency || 'USD', transaction_id: txnId, items: items || []}});
+}};
+window.szLead = function(value) {{
+  window.szTrack('Lead', {{value: value || 0, currency: 'USD'}});
+}};
+window.szAddToCart = function(value, itemName, itemId) {{
+  window.szTrack('add_to_cart', {{value: value, currency: 'USD', items: [{{item_id: itemId || '', item_name: itemName || '', price: value, quantity: 1}}]}});
+}};
+window.szBeginCheckout = function(value) {{
+  window.szTrack('begin_checkout', {{value: value || 0, currency: 'USD'}});
+}};
+</script>'''
+TRACKING_HEAD = '\n'.join(_track_scripts + [_track_helpers])
+
 LAYOUT_HEAD = '''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -174,9 +267,12 @@ input:focus,select:focus,textarea:focus{border-color:#a855f7;box-shadow:0 0 0 3p
 .mobile-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99;display:none}
 .mobile-overlay.show{display:block}
 @media(max-width:768px){.card{padding:16px}.btn-primary,.btn-secondary,.btn-outline{padding:12px 20px;font-size:13px}input,select,textarea{font-size:16px}}
-</style></head>
+</style>
+{TRACKING_HEAD}
+</head>
 <body class="min-h-screen">'''
 TOP_NAV = navigation.generate()
+LAYOUT_HEAD = LAYOUT_HEAD.replace('{TRACKING_HEAD}', TRACKING_HEAD)
 
 LAYOUT_FOOT = '</body></html><script>!function(){var d=document.getElementById("course-chat-config");if(!d)return;var p=d.getAttribute("data-pid"),w=document.createElement("div");w.innerHTML=\'<style>.wbtg{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#a855f7,#ec4899);color:white;border:none;font-size:24px;cursor:pointer;z-index:999;box-shadow:0 4px 20px rgba(168,85,247,0.4)}.wbtg:hover{transform:scale(1.1)}.wbpn{position:fixed;bottom:90px;right:24px;width:360px;height:500px;background:#0e0e16;border:1px solid #252533;border-radius:16px;z-index:998;display:none;flex-direction:column;box-shadow:0 10px 50px rgba(0,0,0,0.5);overflow:hidden}.wbpn.o{display:flex}.wbhd{padding:14px 16px;background:linear-gradient(135deg,#1a0a2e,#0e0e16);border-bottom:1px solid #252533;display:flex;align-items:center;gap:10px}.wbav{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#a855f7,#ec4899);display:flex;align-items:center;justify-content:center;font-size:14px}.wbtl{font-size:13px;font-weight:600;color:white}.wbsb{font-size:10px;color:#5c5c70}.wbcl{margin-left:auto;background:none;border:none;color:#5c5c70;cursor:pointer;font-size:18px}.wbms{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}.wbmg{max-width:85%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.5}.wbmg.b{background:#1a1a26;color:#d0d0e0;align-self:flex-start}.wbmg.u{background:linear-gradient(135deg,#a855f722,#ec489922);color:white;align-self:flex-end}.wbin{padding:12px;border-top:1px solid #252533;display:flex;gap:8px;background:#0a0a12}.wbin input{flex:1;background:#1a1a26;border:1px solid #252533;border-radius:10px;padding:10px 14px;color:white;font-size:13px;outline:none}.wbin input:focus{border-color:#a855f7}.wbin button{background:linear-gradient(135deg,#a855f7,#ec4899);color:white;border:none;border-radius:10px;padding:10px 14px;cursor:pointer}</style><div class="wbtg" onclick="wtc()">\U0001f4ac</div><div class="wbpn" id="wp"><div class="wbhd"><div class="wbav">\U0001f916</div><div><div class="wbtl">AI Course Tutor</div><div class="wbsb">Ask about this module</div></div><button class="wbcl" onclick="wtc()">\u2715</button></div><div class="wbms" id="wm"><div class="wbmg b">Hi! I am your AI tutor. Ask me about this course \U0001f393</div></div><div class="wbin"><input id="wi" placeholder="Ask a question..." onkeydown="if(event.key===\'Enter\')wsc()"><button onclick="wsc()">Send</button></div></div>\';document.body.appendChild(w);window.wtc=function(){var p=document.getElementById("wp");p.classList.toggle("o");if(p.classList.contains("o"))setTimeout(function(){document.getElementById("wi").focus()},300)};window.wsc=function(){var i=document.getElementById("wi"),q=i.value.trim();if(!q)return;i.value="";var m=document.getElementById("wm");m.innerHTML+="<div class=\\u0022wbmg u\\u0022>"+q.replace(/</g,"&lt;")+"</div>";var e=document.createElement("div");e.className="wbmg b";e.textContent="Thinking...";m.appendChild(e);m.scrollTop=m.scrollHeight;fetch("/api/course/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q,product_id:p})}).then(function(r){return r.json()}).then(function(d){d=d.answer||"Sorry, could not process that.";m.removeChild(m.lastChild);m.innerHTML+="<div class=\\u0022wbmg b\\u0022>"+d.replace(/\\n/g,"<br>")+"</div>";m.scrollTop=m.scrollHeight}).catch(function(){m.removeChild(m.lastChild);m.innerHTML+="<div class=\\u0022wbmg b\\u0022">Connection error. Try again.</div>"})}}()</script>'
 
@@ -251,7 +347,13 @@ def customer_dashboard():
     db = get_db()
     
     # Get digital product purchases (from product_orders)
-    orders = db.execute("SELECT po.*, p.title, p.file_path, p.product_type FROM product_orders po JOIN products p ON po.product_id = p.id WHERE po.customer_email=? ORDER BY po.created_at DESC", (email,)).fetchall()
+    orders = db.execute("SELECT po.*, p.title, p.file_path, p.product_type FROM product_orders po LEFT JOIN products p ON po.product_id = p.id WHERE po.customer_email=? ORDER BY po.created_at DESC", (email,)).fetchall()
+    orders = [dict(o) for o in orders]
+    for o in orders:
+        if not o.get('title') and (o.get('product_id') or '').startswith('bundle_'):
+            b = get_bundle(o['product_id'].replace('bundle_', ''))
+            o['title'] = (b or {}).get('title') or o['product_id']
+            o['product_type'] = 'bundle'
     
     # Get course access
     customer = db.execute("SELECT id FROM customer_accounts WHERE email=?", (email,)).fetchone()
@@ -1343,10 +1445,19 @@ def api_checkout(product_id):
             return jsonify({'error': 'Product not found'}), 404
         base = request.host_url.rstrip('/')
         token = str(uuid.uuid4())[:16]
+        line_items = [{'price_data': {'currency': 'usd', 'product_data': {'name': p['title'][:100], 'description': (p['description'] or '')[:200]}, 'unit_amount': int(p['price'] * 100)}, 'quantity': 1}]
+        meta = {'product_id': product_id, 'download_token': token}
+        # $9.99 order bump
+        bump = request.args.get('bump') == '1' or request.form.get('bump') == '1'
+        if bump:
+            bp = db.execute("SELECT * FROM products WHERE id='bump-ai-prompt-starter'").fetchone()
+            if bp:
+                line_items.append({'price_data': {'currency': 'usd', 'product_data': {'name': bp['title'][:100], 'description': (bp['description'] or '')[:120]}, 'unit_amount': int(bp['price'] * 100)}, 'quantity': 1})
+                meta['bump_id'] = bp['id']
         session_data = stripe.checkout.Session.create(
             mode='payment',
-            line_items=[{'price_data': {'currency': 'usd', 'product_data': {'name': p['title'][:100], 'description': (p['description'] or '')[:200]}, 'unit_amount': int(p['price'] * 100)}, 'quantity': 1}],
-            metadata={'product_id': product_id, 'download_token': token},
+            line_items=line_items,
+            metadata=meta,
             success_url=f"{base}/download/{token}?success=1",
             cancel_url=f"{base}/product/{product_id}?canceled=1",
         )
@@ -1354,101 +1465,266 @@ def api_checkout(product_id):
     except Exception as e:
         return jsonify({'error': str(e)[:200]}), 500
 
+#  BUNDLE CHECKOUT 
+@app.route('/api/checkout/bundle/<bundle_id>', methods=['GET', 'POST'])
+def api_checkout_bundle(bundle_id):
+    try:
+        from premium_features import load_stripe_config
+        import stripe
+        cfg = load_stripe_config()
+        if not cfg.get('enabled'):
+            return jsonify({'error': 'Payments not configured'}), 400
+        stripe.api_key = cfg['secret_key']
+        b = get_bundle(bundle_id)
+        if not b or b.get('status') != 'published':
+            return jsonify({'error': 'Bundle not found'}), 404
+        items = get_bundle_items(bundle_id)
+        if not items:
+            return jsonify({'error': 'Bundle has no items'}), 404
+        base = request.host_url.rstrip('/')
+        token = str(uuid.uuid4())[:16]
+        line_items = [{'price_data': {'currency': 'usd', 'product_data': {'name': b['title'][:100], 'description': (b['tagline'] or '')[:200]}, 'unit_amount': int(b['price'] * 100)}, 'quantity': 1}]
+        meta = {'bundle_id': bundle_id, 'download_token': token}
+        bump = request.args.get('bump') == '1' or request.form.get('bump') == '1'
+        if bump:
+            db = get_db()
+            bp = db.execute("SELECT * FROM products WHERE id='bump-ai-prompt-starter'").fetchone()
+            db.close()
+            if bp:
+                line_items.append({'price_data': {'currency': 'usd', 'product_data': {'name': bp['title'][:100], 'description': (bp['description'] or '')[:120]}, 'unit_amount': int(bp['price'] * 100)}, 'quantity': 1})
+                meta['bump_id'] = bp['id']
+        sd = stripe.checkout.Session.create(
+            mode='payment', line_items=line_items, metadata=meta,
+            success_url=f"{base}/download/{token}?success=1",
+            cancel_url=f"{base}/bundles?canceled=1")
+        return redirect(sd.url)
+    except Exception as e:
+        return jsonify({'error': str(e)[:200]}), 500
+
+
+def _bump_checkout_page(title, price, action_url, item_desc, item_price=9.99, item_retail=14.99):
+    """Shared order-bump interstitial: order summary + pre-checked $9.99 bump."""
+    return f'''{LAYOUT_HEAD}{TOP_NAV}
+<div class="max-w-md mx-auto px-4 py-10">
+  <h1 class="text-xl font-bold mb-1">Complete Your Order</h1>
+  <p class="text-xs text-[#7a7a8e] mb-6">Secure Stripe checkout · Instant download after payment</p>
+  <div class="card mb-4">
+    <div class="flex items-center justify-between gap-3">
+      <div><div class="font-semibold text-sm">{title}</div><div class="text-xs text-[#5c5c70]">Digital download · lifetime access</div></div>
+      <div class="font-bold text-lg whitespace-nowrap">${price:.2f}</div>
+    </div>
+  </div>
+  <form method="POST" action="{action_url}" id="bumpForm">
+    <div class="card mb-4" style="border-color:rgba(168,85,247,0.35);background:linear-gradient(135deg,#160a2a,#0e0e16)">
+      <label class="flex items-start gap-3 cursor-pointer">
+        <input type="checkbox" name="bump" value="1" checked style="width:18px;height:18px;accent-color:#a855f7;margin-top:3px" id="bumpCheck">
+        <div class="flex-1">
+          <div class="text-sm font-semibold">🔥 Add: AI Prompt Starter Pack — <span class="text-[#c084fc]">${item_price:.2f}</span> <s class="text-[#5c5c70] text-xs">${item_retail:.2f}</s></div>
+          <div class="text-xs text-[#5c5c70] mt-1">{item_desc}</div>
+        </div>
+      </label>
+    </div>
+    <button type="submit" class="btn-primary w-full mb-3" style="font-size:15px" id="payBtn">Pay ${price:.2f} →</button>
+    <script>
+      var b = document.getElementById('bumpCheck'), pb = document.getElementById('payBtn');
+      function upd(){{ var t = {price:.2f} + (b.checked ? {item_price:.2f} : 0); pb.textContent = 'Pay $' + t.toFixed(2) + ' →'; }}
+      b.addEventListener('change', upd); upd();
+      document.getElementById('bumpForm').addEventListener('submit', function(){{ if (window.szBeginCheckout) szBeginCheckout({price:.2f} + (b.checked ? {item_price:.2f} : 0)); }});
+    </script>
+  </form>
+  <div class="flex items-center justify-center gap-4 text-[10px] text-[#5c5c70] flex-wrap">
+    <span>🔒 Stripe secure checkout</span><span>⚡ Instant delivery</span><span>🛡️ 14-day guarantee</span>
+  </div>
+</div>{LAYOUT_FOOT}'''
+
+
+@app.route('/checkout/<product_id>')
+def checkout_page(product_id):
+    db = get_db()
+    p = db.execute("SELECT * FROM products WHERE id=?", (product_id,)).fetchone()
+    db.close()
+    if not p:
+        return "Product not found", 404
+    p = dict(p)
+    return _bump_checkout_page(
+        p['title'], float(p['price']), f"/api/checkout/{product_id}",
+        "50 universal ChatGPT prompts for marketing, sales, content & productivity. Copy, paste, publish.")
+
+
+@app.route('/checkout/bundle/<bundle_id>')
+def checkout_bundle_page(bundle_id):
+    b = get_bundle(bundle_id)
+    if not b or b.get('status') != 'published':
+        return "Bundle not found", 404
+    items = get_bundle_items(bundle_id)
+    incl = ', '.join(i['title'].split(':')[0][:30] for i in items[:4]) + (' + more' if len(items) > 4 else '')
+    return _bump_checkout_page(
+        b['title'], float(b['price']), f"/api/checkout/bundle/{bundle_id}",
+        f"50 universal ChatGPT prompts. Bundle includes: {incl}.")
+
+
+@app.route('/bundles')
+def bundles_listing():
+    db = get_db()
+    rows = [dict(r) for r in db.execute("SELECT * FROM bundles WHERE status='published' ORDER BY price DESC")]
+    db.close()
+    cards = ''
+    for b in rows:
+        n = len(get_bundle_items(b['id']))
+        cards += f'''<a href="/checkout/bundle/{b['id']}" class="card block hover:border-[#a855f7]">
+        <div class="flex items-center justify-between mb-2">
+          <span class="tag tag-purple"><i class="fas fa-box-open mr-1"></i>{n} products</span>
+          <span class="font-bold text-lg text-[#c084fc]">${b['price']:.0f}</span>
+        </div>
+        <h3 class="font-bold mb-1">{b['title']}</h3>
+        <p class="text-xs text-[#7a7a8e] mb-3">{b['tagline']}</p>
+        <span class="btn-primary text-xs" style="padding:10px 18px">Get This Bundle →</span>
+      </a>'''
+    return f'''{LAYOUT_HEAD}{TOP_NAV}
+<div class="max-w-5xl mx-auto px-4 py-10">
+  <div class="text-center mb-8">
+    <span class="hero-badge mb-3">✨ Flagship Bundles</span>
+    <h1 class="text-3xl font-bold mb-2">Complete Kits. One Download.</h1>
+    <p class="text-[#7a7a8e] max-w-xl mx-auto text-sm">Curated bundles of our best-selling templates, prompts and courses — priced for real ROI, delivered instantly.</p>
+  </div>
+  <div class="grid md:grid-cols-3 gap-6">{cards}</div>
+</div>{LAYOUT_FOOT}'''
+
+
 #  DOWNLOAD 
 @app.route('/download/<token>')
 def download_product(token):
     dt_class = __import__('datetime').datetime
     db = get_db()
     c = db.cursor()
-    c.execute("SELECT po.*, p.title, p.content, p.product_type, p.price FROM product_orders po JOIN products p ON po.product_id = p.id WHERE po.download_token=?", (token,))
-    order = c.fetchone()
+    c.execute("""SELECT po.*, p.title, p.content, p.product_type, p.price, p.file_path
+                 FROM product_orders po LEFT JOIN products p ON po.product_id = p.id
+                 WHERE po.download_token=?""", (token,))
+    orders = [dict(r) for r in c.fetchall()]
+    # Include bump/bonus rows bought in the same Stripe session (bump has its own token)
+    if orders and orders[0].get('stripe_session_id'):
+        c.execute("""SELECT po.*, p.title, p.content, p.product_type, p.price, p.file_path
+                     FROM product_orders po LEFT JOIN products p ON po.product_id = p.id
+                     WHERE po.stripe_session_id=? AND po.download_token != ?""",
+                  (orders[0]['stripe_session_id'], token))
+        orders.extend(dict(r) for r in c.fetchall())
     success = request.args.get('success', '')
-    if not order and success:
+    if not orders and success:
         return f'''{LAYOUT_HEAD.replace("ShopZario", "Processing")}
 <div class="text-center py-20"><i class="fas fa-spinner fa-spin text-4xl text-[#a855f7] mb-4"></i>
 <h2 class="text-xl font-bold mb-2">Processing Your Purchase...</h2><p class="text-[#7a7a8e]">Please wait a moment.</p>
 <script>setTimeout(() => window.location.href='/', 3000);</script></div>{LAYOUT_FOOT}'''
-    if not order:
+    if not orders:
         return "Invalid download link.", 404
-    order = dict(order)
+    main = orders[0]
     c.execute("UPDATE product_orders SET downloaded=1, download_count=download_count+1 WHERE download_token=?", (token,))
-    c.execute("UPDATE products SET downloads_count=downloads_count+1 WHERE id=?", (order['product_id'],))
     db.commit()
+
+    # ── Detect bundle order ──
+    is_bundle = any((o['product_id'] or '').startswith('bundle_') for o in orders)
+    bundle = None
+    if is_bundle:
+        for o in orders:
+            if (o['product_id'] or '').startswith('bundle_'):
+                bundle = get_bundle(o['product_id'].replace('bundle_', ''))
+                break
+
+    # ── Build downloadables ──
+    downloadables = []  # {pid, title, file_path}
+    if is_bundle and bundle:
+        for it in get_bundle_items(bundle['id']):
+            downloadables.append({'pid': it['id'], 'title': it['title'], 'file_path': it.get('file_path')})
+        # bump product purchased alongside
+        for o in orders:
+            if o['product_id'] and o['product_id'] != 'bundle_' + bundle['id']:
+                downloadables.append({'pid': o['product_id'], 'title': o['title'] or 'Bonus', 'file_path': o.get('file_path')})
+        for d in downloadables:
+            c.execute("UPDATE products SET downloads_count=downloads_count+1 WHERE id=?", (d['pid'],))
+        db.commit()
+        main_title = bundle['title']
+        price_str = f'{bundle["price"]:.2f}'
+        total_value = sum(float(i['price'] or 0) for i in get_bundle_items(bundle['id']))
+    else:
+        c.execute("UPDATE products SET downloads_count=downloads_count+1 WHERE id=?", (main['product_id'],))
+        db.commit()
+        main_title = main['title'] or 'Product'
+        price_str = f'{main["amount"] if main["amount"] is not None else (main["price"] or 0):.2f}'
+        total_value = 0
+        downloadables.append({'pid': main['product_id'], 'title': main_title, 'file_path': main.get('file_path')})
+        for o in orders[1:]:
+            if o['title']:
+                downloadables.append({'pid': o['product_id'], 'title': o['title'], 'file_path': o.get('file_path')})
     db.close()
 
-    price_str = f'{order["price"]:.2f}'
-    pid = order['product_id']
-    ptitle = order['title'] or 'Product'
-    color = product_type_color(order['product_type'] or '')
-    icon = product_type_icon(order['product_type'] or '')
-    
-    # Get the real product file if it exists
-    real_file = None
-    db2 = get_db()
-    c2 = db2.cursor()
-    c2.execute("SELECT file_path FROM products WHERE id=?", (pid,))
-    fp_row = c2.fetchone()
-    db2.close()
-    if fp_row and fp_row[0]:
-        fp_path = "/root/voice-agent-manager/static/" + fp_row[0].replace("/static/", "")
-        if __import__("os").path.exists(fp_path):
-            real_file = fp_row[0]
-    
-    download_btn = ''
-    if real_file:
-        ext = real_file.split('.')[-1].upper()
-        download_btn = f'''
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <a href="{real_file}" class="btn-primary w-full justify-center text-base" style="padding:16px" download><i class="fas fa-download mr-2"></i> Download Product File ({ext})</a>
-        <a href="/api/product/pdf/{pid}" class="btn-secondary w-full justify-center text-base" style="padding:16px" target="_blank"><i class="fas fa-file-pdf mr-2"></i> Download as PDF</a>
-      </div>'''
-    else:
-        download_btn = f'''<a href="/api/product/pdf/{pid}" class="btn-primary w-full justify-center text-base" style="padding:16px" download><i class="fas fa-file-pdf mr-2"></i> Download Your Product Now</a>'''
-    
+    # ── Render item buttons ──
+    def _dl_button(d):
+        real_file = None
+        if d.get('file_path'):
+            fp_path = "/root/voice-agent-manager/static/" + d['file_path'].replace("/static/", "")
+            if __import__("os").path.exists(fp_path):
+                real_file = d['file_path']
+        if real_file:
+            ext = real_file.split('.')[-1].upper()
+            return f'''<a href="{real_file}" class="btn-primary w-full justify-center text-sm" style="padding:12px" download><i class="fas fa-download mr-2"></i> Download {ext} File</a>'''
+        return f'''<a href="/api/product/pdf/{d['pid']}" class="btn-secondary w-full justify-center text-sm" style="padding:12px" target="_blank"><i class="fas fa-file-pdf mr-2"></i> Download as PDF</a>'''
+
+    items_html = ''
+    for d in downloadables:
+        items_html += f'''<div class="flex items-center justify-between gap-3 p-3 rounded-lg" style="background:#0a0a12;border:1px solid #1a1a24">
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold truncate">{d['title']}</div>
+            <div class="text-[10px] text-[#5c5c70]">Included in your purchase</div>
+          </div>
+          <div style="min-width:170px">{_dl_button(d)}</div>
+        </div>'''
+
+    value_line = f'<div class="text-xs text-[#4ade80] font-semibold mb-3">Bundle value: <s class="text-[#5c5c70]">${total_value:.2f}</s> — yours for ${price_str}</div>' if is_bundle else ''
+
+    # ── Purchase conversion event (fires once, on Stripe success return) ──
+    purchase_script = ''
+    if success:
+        total_paid = sum(float(o['amount'] or 0) for o in orders)
+        items_json = json.dumps([{'item_id': d['pid'], 'item_name': d['title']} for d in downloadables])
+        purchase_script = f'''<script>
+  if (window.szPurchase) {{ szPurchase({total_paid:.2f}, 'USD', '{token}', {items_json}); }}
+  else {{ window.__purchasePending = {{value: {total_paid:.2f}, txn: '{token}', items: {items_json}}}; }}
+</script>'''
+
     html = f'''{LAYOUT_HEAD}
 {TOP_NAV}
 <div class="max-w-3xl mx-auto px-4 pb-8">
   <div class="text-center mb-8">
     <div class="w-20 h-20 rounded-full bg-[#4ade80]/15 flex items-center justify-center mx-auto mb-4"><i class="fas fa-check text-4xl text-[#4ade80]"></i></div>
     <h1 class="text-2xl sm:text-3xl font-bold text-[#4ade80] mb-1">Purchase Complete!</h1>
-    <p class="text-sm text-[#7a7a8e]">Your product is ready to download below.</p>
+    <p class="text-sm text-[#7a7a8e]">Your {"bundle is ready" if is_bundle else "product is ready"} to download below.</p>
   </div>
   
   <div class="card mb-4 overflow-hidden" style="padding:0">
     <div class="flex items-center gap-4 p-6 bg-gradient-to-r from-[#1a0a2e] to-[#0e0e16] border-b border-[#1e1e2e]">
-      <span class="text-4xl">{icon}</span>
+      <span class="text-4xl">{"📦" if is_bundle else "🎁"}</span>
       <div class="flex-1">
-        <h2 class="font-bold text-lg">{ptitle}</h2>
+        <h2 class="font-bold text-lg">{main_title}</h2>
         <p class="text-xs text-[#7a7a8e]">${price_str} &middot; Paid via Stripe &middot; {dt_class.now().strftime('%b %d, %Y')}</p>
       </div>
     </div>
     
     <div class="p-6">
       <div class="text-center mb-6">
-        <div class="text-5xl mb-3"></div>
-        <h3 class="font-bold text-base mb-1">Your Download is Ready</h3>
-        <p class="text-xs text-[#5c5c70]">Your product is ready. Download your files below.</p>
+        <h3 class="font-bold text-base mb-1">Your Download{"" if len(downloadables) == 1 else "s"} Are Ready</h3>
+        <p class="text-xs text-[#5c5c70]">{"All bundle items are unlocked. Download each file below." if is_bundle else "Your product is ready. Download your files below."}</p>
+      </div>
+      {value_line}
+      <div class="space-y-3">
+        {items_html}
       </div>
       
-      <div class="bg-[#0a0a12] border border-[#1a1a24] rounded-xl p-4 mb-4">
-        <div class="text-xs text-[#5c5c70] mb-3">What is included in your download:</div>
-        <div class="grid grid-cols-2 gap-2">
-          <div class="flex items-center gap-2 text-xs"><i class="fas fa-check-circle text-[#4ade80] text-[10px]"></i>Complete product content</div>
-          <div class="flex items-center gap-2 text-xs"><i class="fas fa-check-circle text-[#4ade80] text-[10px]"></i>All prompts/templates included</div>
-          <div class="flex items-center gap-2 text-xs"><i class="fas fa-check-circle text-[#4ade80] text-[10px]"></i>Ready-to-use format</div>
-          <div class="flex items-center gap-2 text-xs"><i class="fas fa-check-circle text-[#4ade80] text-[10px]"></i>Lifetime access</div>
-        </div>
-      </div>
-      
-      {download_btn}
-      
-      <div class="text-[10px] text-[#5c5c70] text-center mt-3">Your download link is unique and will expire after 30 days.</div>
+      <div class="text-[10px] text-[#5c5c70] text-center mt-4">Your download links are unique and will expire after 30 days.</div>
     </div>
   </div>
   
   <div class="card p-4">
     <div class="flex items-center gap-3">
-      <span class="text-2xl"></span>
+      <span class="text-2xl">💬</span>
       <div class="text-xs text-[#5c5c70]">
         <strong class="text-white">Need help?</strong> Contact support at support@shopzario.com with your order token: <code class="text-[10px] bg-[#1a1a26] px-1.5 py-0.5 rounded">{token}</code>
       </div>
@@ -1457,6 +1733,7 @@ def download_product(token):
   
   <a href="/" class="btn-secondary w-full mt-4 justify-center" style="padding:14px"><i class="fas fa-store mr-1"></i> Continue Shopping</a>
 </div>
+{purchase_script}
 {LAYOUT_FOOT}'''
     return html
 
@@ -1479,16 +1756,28 @@ def stripe_webhook():
         s = event['data']['object']
         meta = s.get('metadata', {})
         pid = meta.get('product_id')
+        bid = meta.get('bundle_id')
+        bump_id = meta.get('bump_id')
         token = meta.get('download_token')
         email = s.get('customer_details', {}).get('email', '') or s.get('customer_email', '')
-        if pid and token:
+        if (pid or bid) and token:
             db = get_db()
             c = db.cursor()
-            c.execute("SELECT price FROM products WHERE id=?", (pid,))
-            p = c.fetchone()
-            price = p[0] if p else 0
-            c.execute("INSERT OR IGNORE INTO product_orders (id, product_id, customer_email, amount, stripe_session_id, download_token) VALUES (?, ?, ?, ?, ?, ?)",
-                      (str(uuid.uuid4())[:12], pid, email, price, s.get('id', ''), token))
+            if bid:
+                b = c.execute("SELECT price FROM bundles WHERE id=?", (bid,)).fetchone()
+                price = b[0] if b else 0
+                c.execute("INSERT OR IGNORE INTO product_orders (id, product_id, customer_email, amount, stripe_session_id, download_token) VALUES (?, ?, ?, ?, ?, ?)",
+                          (str(uuid.uuid4())[:12], 'bundle_' + bid, email, price, s.get('id', ''), token))
+            else:
+                p = c.execute("SELECT price FROM products WHERE id=?", (pid,)).fetchone()
+                price = p[0] if p else 0
+                c.execute("INSERT OR IGNORE INTO product_orders (id, product_id, customer_email, amount, stripe_session_id, download_token) VALUES (?, ?, ?, ?, ?, ?)",
+                          (str(uuid.uuid4())[:12], pid, email, price, s.get('id', ''), token))
+            if bump_id:
+                bp = c.execute("SELECT price FROM products WHERE id=?", (bump_id,)).fetchone()
+                bprice = bp[0] if bp else 0
+                c.execute("INSERT OR IGNORE INTO product_orders (id, product_id, customer_email, amount, stripe_session_id, download_token) VALUES (?, ?, ?, ?, ?, ?)",
+                          (str(uuid.uuid4())[:12], bump_id, email, bprice, s.get('id', ''), token + '-bump'))
             db.commit()
             db.close()
     return jsonify({'ok': True})
@@ -1684,11 +1973,14 @@ def hermes_customer_detail(email):
     if not customer:
         return "Customer not found", 404
     
-    orders = c.execute("SELECT po.*, p.title, p.price, p.product_type FROM product_orders po JOIN products p ON po.product_id = p.id WHERE po.customer_email=? ORDER BY po.created_at DESC", (email,)).fetchall()
+    orders = c.execute("SELECT po.*, p.title, p.price, p.product_type FROM product_orders po LEFT JOIN products p ON po.product_id = p.id WHERE po.customer_email=? ORDER BY po.created_at DESC", (email,)).fetchall()
     db.close()
     
     orders_html = ""
     for o in orders:
+        if not o["title"] and (o["product_id"] or "").startswith("bundle_"):
+            _b = get_bundle(o["product_id"].replace("bundle_", ""))
+            o["title"] = (_b or {}).get("title") or o["product_id"]
         icon = product_type_icon(o["product_type"] if o["product_type"] else "")
         dl = f'<a href="/download/{o["download_token"]}" class="text-xs text-[#38bdf8] hover:underline" target="_blank"><i class="fas fa-download mr-1"></i>DL</a>' if o["download_token"] else '<span class="text-xs text-gray-500">No token</span>'
         amount = o["amount"] or 0
@@ -2981,13 +3273,16 @@ def api_customer_orders():
     
     db = get_db()
     c = db.cursor()
-    c.execute("""SELECT po.id, po.product_id, po.amount, po.status, po.created_at,
+    c.execute("""SELECT po.id, po.product_id, po.amount, po.created_at,
                         p.title as product_title, p.version, p.changelog
-                 FROM product_orders po JOIN products p ON po.product_id = p.id
+                 FROM product_orders po LEFT JOIN products p ON po.product_id = p.id
                  WHERE po.customer_email=? ORDER BY po.created_at DESC""", (email,))
     orders = []
     for r in c.fetchall():
         r = dict(r)
+        if not r['product_title'] and (r['product_id'] or '').startswith('bundle_'):
+            _b = get_bundle(r['product_id'].replace('bundle_', ''))
+            r['product_title'] = (_b or {}).get('title') or r['product_id']
         # Check for latest version in changelog
         latest = r['version'] or '1.0.0'
         if r['changelog']:
@@ -3002,7 +3297,7 @@ def api_customer_orders():
             'version': r['version'] or '1.0.0',
             'latest_version': latest if latest != (r['version'] or '1.0.0') else None,
             'date': (r['created_at'] or '')[:10],
-            'status': r['status'] or 'active',
+            'status': 'active',
             'amount': r['amount']
         })
     db.close()
@@ -5430,7 +5725,7 @@ def product_detail_page(product_id):
     if ptype == 'course' and has_access:
         buy_btn = f'<a href="/course/{product_id}/" class="btn-primary w-full text-base py-4 mb-3" style="font-size:16px;background:linear-gradient(135deg,#4ade80,#22c55e)"><i class="fas fa-graduation-cap"></i> Access Course →</a>'
     else:
-        buy_btn = f'<a href="/api/checkout/{p["id"]}" class="btn-primary w-full text-base py-4 mb-3" style="font-size:16px"><i class="fas fa-shopping-cart"></i> Buy Now ${str(price)}</a>'
+        buy_btn = f'<a href="/checkout/{p["id"]}" class="btn-primary w-full text-base py-4 mb-3" style="font-size:16px" onclick="if(window.szAddToCart)szAddToCart({price}, \'{p["title"][:60].replace(chr(39), "")}\', \'{p["id"]}\')"><i class="fas fa-shopping-cart"></i> Buy Now ${str(price)}</a>'
     
     P += '<div class="lg:col-span-5 xl:col-span-4 space-y-5"><div class="rounded-2xl p-4 text-center text-pink-400 font-semibold text-sm" style="background:linear-gradient(135deg,rgba(236,72,153,0.1),rgba(168,85,247,0.1));border:1px solid rgba(236,72,153,0.2);animation:pulse 2s infinite"><i class="fas fa-bolt mr-1"></i> ' + str(sv) + ' sold &middot; ' + str(vc) + ' viewing now</div>'
     P += '<div class="card sticky-buy"><div class="text-center mb-5"><div class="flex items-center justify-center gap-3"><span class="text-4xl font-black text-white">$' + str(price) + '</span><span class="text-sm line-through text-gray-500">$' + str(op) + '</span><span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/15 text-green-400">-' + str(pct) + '%</span></div><div class="text-xs text-gray-500 mt-1">One-time &middot; Lifetime</div></div>' + buy_btn + '<div class="flex justify-center gap-3 mb-4 text-lg text-gray-500"><i class="fab fa-cc-visa"></i><i class="fab fa-cc-mastercard"></i><i class="fab fa-cc-amex"></i><i class="fab fa-cc-paypal"></i><i class="fab fa-bitcoin"></i></div><div class="space-y-2 text-xs text-gray-500"><div class="flex items-center gap-2"><i class="fas fa-cloud-arrow-down text-green-400 w-4"></i> Instant download</div><div class="flex items-center gap-2"><i class="fas fa-shield-halved text-green-400 w-4"></i> SSL secure checkout</div><div class="flex items-center gap-2"><i class="fas fa-arrows-rotate text-green-400 w-4"></i> Free lifetime updates</div></div></div>'
