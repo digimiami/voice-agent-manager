@@ -11,7 +11,7 @@ Admin dashboard to manage all business clients:
   - Set pricing tiers
 
 Admin login: http://localhost:8086/admin
-Password:    admin123
+Password:    from .env (ADMIN_PASSWORD)
 """
 
 import os, sys, json, sqlite3, csv, io, hashlib, time, threading, subprocess, uuid, urllib.request, urllib.error
@@ -41,6 +41,21 @@ if not VAPI_API_KEY:
     except:
         pass
 VAPI_BASE = "https://api.vapi.ai"
+
+# ── Load admin password from env (DO NOT hardcode in source) ──
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+if not ADMIN_PASSWORD:
+    try:
+        with open("/root/voice-agent-manager/.env") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("ADMIN_PASSWORD="):
+                    ADMIN_PASSWORD = line.split("=", 1)[1]
+                    break
+    except:
+        pass
+if not ADMIN_PASSWORD:
+    print("⚠️  ADMIN_PASSWORD not set in env/.env — admin login will be BLOCKED")
 
 app = Flask(__name__)
 app.secret_key = "admin-secret-key-hermes-2026"
@@ -2623,7 +2638,7 @@ def admin_login():
             return render_template_string(ADMIN_HTML, session=session, error='Invalid code. Try again or use a backup code.', tab='', twofa_step=True)
         # ── Step 1: password ──
         pw = request.form.get('password', '')
-        if pw == 'admin123':
+        if pw == ADMIN_PASSWORD:
             if load_2fa().get('enabled'):
                 session['admin_2fa_pending'] = True
                 return render_template_string(ADMIN_HTML, session=session, error='', tab='', twofa_step=True)
@@ -4996,5 +5011,5 @@ if __name__ == '__main__':
     print("🚀 Diazites ADMIN Panel")
     print(f"📊 DB: {DB_PATH}")
     print("🌐 http://localhost:8086/admin")
-    print("🔑 Password: admin123")
+    print("🔑 Password: from .env (ADMIN_PASSWORD)")
     app.run(host='0.0.0.0', port=8086, debug=False, threaded=True)
