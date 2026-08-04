@@ -2401,6 +2401,8 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                     <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">Voice</label><input name="voice_id" value="{{ ra_settings.voice_id }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px"></div>
                     <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">Max calls / run</label><input name="max_calls_per_run" value="{{ ra_settings.max_calls_per_run }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px"></div>
                     <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">Delay (sec)</label><input name="delay_seconds" value="{{ ra_settings.delay_seconds }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px"></div>
+                    <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">Payment link</label><input name="payment_link" value="{{ ra_settings.payment_link }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:11px;font-family:monospace"></div>
+                    <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">Signup URL</label><input name="signup_url" value="{{ ra_settings.signup_url }}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:11px;font-family:monospace"></div>
                     <div><label class="text-[10px] text-[#64748b] uppercase font-semibold">Enabled</label>
                         <select name="enabled" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px">
                             <option value="1" {% if ra_settings.enabled == '1' %}selected{% endif %}>✅ ON</option>
@@ -2444,7 +2446,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                     </td>
                     <td class="text-[#5c5c70]">{{ (p.last_outcome or '')[:16] }}{% if p.last_call_at %}<div class="text-[10px]">{{ p.last_call_at[:16] }}</div>{% endif %}</td>
                     <td class="whitespace-nowrap">
-                        {% if p.status == 'interested' %}<button class="btn-primary text-[10px]" style="padding:4px 8px" onclick="raSample('{{ p.id }}')">📤 Sample SMS</button>{% endif %}
+                        {% if p.status == 'interested' %}<button class="btn-primary text-[10px]" style="padding:4px 8px" onclick="raSample('{{ p.id }}')">📤 Package{% if p.sample_sent_at %} ✓{% endif %}</button>{% endif %}
                         <button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="raAction('reset','{{ p.id }}')">↺</button>
                         <button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="raAction('dnc','{{ p.id }}')">🚫</button>
                         <button class="btn-danger text-[10px]" style="padding:4px 8px" onclick="raAction('delete','{{ p.id }}')">🗑</button>
@@ -2456,6 +2458,35 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                 </tbody>
             </table>
             </div>
+        </div>
+
+        <!-- Leads (signups) -->
+        <div class="card mb-6">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold">📝 Service Leads — signups ({{ ra_leads|length }} shown)</h3>
+                <a href="https://diazites.online/review-service" target="_blank" class="text-[11px] text-[#38bdf8] hover:underline">service page ↗</a>
+            </div>
+            {% if ra_leads %}
+            <div class="overflow-x-auto">
+            <table class="table-auto w-full text-xs">
+                <thead><tr><th>Business</th><th>Contact</th><th>Email</th><th>Phone</th><th>Status</th><th>Time</th></tr></thead>
+                <tbody>
+                {% for l in ra_leads %}
+                <tr>
+                    <td class="font-semibold">{{ l.business_name[:30] }}</td>
+                    <td>{{ l.contact_name[:20] }}</td>
+                    <td class="text-[#94a3b8]">{{ l.email[:28] }}</td>
+                    <td class="font-mono">{{ l.phone }}</td>
+                    <td>{% if l.status == 'paid' %}<span class="badge" style="background:#22c55e20;color:#4ade80">💰 PAID</span>{% elif l.status == 'new' %}<span class="badge badge-active">🆕 New</span>{% else %}<span class="badge">{{ l.status }}</span>{% endif %}</td>
+                    <td class="text-[#5c5c70]">{{ (l.created_at or '')[:16] }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            {% else %}
+            <p class="text-[12px] text-[#5c5c70] py-4 text-center">No signups yet — they come from the service page, or prospects who click the signup link in their SMS/email package.</p>
+            {% endif %}
         </div>
 
         <!-- Calls log -->

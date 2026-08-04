@@ -200,6 +200,18 @@ def handle_stripe_webhook(payload, sig_header):
         session = event['data']['object']
         metadata = session.get('metadata', {})
         bid = metadata.get('business_id')
+
+        # Review-service lead subscription paid (client_reference_id = review-lead-<id>)
+        client_ref = session.get('client_reference_id', '') or ''
+        if client_ref.startswith('review-lead-'):
+            lead_id = client_ref.replace('review-lead-', '')
+            db = sqlite3.connect(DB_PATH)
+            c = db.cursor()
+            c.execute("UPDATE review_service_leads SET status='paid', stripe_customer=?, stripe_subscription=? WHERE id=?",
+                      (session.get('customer', ''), session.get('subscription', ''), lead_id))
+            db.commit()
+            db.close()
+            return {'lead_id': lead_id, 'status': 'paid'}
         
         # Handle extra minutes purchase (one-time payment)
         if bid and metadata.get('type') == 'extra_minutes':

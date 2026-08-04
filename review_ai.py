@@ -82,6 +82,11 @@ DEFAULT_SETTINGS = {
     "assistant_id": "",
     "phone_number_id": "9031d73a-85e4-437e-af27-f6b877a2c039",
     "webhook_url": "https://diazites.online/api/v1/vapi-webhook",
+    # ── Post-call funnel: demo, signup form & payment ──
+    "payment_link": "https://buy.stripe.com/14AcN598d3I6gmO0hl67S04",
+    "price_id": "price_1U0jNCGaNMCjVFzm1sFJ48O0",
+    "signup_url": "https://diazites.online/review-service",
+    "service_name": "Review Response Service",
 }
 
 _stop_flag = threading.Event()
@@ -118,12 +123,23 @@ def init_tables():
     CREATE TABLE IF NOT EXISTS review_ai_settings (
         key TEXT PRIMARY KEY, value TEXT
     );
+    CREATE TABLE IF NOT EXISTS review_service_leads (
+        id TEXT PRIMARY KEY,
+        prospect_id TEXT,
+        business_name TEXT, contact_name TEXT,
+        email TEXT, phone TEXT,
+        status TEXT DEFAULT 'new',
+        stripe_customer TEXT, stripe_subscription TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
     """)
     # guarded migration: website column on older DBs
     try:
         cols = [r[1] for r in db.execute("PRAGMA table_info(review_prospects)")]
         if "website" not in cols:
             db.execute("ALTER TABLE review_prospects ADD COLUMN website TEXT")
+        if "email" not in cols:
+            db.execute("ALTER TABLE review_prospects ADD COLUMN email TEXT")
     except Exception:
         pass
     db.commit()
@@ -726,6 +742,13 @@ def sync_call_outcomes():
                    (status, cost, int(dur * 60), r["last_call_id"]))
         updated += 1
         log(f"  📊 {r['business_name'][:30]}: {ended} → {status}")
+        # ── Auto-send demo + signup + payment links on first 'interested' ──
+        if status == 'interested' and not r["sample_sent_at"]:
+            try:
+                res = send_sample_sms(r["id"])
+                log(f"  📤 Auto-package → {r['business_name'][:30]}: {res.get('message', 'sent')}")
+            except Exception as e:
+                log(f"  ❌ Auto-package failed: {e}")
     db.commit()
     db.close()
     log(f"📊 Synced {updated} call outcome(s)")
@@ -733,7 +756,7 @@ def sync_call_outcomes():
 
 
 def send_sample_sms(prospect_id):
-    """Send the free sample review response via sms-gate."""
+    """Send the free sample review response + signup & payment links via sms-gate."""
     db = _db()
     row = db.execute("SELECT * FROM review_prospects WHERE id=?", (prospect_id,)).fetchone()
     if not row:
@@ -742,26 +765,125 @@ def send_sample_sms(prospect_id):
         from smsgate_sms import send_sms
         s = get_settings()
         biz = row["business_name"] or "your business"
+        signup = s.get("signup_url", "https://diazites.online/review-service")
+        pay = s.get("payment_link", "")
         if s.get("service") == "website":
             body = (f"Hi! Here's the free website preview for {biz} — a mobile-friendly one-pager with "
                     f"your services, hours, contact info and Google reviews, ready in 48 hours. "
                     f"Full site is {s.get('website_pricing', '$499')} — you own it. "
-                    f"Want me to start on yours?")
+                    f"Start yours here: {signup}  Pay here: {pay}")
         else:
             body = (f"Hi! Here's the free sample review response we'd post for {biz}: "
                     f"“Thank you for your feedback! We really appreciate you taking the time to share "
                     f"your experience — it helps us keep improving every day. 🙌 — The {biz} Team” "
                     f"If you like it, we can handle all your reviews for {s.get('pricing', '$99/mo')} — "
-                    f"you approve everything before it's posted.")
+                    f"you approve everything before it's posted. "
+                    f"Sign up here: {signup}  Pay here: {pay}")
         ok = send_sms(row["phone"], body)
         if ok:
             db.execute("UPDATE review_prospects SET sample_sent_at=datetime('now') WHERE id=?", (prospect_id,))
             db.commit()
         db.close()
-        return {"success": bool(ok), "message": "✅ Sample SMS sent" if ok else "❌ SMS send failed"}
+        return {"success": bool(ok), "message": "✅ Package SMS sent (demo + signup + payment)" if ok else "❌ SMS send failed"}
     except Exception as e:
         db.close()
         return {"success": False, "message": f"❌ {str(e)[:120]}"}
+
+
+def send_email_via_agentmail(to, subject, body):
+    """AgentMail email (no admin_panel import — avoids circular deps)."""
+    import os as _os, json as _json, urllib.request
+    key = _os.environ.get("AGENTMAIL_API_KEY", "")
+    if not key:
+        for _p in ("/root/.env", "/root/voice-agent-manager/.env"):
+            try:
+                with open(_p) as _f:
+                    for _line in _f:
+                        _line = _line.strip()
+                        if _line.startswith("AGENTMAIL_API_KEY="):
+                            key = _line.split("=", 1)[1].strip().strip('"').strip("'")
+                            break
+            except Exception:
+                continue
+            if key:
+                break
+    if not key:
+        return False
+    try:
+        payload = {"to": to, "subject": subject, "text": body}
+        req = urllib.request.Request(
+            "https://api.agentmail.to/v0/inboxes/aiworkers@agentmail.to/messages/send",
+            data=_json.dumps(payload).encode(),
+            headers={"Authorization": "Bearer " + key, "Content-Type": "application/json",
+                     "User-Agent": "DiazitesReviewAI/1.0"},
+            method="POST")
+        urllib.request.urlopen(req, timeout=15)
+        return True
+    except Exception as e:
+        log(f"⚠️ Email failed: {e}")
+        return False
+
+
+def send_package_email(lead, checkout_url=None):
+    """Send demo + signup + payment links to a lead's email (AgentMail)."""
+    s = get_settings()
+    biz = lead.get("business_name") or "your business"
+    pay = checkout_url or s.get("payment_link", "")
+    signup = s.get("signup_url", "")
+    subject = f"Your free sample review response for {biz}"
+    body = (
+        f"Hi {lead.get('contact_name') or 'there'},\n\n"
+        f"Thanks for your interest! Here's the free sample response we'd post for {biz}:\n\n"
+        f"--------------------------------------------------\n"
+        f"“Thank you for your feedback! We really appreciate you taking the time to share your "
+        f"experience — it helps us keep improving every day. 🙌 — The {biz} Team”\n"
+        f"--------------------------------------------------\n\n"
+        f"We write personalized replies to EVERY Google review — positive and negative — in your "
+        f"brand's voice, and post them with your approval. No bots, no templates off the shelf.\n\n"
+        f"👉 Start here (2-minute signup): {signup}\n"
+        f"💳 Pay securely ($99/mo, cancel anytime): {pay}\n\n"
+        f"Questions? Just reply to this email.\n"
+        f"— The {s.get('service_name', 'Diazites')} Team"
+    )
+    return send_email_via_agentmail(lead.get("email", ""), subject, body)
+
+
+def create_lead_checkout(lead_id, email, success_url="https://diazites.online/review-service?thankyou=1"):
+    """One-time subscription Checkout Session for a lead (client_reference_id = review-lead-<id>)."""
+    try:
+        import json as _json
+        cfg = _json.load(open("/root/voice-agent-manager/stripe_config.json"))
+        import stripe
+        stripe.api_key = cfg["secret_key"]
+        s = get_settings()
+        sd = stripe.checkout.Session.create(
+            mode="subscription",
+            line_items=[{"price": s.get("price_id", "price_1U0jNCGaNMCjVFzm1sFJ48O0"), "quantity": 1}],
+            client_reference_id=f"review-lead-{lead_id}",
+            customer_email=email or None,
+            success_url=success_url,
+            cancel_url="https://diazites.online/review-service")
+        return sd.url
+    except Exception as e:
+        return None
+
+
+def add_lead(prospect_id=None, business_name="", contact_name="", email="", phone=""):
+    """Insert a review-service lead, linking it to a prospect by phone when possible."""
+    import uuid
+    db = _db()
+    pid = prospect_id
+    if not pid and phone:
+        row = db.execute("SELECT id FROM review_prospects WHERE phone=? ORDER BY created_at DESC LIMIT 1", (phone,)).fetchone()
+        if row:
+            pid = row["id"]
+            db.execute("UPDATE review_prospects SET email=? WHERE id=?", (email, pid))
+    lid = "lead-" + str(uuid.uuid4())[:10]
+    db.execute("""INSERT INTO review_service_leads (id, prospect_id, business_name, contact_name, email, phone)
+                  VALUES (?,?,?,?,?,?)""", (lid, pid, business_name, contact_name, email, phone))
+    db.commit()
+    db.close()
+    return lid
 
 
 def stop_all():
@@ -788,12 +910,15 @@ def tab_data():
         "SELECT rc.*, p.business_name FROM review_ai_calls rc "
         "LEFT JOIN review_prospects p ON rc.prospect_id = p.id "
         "ORDER BY rc.id DESC LIMIT 30").fetchall()]
+    leads = [dict(r) for r in db.execute(
+        "SELECT * FROM review_service_leads ORDER BY created_at DESC LIMIT 15").fetchall()]
     db.close()
     return {
         "ra_settings": get_settings(),
         "ra_prospects": prospects,
         "ra_stats": stats,
         "ra_calls": calls,
+        "ra_leads": leads,
         "ra_running": running_state(),
         "ra_log": recent_log(),
     }
