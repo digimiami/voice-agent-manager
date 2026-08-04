@@ -1388,17 +1388,20 @@ def vapi_webhook():
     if not data:
         return jsonify({'error': 'No data'}), 400
 
-    vapi_call_id = data.get('call', {}).get('id') or data.get('callId') or ''
+    # Vapi may send {message:{type,call:{...}}} or a flat call payload — handle both
+    msg = data.get('message') or {}
+    call = data.get('call') or msg.get('call') or {}
+    vapi_call_id = call.get('id') or data.get('callId') or msg.get('callId') or ''
     if not vapi_call_id:
         return jsonify({'error': 'Missing call ID'}), 400
 
-    status = data.get('status') or data.get('call', {}).get('status', 'completed')
-    duration = data.get('durationSeconds') or data.get('call', {}).get('durationSeconds', 0) or 0
-    transcript = data.get('transcript') or data.get('call', {}).get('transcript', '') or ''
-    cost = data.get('cost') or data.get('call', {}).get('cost', 0) or 0
-    recording_url = data.get('recordingUrl') or data.get('call', {}).get('recordingUrl', '') or ''
-    outcome = data.get('endedReason') or data.get('call', {}).get('endedReason', 'unknown')
-    appointment_time = data.get('artifact', {}).get('appointmentTime') or ''
+    status = data.get('status') or call.get('status') or msg.get('type', 'completed')
+    duration = data.get('durationSeconds') or call.get('durationSeconds', 0) or 0
+    transcript = data.get('transcript') or call.get('transcript', '') or ''
+    cost = data.get('cost') or call.get('cost', 0) or 0
+    recording_url = data.get('recordingUrl') or call.get('recordingUrl', '') or ''
+    outcome = data.get('endedReason') or call.get('endedReason', 'unknown')
+    appointment_time = data.get('artifact', {}).get('appointmentTime') or call.get('artifact', {}).get('appointmentTime', '') or ''
 
     db = sqlite3.connect(DB_PATH)
     c = db.cursor()
@@ -1428,7 +1431,7 @@ def vapi_webhook():
     git_auto_commit(f'vapi webhook: call {vapi_call_id} {status}')
 
     # Real-time Review-AI outcome sync → auto demo/package SMS+email on 'interested'
-    if status in ('ended', 'completed') or 'ended' in str(status):
+    if status in ('ended', 'completed') or 'ended' in str(status) or call.get('status') in ('ended', 'completed'):
         try:
             import threading
             def _ra_sync():
