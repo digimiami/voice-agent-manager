@@ -147,76 +147,135 @@ ADMIN_HTML = """<!DOCTYPE html>
         .modal-overlay.show { display: flex; }
         .modal { background: #0d0d14; border: 1px solid #1a1a28; border-radius: 16px; padding: 24px; max-width: 600px; width: 100%; max-height: 85vh; overflow-y: auto; }
         .stat-box { background: #0d0d14; border: 1px solid #1a1a28; border-radius: 12px; padding: 16px; text-align: center; }
-        .sidebar { width: 220px; min-height: 100vh; background: #0d0d14; border-right: 1px solid #1a1a28; padding: 20px; }
-        .sidebar-item { padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #64748b; transition: all 0.2s; }
+        .sidebar { width: 230px; min-height: 100vh; background: #0d0d14; border-right: 1px solid #1a1a28; padding: 20px 14px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+        .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #64748b; transition: all 0.15s; text-decoration: none; white-space: nowrap; }
         .sidebar-item:hover { background: #1a1a28; color: #e2e8f0; }
-        .sidebar-item.active { background: rgba(99,102,241,0.1); color: #818cf8; }
+        .sidebar-item.active { background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(139,92,246,0.12)); color: #a5b4fc; border-left: 2px solid #6366f1; }
+        .sidebar-section { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; color: #475569; text-transform: uppercase; padding: 16px 10px 6px; }
+        .menu-search { position: relative; margin: 14px 4px 4px; }
+        .menu-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #475569; pointer-events: none; }
+        .menu-search input { padding: 8px 10px 8px 32px; font-size: 12px; border-radius: 8px; }
+        .menu-badge { margin-left: auto; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 9999px; letter-spacing: 0.5px; animation: pulse-badge 2s infinite; }
+        @keyframes pulse-badge { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+        .hamburger { display: none; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; background: #1a1a28; border: 1px solid #1a1a28; color: #e2e8f0; cursor: pointer; font-size: 15px; }
+        .drawer-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 90; }
+        .drawer-backdrop.show { display: block; }
+        .drawer { position: fixed; top: 0; left: 0; bottom: 0; width: 264px; max-width: 84vw; background: #0d0d14; border-right: 1px solid #1a1a28; z-index: 95; transform: translateX(-100%); transition: transform 0.25s ease; overflow-y: auto; padding: 20px 14px; }
+        .drawer.show { transform: translateX(0); }
+        @media (max-width: 767px) {
+            .hamburger { display: inline-flex; }
+            .hamburger:active { border-color: #6366f1; }
+        }
     </style>
 </head>
 <body class="text-[#e2e8f0] min-h-screen flex">
     {% if session.get('admin_logged_in') %}
-    <!-- SIDEBAR -->
+    {% macro admin_menu() %}
+    <div class="menu-search">
+        <i class="fas fa-search"></i>
+        <input type="text" class="menu-filter" placeholder="Search tabs… (e.g. sms, review, mrr)" autocomplete="off">
+    </div>
+    {% set groups = [
+        ('Overview', [
+            ('dashboard', 'gauge', 'Dashboard'),
+            ('analytics', 'chart-bar', 'Analytics'),
+            ('mrr', 'chart-line', 'MRR'),
+            ('scoreboard', 'medal', 'Scoreboard'),
+            ('health', 'heartbeat', 'Health')
+        ]),
+        ('Customers & Billing', [
+            ('businesses', 'building', 'Businesses'),
+            ('create', 'plus-circle', 'New Business'),
+            ('subscriptions', 'credit-card', 'Subscriptions'),
+            ('billing', 'file-invoice-dollar', 'Billing'),
+            ('stripe', 'cc-stripe', 'Stripe'),
+            ('coupons', 'ticket-alt', 'Coupons'),
+            ('trials', 'hourglass-half', 'Trials'),
+            ('usage', 'gauge-high', 'Usage'),
+            ('affiliates', 'hand-holding-usd', 'Affiliates')
+        ]),
+        ('Communication', [
+            ('sms', 'message', 'SMS'),
+            ('email', 'envelope', 'Email Config'),
+            ('inbox', 'inbox', 'Inbox'),
+            ('broadcast', 'bullhorn', 'Broadcast'),
+            ('transcripts', 'file-alt', 'Transcripts'),
+            ('calendar', 'calendar-alt', 'Calendar')
+        ]),
+        ('Growth & Automation', [
+            ('campaigns', 'rocket', 'Campaigns'),
+            ('chatbot', 'robot', 'Chatbot'),
+            ('industries', 'industry', 'Industries'),
+            ('abtest', 'vials', 'A/B Tests')
+        ]),
+        ('System', [
+            ('vapi', 'phone-volume', 'VAPI Config'),
+            ('costs', 'dollar-sign', 'Costs'),
+            ('audit', 'history', 'Audit Log'),
+            ('security', 'shield-alt', 'Security'),
+            ('backup', 'database', 'Backup')
+        ]),
+        ('AI Tools', [
+            ('agent-tars', 'robot', 'Agent TARS'),
+            ('agent-api', 'key', 'Agent API'),
+            ('reviews-ai', 'star', 'Review AI')
+        ])
+    ] %}
+    {% for gname, items in groups %}
+    <div class="sidebar-section">{{ gname }}</div>
+    {% for key, icon, label in items %}
+    <a href="?tab={{ key }}" class="sidebar-item {% if tab == key %}active{% endif %}" data-label="{{ label|lower }}">
+        <i class="fas fa-{{ icon }} w-4 text-center"></i><span>{{ label }}</span>
+        {% if key == 'reviews-ai' %}<span class="menu-badge">NEW</span>{% endif %}
+    </a>
+    {% endfor %}
+    {% endfor %}
+    {% endmacro %}
+    <!-- DESKTOP SIDEBAR -->
     <div class="sidebar hidden md:block">
-        <div class="flex items-center gap-2 mb-8">
+        <div class="flex items-center gap-2 mb-2 px-1">
             <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] flex items-center justify-center text-white font-bold text-sm">A</div>
             <div>
                 <div class="font-bold text-sm">Diazites</div>
                 <div class="text-xs text-[#64748b]">SaaS Panel</div>
             </div>
         </div>
-        <div class="space-y-1">
-            {% set admin_tabs = [
-                ('dashboard', 'gauge', 'Dashboard'),
-                ('businesses', 'building', 'Businesses'),
-                ('create', 'plus-circle', 'New Business'),
-                ('campaigns', 'bullhorn', 'Campaigns'),
-                ('subscriptions', 'credit-card', 'Subscriptions'),
-                ('billing', 'file-invoice-dollar', 'Billing'),
-                ('vapi', 'phone', 'VAPI Config'),
-                ('chatbot', 'robot', 'Chatbot'),
-                ('industries', 'industry', 'Industries'),
-                ('email', 'envelope', 'Email Config'),
-                ('sms', 'message', 'SMS'),
-                ('calendar', 'calendar-alt', 'Calendar'),
-                ('stripe', 'credit-card', 'Stripe'),
-                ('analytics', 'chart-bar', 'Analytics'),
-                ('mrr', 'chart-line', 'MRR'),
-                ('coupons', 'ticket-alt', 'Coupons'),
-                ('trials', 'hourglass-half', 'Trials'),
-                ('usage', 'gauge-high', 'Usage'),
-                ('scoreboard', 'medal', 'Scoreboard'),
-                ('transcripts', 'file-alt', 'Transcripts'),
-                ('health', 'heartbeat', 'Health'),
-                ('broadcast', 'bullhorn', 'Broadcast'),
-                ('backup', 'database', 'Backup'),
-                ('inbox', 'inbox', 'Inbox'),
-                ('costs', 'dollar-sign', 'Costs'),
-                ('abtest', 'vials', 'A/B Tests'),
-                ('audit', 'history', 'Audit Log'),
-                ('security', 'shield-alt', 'Security'),
-                ('agent-tars', 'robot', 'Agent TARS'),
-                ('agent-api', 'key', 'Agent API'),
-                ('affiliates', 'hand-holding-usd', 'Affiliates'),
-                ('reviews-ai', 'star', 'Review AI')
-            ] %}
-            {% for key, icon, label in admin_tabs %}
-            <a href="?tab={{ key }}" class="sidebar-item flex items-center gap-2 {% if tab == key %}active{% endif %}">
-                <i class="fas fa-{{ icon }} w-4 text-center"></i> {{ label }}
-            </a>
-            {% endfor %}
+        <div class="flex-1 overflow-y-auto pr-1">
+            {{ admin_menu() }}
         </div>
-        <div class="mt-auto pt-8">
+        <div class="pt-4 mt-2 border-t border-[#1a1a28]">
             <a href="/admin/logout" class="sidebar-item flex items-center gap-2 text-red-400">
                 <i class="fas fa-sign-out-alt w-4 text-center"></i> Logout
             </a>
         </div>
     </div>
 
+    <!-- MOBILE DRAWER MENU -->
+    <div class="drawer-backdrop" id="drawerBackdrop"></div>
+    <nav class="drawer" id="mobileDrawer">
+        <div class="flex items-center justify-between mb-3 px-1">
+            <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] flex items-center justify-center text-white font-bold text-xs">A</div>
+                <span class="font-bold text-sm">Diazites</span>
+            </div>
+            <button class="hamburger" id="drawerClose" aria-label="Close menu"><i class="fas fa-times"></i></button>
+        </div>
+        {{ admin_menu() }}
+        <div class="pt-4 mt-2 border-t border-[#1a1a28]">
+            <a href="/admin/logout" class="sidebar-item flex items-center gap-2 text-red-400">
+                <i class="fas fa-sign-out-alt w-4 text-center"></i> Logout
+            </a>
+        </div>
+    </nav>
+
     <!-- MAIN -->
     <div class="flex-1 p-4 sm:p-6 overflow-x-hidden">
         <!-- Mobile header -->
         <div class="flex items-center justify-between md:hidden mb-4">
-            <div class="font-bold gradient-text">Diazites</div>
+            <div class="flex items-center gap-3">
+                <button class="hamburger" id="hamburgerBtn" aria-label="Open menu"><i class="fas fa-bars"></i></button>
+                <div class="font-bold gradient-text">Diazites</div>
+            </div>
             <a href="/admin/logout" class="text-xs text-red-400"><i class="fas fa-sign-out-alt mr-1"></i>Logout</a>
         </div>
 
@@ -2468,6 +2527,38 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
     // Auto-dismiss flashes
     document.querySelectorAll('.animate-bounce').forEach(el => {
         setTimeout(() => el.remove(), 4000);
+    });
+    // ── Mobile drawer menu ──
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const mobileDrawer = document.getElementById('mobileDrawer');
+    const drawerBackdrop = document.getElementById('drawerBackdrop');
+    const drawerClose = document.getElementById('drawerClose');
+    function openDrawer() { mobileDrawer.classList.add('show'); drawerBackdrop.classList.add('show'); document.body.style.overflow = 'hidden'; }
+    function closeDrawer() { mobileDrawer.classList.remove('show'); drawerBackdrop.classList.remove('show'); document.body.style.overflow = ''; }
+    if (hamburgerBtn) hamburgerBtn.addEventListener('click', openDrawer);
+    if (drawerClose) drawerClose.addEventListener('click', closeDrawer);
+    if (drawerBackdrop) drawerBackdrop.addEventListener('click', closeDrawer);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+    // ── Sidebar search filter (works in desktop sidebar + mobile drawer) ──
+    document.querySelectorAll('.menu-filter').forEach(inp => {
+        inp.addEventListener('input', function() {
+            const q = this.value.trim().toLowerCase();
+            const root = this.closest('.sidebar') || this.closest('.drawer');
+            if (!root) return;
+            root.querySelectorAll('a.sidebar-item').forEach(a => {
+                const hay = ((a.dataset.label || '') + ' ' + (a.getAttribute('href') || '')).toLowerCase();
+                a.style.display = (!q || hay.includes(q)) ? '' : 'none';
+            });
+            root.querySelectorAll('.sidebar-section').forEach(sec => {
+                let any = false;
+                let el = sec.nextElementSibling;
+                while (el && el.classList && !el.classList.contains('sidebar-section')) {
+                    if (el.classList.contains('sidebar-item') && el.style.display !== 'none') { any = true; break; }
+                    el = el.nextElementSibling;
+                }
+                sec.style.display = any ? '' : 'none';
+            });
+        });
     });
     </script>
 </body>
