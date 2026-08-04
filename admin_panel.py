@@ -2445,7 +2445,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                     <td>{% if p.service == 'website' %}🌐 Web{% else %}⭐ Reviews{% endif %}</td>
                     <td>{% if p.sample_sent_at %}<span style="color:#4ade80">✅ {{ p.sample_sent_at[:16] }}</span>{% else %}<span class="text-[#fbbf24]">pending</span>{% endif %}</td>
                     <td class="text-[#5c5c70]">{{ (p.last_call_at or '')[:16] }}</td>
-                    <td class="whitespace-nowrap">{% if p.last_call_id %}<button class="btn-secondary text-[10px]" style="padding:3px 7px" onclick="raAudio('{{ p.last_call_id }}')">🎧</button> <button class="btn-secondary text-[10px]" style="padding:3px 7px" onclick="raTranscript('{{ p.last_call_id }}')">📄</button>{% endif %}</td>
+                    <td class="whitespace-nowrap">{% if p.last_call_id %}<button class="btn-secondary text-[10px]" style="padding:3px 7px" onclick="raAudio('{{ p.last_call_id }}')">🎧</button> <button class="btn-secondary text-[10px]" style="padding:3px 7px" onclick="raTranscript('{{ p.last_call_id }}')">📄</button>{% if p.has_recording or p.has_transcript %} <span title="saved to DB/disk" style="color:#4ade80">💾</span>{% endif %}{% endif %}</td>
                     <td class="whitespace-nowrap">
                         <button class="btn-primary text-[10px]" style="padding:4px 8px" onclick="raSample('{{ p.id }}')">📤 Package</button>
                         <button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="raAction('complete','{{ p.id }}')">✅ Done</button>
@@ -2620,15 +2620,15 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
             fetch('/admin/review-ai/transcript/' + callId).then(function(r){ return r.json(); })
               .then(function(d){
                 var out = [];
-                if (d.summary) out.push('📌 SUMMARY: ' + d.summary + '\n────────────────────────');
+                if (d.summary) out.push('📌 SUMMARY: ' + d.summary + '\\n────────────────────────');
                 if (d.messages && d.messages.length){
-                    out.push(d.messages.map(function(p){ return (p[0] === 'user' ? '👤 ' : '🤖 ') + p[1]; }).join('\n'));
+                    out.push(d.messages.map(function(p){ return (p[0] === 'user' ? '👤 ' : '🤖 ') + p[1]; }).join('\\n'));
                 } else if (d.transcript){
                     out.push(d.transcript);
                 } else {
                     out.push('No transcript yet (call may still be live).');
                 }
-                body.textContent = out.join('\n');
+                body.textContent = out.join('\\n');
               }).catch(function(){ body.textContent = 'Failed to load transcript.'; });
         }
         function raAudio(callId){
@@ -2660,7 +2660,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                     badge.style.color = '#4ade80'; badge.style.borderColor = '#22c55e40';
                 }
                 var log = document.getElementById('raLog');
-                if (d.log && d.log.length){ log.textContent = d.log.join('\n'); log.scrollTop = log.scrollHeight; }
+                if (d.log && d.log.length){ log.textContent = d.log.join('\\n'); log.scrollTop = log.scrollHeight; }
                 // LIVE calls — who's on the phone right now
                 var bar = document.getElementById('raLiveBar');
                 var list = document.getElementById('raLiveList');

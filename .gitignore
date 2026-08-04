@@ -45,3 +45,4 @@ user_2fa.json
 # review-ai runner runtime files
 review_ai_log.txt
 review_ai_runner_state.json
+call_recordings/

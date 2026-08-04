@@ -175,8 +175,16 @@ def init_tables():
         ccols = [r[1] for r in db.execute("PRAGMA table_info(review_ai_calls)")]
         if "outcome" not in ccols:
             db.execute("ALTER TABLE review_ai_calls ADD COLUMN outcome TEXT")
+        if "transcript" not in ccols:
+            db.execute("ALTER TABLE review_ai_calls ADD COLUMN transcript TEXT")
+        if "recording_path" not in ccols:
+            db.execute("ALTER TABLE review_ai_calls ADD COLUMN recording_path TEXT")
     except Exception:
         pass
+    db.execute("""CREATE TABLE IF NOT EXISTS review_ai_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        prospect_id TEXT, channel TEXT, to_addr TEXT, body TEXT,
+        status TEXT, sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
     db.commit()
     db.close()
 
@@ -857,6 +865,26 @@ def sync_call_outcomes():
                    (status, ended, r["id"]))
         db.execute("UPDATE review_ai_calls SET status=?, cost=?, duration=?, outcome=? WHERE call_id=?",
                    (status, cost, d.get("durationSeconds") or 0, ended, r["last_call_id"]))
+        # ── Save conversation artifacts for interested clients (voice + transcript) ──
+        if status == "interested":
+            try:
+                tr = (d.get("transcript") or "")[:20000] or " ".join(
+                    m.get("message", "") for m in (d.get("messages") or []) if m.get("message"))[:20000]
+                rec_path = None
+                try:
+                    _rd = os.path.join(os.path.dirname(os.path.abspath(__file__)), "call_recordings")
+                    os.makedirs(_rd, exist_ok=True)
+                    rdata, _ = call_recording(r["last_call_id"])
+                    if rdata:
+                        rec_path = os.path.join(_rd, f"{r['last_call_id']}.wav")
+                        with open(rec_path, "wb") as _f:
+                            _f.write(rdata)
+                except Exception:
+                    rec_path = None
+                db.execute("UPDATE review_ai_calls SET transcript=?, recording_path=? WHERE call_id=?",
+                           (tr, rec_path, r["last_call_id"]))
+            except Exception:
+                pass
         updated += 1
         log(f"  📊 {r['business_name'][:30]}: {ended} → {status}{f' 📧 {email_captured}' if email_captured else ''}")
         # collect packages; fire AFTER the DB transaction closes (avoids "database is locked")
@@ -935,7 +963,13 @@ def send_sample_sms(prospect_id):
         ok = send_sms(row["phone"], body)
         if ok:
             db.execute("UPDATE review_prospects SET sample_sent_at=datetime('now') WHERE id=?", (prospect_id,))
-            db.commit()
+        # persist the SMS in the conversation log (interested-client record)
+        try:
+            db.execute("INSERT INTO review_ai_messages (prospect_id, channel, to_addr, body, status) VALUES (?, 'sms', ?, ?, ?)",
+                       (prospect_id, row["phone"], body[:1000], "queued" if ok else "failed"))
+        except Exception:
+            pass
+        db.commit()
         db.close()
         return {"success": bool(ok), "message": f"✅ Package SMS sent ({svc} mode, demo + signup page)" if ok else "❌ SMS send failed"}
     except Exception as e:
@@ -1019,7 +1053,18 @@ def send_package_email(lead, checkout_url=None):
             f"Questions? Just reply to this email.\n"
             f"— The {s.get('service_name', 'Diazites')} Team"
         )
-    return send_email_via_agentmail(lead.get("email", ""), subject, body)
+    ok = send_email_via_agentmail(lead.get("email", ""), subject, body)
+    # persist the email in the conversation log
+    try:
+        pid = (lead.get("prospect_id") or "")
+        db = _db()
+        db.execute("INSERT INTO review_ai_messages (prospect_id, channel, to_addr, body, status) VALUES (?, 'email', ?, ?, ?)",
+                   (pid, lead.get("email", ""), (subject + " || " + body)[:1000], "sent" if ok else "failed"))
+        db.commit()
+        db.close()
+    except Exception:
+        pass
+    return ok
 
 
 def create_lead_checkout(lead_id, email, service="reviews"):
@@ -1342,8 +1387,12 @@ def tab_data():
         "SELECT * FROM review_service_leads ORDER BY created_at DESC LIMIT 15").fetchall()]
     # Follow-up queue: interested prospects still awaiting signup/payment + unpaid signups
     followup = [dict(r) for r in db.execute(
-        "SELECT id, business_name, phone, email, service, status, sample_sent_at, last_call_at, last_call_id "
-        "FROM review_prospects WHERE status='interested' ORDER BY last_call_at DESC LIMIT 50").fetchall()]
+        "SELECT p.id, p.business_name, p.phone, p.email, p.service, p.status, p.sample_sent_at, "
+        "p.last_call_at, p.last_call_id, "
+        "(rc.transcript IS NOT NULL AND rc.transcript != '') AS has_transcript, "
+        "rc.recording_path IS NOT NULL AS has_recording "
+        "FROM review_prospects p LEFT JOIN review_ai_calls rc ON rc.call_id = p.last_call_id "
+        "WHERE p.status='interested' ORDER BY p.last_call_at DESC LIMIT 50").fetchall()]
     db.close()
     return {
         "ra_settings": get_settings(),
@@ -1420,7 +1469,16 @@ def call_again(pid):
 
 
 def call_transcript(call_id):
-    """Fetch a call's transcript from Vapi for the call-log view."""
+    """Fetch a call's transcript — prefers the saved copy (interested clients), else Vapi live."""
+    try:
+        db = _db()
+        row = db.execute("SELECT transcript FROM review_ai_calls WHERE call_id=?", (call_id,)).fetchone()
+        db.close()
+        if row and row["transcript"]:
+            return {"transcript": row["transcript"], "messages": [], "status": "saved",
+                    "ended": "", "cost": 0, "duration": 0, "summary": ""}
+    except Exception:
+        pass
     d = _vapi("GET", f"/call/{call_id}")
     tr = d.get("transcript") or ""
     msgs = [(m.get("role"), m.get("message")) for m in (d.get("messages") or []) if m.get("message")]
@@ -1430,9 +1488,15 @@ def call_transcript(call_id):
 
 
 def call_recording(call_id):
-    """Fetch a call's mono recording (bytes + mime) via Vapi's authenticated
-    302-redirect endpoint — works for any call that has a recording.
-    Uses requests (urllib gets HTTP 400 on this endpoint; curl/requests get 302→200)."""
+    """Fetch a call's mono recording — prefers the saved local copy, else Vapi's
+    authenticated 302 endpoint (requests; urllib gets HTTP 400 on this endpoint)."""
+    try:
+        p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "call_recordings", f"{call_id}.wav")
+        if os.path.exists(p):
+            with open(p, "rb") as f:
+                return f.read(), "audio/wav"
+    except Exception:
+        pass
     import requests
     key = vapi_key()
     try:
