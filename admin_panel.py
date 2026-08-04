@@ -2312,11 +2312,11 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
             {% endif %}
             {% endif %}
         </div>
-        {% if twofa.backup_count or session.get('admin_2fa_new_codes') %}
+        {% if twofa.enabled or twofa.backup_count or session.get('admin_2fa_new_codes') %}
         <div class="card max-w-xl">
             <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <h3 class="font-bold">🔑 Backup Codes</h3>
-                <form method="POST" action="/admin/security-2fa-backup-codes"><button class="btn-secondary text-sm"><i class="fas fa-sync mr-1"></i> Regenerate</button></form>
+                <form method="POST" action="/admin/security-2fa-backup-codes"><button class="btn-secondary text-sm"><i class="fas fa-sync mr-1"></i> {% if twofa.backup_count %}Regenerate{% else %}Generate{% endif %}</button></form>
             </div>
             {% if session.get('admin_2fa_new_codes') %}
             <div class="bg-[#12121a] border border-yellow-500/30 rounded-lg p-4 mb-3">
