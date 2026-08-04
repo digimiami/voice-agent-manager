@@ -89,6 +89,7 @@ DEFAULT_SETTINGS = {
     "enabled": "1",
     "max_calls_per_run": "5",
     "delay_seconds": "90",
+    "mobile_only": "0",
     "assistant_id": "",
     "phone_number_id": "9031d73a-85e4-437e-af27-f6b877a2c039",
     "webhook_url": "https://diazites.online/api/v1/vapi-webhook",
@@ -768,17 +769,20 @@ def _run_calls_child(max_calls=None, delay=None):
             return
         phone_id = s["phone_number_id"]
         service = s.get("service", "reviews")
+        # mobile-only mode: skip known landlines/VoIP/toll-free (unverified still called)
+        mfilter = " AND (line_type IS NULL OR line_type='mobile')" if s.get("mobile_only") == "1" else ""
         # website mode: only call businesses with NO website
         if service == "website":
             rows = _db().execute(
                 "SELECT * FROM review_prospects WHERE status='new' AND "
-                "(website IS NULL OR website='') ORDER BY created_at LIMIT ?",
+                "(website IS NULL OR website='')" + mfilter + " ORDER BY created_at LIMIT ?",
                 (maxc,)).fetchall()
         else:
             rows = _db().execute(
-                "SELECT * FROM review_prospects WHERE status='new' ORDER BY created_at LIMIT ?",
+                "SELECT * FROM review_prospects WHERE status='new'" + mfilter + " ORDER BY created_at LIMIT ?",
                 (maxc,)).fetchall()
-        log(f"📞 Campaign started ({service} mode, assistant {aid[:8]}…, up to {len(rows)} calls, delay {wait}s)")
+        log(f"📞 Campaign started ({service} mode, assistant {aid[:8]}…, up to {len(rows)} calls, delay {wait}s"
+            + (", MOBILE-ONLY" if mfilter else "") + ")")
         placed = 0
         for r in rows:
             if _stop_flag.is_set():

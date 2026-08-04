@@ -2423,6 +2423,11 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                 </div>
                 <div class="flex items-center gap-2">
                     <button class="btn-primary text-sm">💾 Save Settings</button>
+                    <label class="flex items-center gap-2 text-[12px] cursor-pointer select-none" title="Only call verified mobile numbers (skips landline/VoIP/toll-free)">
+                        <input type="checkbox" name="mobile_only" value="1" {% if ra_settings.mobile_only == '1' %}checked{% endif %} class="w-4 h-4 accent-[#a855f7]">
+                        <span>📱 Mobile-only calling</span>
+                        {% if ra_settings.mobile_only == '1' %}<span class="text-[10px] px-2 py-0.5 rounded-full" style="background:#22c55e20;color:#4ade80">ON</span>{% endif %}
+                    </label>
                     <span class="text-[11px] text-[#64748b]">Assistant: {% if ra_settings.assistant_id %}<span class="text-green-400 font-mono">{{ ra_settings.assistant_id[:16] }}…</span>{% else %}<span class="text-yellow-400">not created yet (auto-creates on first call)</span>{% endif %}</span>
                 </div>
             </form>
@@ -5036,6 +5041,7 @@ def admin_review_ai_save_settings():
         'enabled': '1' if request.form.get('enabled') else '0',
         'max_calls_per_run': request.form.get('max_calls_per_run', s['max_calls_per_run']).strip(),
         'delay_seconds': request.form.get('delay_seconds', s['delay_seconds']).strip(),
+        'mobile_only': '1' if request.form.get('mobile_only') else '0',
     }
     review_ai.save_settings(updates)
     audit('review_ai_save', f"city={updates['city']} pricing={updates['pricing']} enabled={updates['enabled']}")
