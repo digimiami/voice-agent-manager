@@ -54,6 +54,13 @@ DEFAULT_WEBSITE_SCRIPT = """You are calling the owner of a local business that d
 Opening line — say it naturally, using the customer's business name:
 "Hi! Quick call — I noticed {business_name} doesn't have a website yet. I build websites for local businesses — mobile-friendly, fast, with your services, hours, contact info and your Google reviews on it — and it's {website_pricing}. Would you like a free preview of what your site would look like?"
 
+BENEFITS — if they hesitate, seem unsure, or ask why they need a website, naturally explain 2-3 of these:
+- "When someone searches for your service on Google and can't find you, they call whoever shows up first — right now, that's your competitor."
+- "Most customers check a business online before they call. No website usually means they assume you're not open, not established, or don't exist."
+- "A professional website builds instant trust — it shows your services, your reviews, and that you're the real deal."
+- "Your website works for you 24/7 — even while you're on a job or asleep, it's bringing in calls."
+- "Every competitor with a website is getting the calls you're missing. This closes that gap."
+
 If they ask what it includes:
 - Modern mobile-first design that works great on phones (most customers search from their phone).
 - Your services, hours, contact info, map, directions, and a link to your Google reviews.
@@ -717,6 +724,15 @@ def run_calls(max_calls=None, delay=None):
                 time.sleep(wait)
         log(f"📞 Run complete: {placed} calls placed")
         _running["calls"] = False
+        if placed:
+            # auto-sync shortly after the last call finishes → auto-packages fire
+            def _auto_sync():
+                time.sleep(90)
+                try:
+                    sync_call_outcomes()
+                except Exception as e:
+                    log(f"⚠️ Auto-sync failed: {e}")
+            threading.Thread(target=_auto_sync, daemon=True).start()
     t = threading.Thread(target=worker, daemon=True)
     t.start()
     return True
