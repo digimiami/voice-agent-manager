@@ -4946,6 +4946,22 @@ def admin_review_ai_count():
     return redirect('/admin?tab=reviews-ai')
 
 
+@app.route('/review-service')
+def review_service_page():
+    """Public service page (served at diazites.online/review-service via 8086)."""
+    import review_ai
+    return review_ai.service_page_html(
+        thankyou=request.args.get('thankyou') == '1',
+        error=request.args.get('error') == '1')
+
+
+@app.route('/review-service/signup', methods=['POST'])
+def review_service_signup():
+    import review_ai
+    ok, _ = review_ai.signup_lead(request.form)
+    return redirect('/review-service?thankyou=1' if ok else '/review-service?error=1')
+
+
 @app.route('/admin/review-ai/call', methods=['POST'])
 @admin_required
 def admin_review_ai_call():

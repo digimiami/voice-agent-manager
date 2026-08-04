@@ -7885,113 +7885,14 @@ def stripe_webhook():
     return jsonify({'received': False}), 200
 
 # ── REVIEW SERVICE PAGE (public funnel: demo → signup → $99/mo payment) ──
-
-def _review_service_page(thankyou=False, error=False):
-    pay_link = "https://buy.stripe.com/14AcN598d3I6gmO0hl67S04"
-    thankyou_html = f'''<div class="card" style="border-color:rgba(74,222,128,0.35);background:linear-gradient(135deg,#052e16,#0a0f1e);margin-bottom:24px">
-      <div style="font-size:40px;text-align:center;margin-bottom:8px">✅</div>
-      <h2 style="text-align:center;font-size:18px;font-weight:800;color:#4ade80;margin-bottom:6px">You're signed up!</h2>
-      <p style="font-size:13px;color:#94a3b8;text-align:center;line-height:1.6">Your free sample review response is on its way to your inbox.<br>Want to get started right now? <a href="{pay_link}" style="color:#c084fc;font-weight:700">Start your subscription →</a></p>
-    </div>''' if thankyou else ''
-    error_html = f'''<div class="card" style="border-color:rgba(239,68,68,0.4);margin-bottom:24px">
-      <p style="font-size:13px;color:#f87171;text-align:center">Please fill all fields with a valid email & phone.</p></div>''' if error else ''
-    return f'''<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-<title>Google Review Response Service — $99/mo | Diazites</title>
-<style>
-*{{margin:0;padding:0;box-sizing:border-box}}
-body{{background:#0a0a12;color:#f1f1f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.5}}
-.wrap{{max-width:720px;margin:0 auto;padding:20px 16px 40px}}
-.badge{{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.5px;padding:6px 14px;border-radius:999px;background:linear-gradient(135deg,rgba(168,85,247,.15),rgba(236,72,153,.15));border:1px solid rgba(168,85,247,.35);color:#c084fc;margin-bottom:14px}}
-h1{{font-size:28px;line-height:1.25;margin-bottom:12px}}
-.sub{{color:#94a3b8;font-size:14px;margin-bottom:20px;line-height:1.6}}
-.btn{{display:block;width:100%;text-align:center;padding:16px;border-radius:12px;font-weight:800;font-size:16px;text-decoration:none;color:#fff;background:linear-gradient(135deg,#a855f7,#ec4899);border:none;cursor:pointer}}
-.btn.ghost{{background:#1a1a28;border:1px solid #2a2a3a;color:#e2e8f0}}
-.card{{background:#0e0e16;border:1px solid #1e1e2e;border-radius:16px;padding:20px;margin-bottom:16px}}
-h2{{font-size:18px;margin-bottom:12px}}
-.step{{display:flex;gap:12px;margin-bottom:14px;align-items:flex-start}}
-.step .n{{min-width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#a855f7,#ec4899);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}}
-.step p{{font-size:13px;color:#94a3b8}}
-.step b{{color:#e2e8f0}}
-.demo{{background:#0a0a12;border:1px solid #1a1a24;border-radius:12px;padding:14px;margin-bottom:10px}}
-.demo .rev{{font-size:13px;color:#d0d0e0;margin-bottom:8px}}
-.demo .stars{{color:#fbbf24;font-size:11px;margin-bottom:4px}}
-.demo .who{{font-size:11px;color:#64748b;margin-bottom:8px}}
-.demo .reply{{font-size:12px;color:#c084fc;background:rgba(168,85,247,.08);border-left:2px solid #a855f7;padding:10px 12px;border-radius:0 8px 8px 0}}
-label{{display:block;font-size:11px;font-weight:700;letter-spacing:.4px;color:#64748b;text-transform:uppercase;margin:12px 0 5px}}
-input{{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:15px;outline:none}}
-input:focus{{border-color:#a855f7}}
-.faq details{{margin-bottom:10px}}
-.faq summary{{font-size:13px;font-weight:700;cursor:pointer;color:#e2e8f0}}
-.faq p{{font-size:12px;color:#94a3b8;margin-top:6px}}
-.price{{text-align:center;padding:24px}}
-.price .amt{{font-size:44px;font-weight:900;color:#c084fc}}
-.price .per{{font-size:12px;color:#64748b}}
-.foot{{text-align:center;font-size:11px;color:#475569;margin-top:24px}}
-@media(min-width:640px){{h1{{font-size:36px}}}}
-</style></head><body><div class="wrap">
-  <div style="text-align:center;margin-bottom:20px">
-    <span class="badge">⭐ GOOGLE REVIEW RESPONSE SERVICE</span>
-    <h1>Never leave another Google review unanswered.</h1>
-    <p class="sub">We write personalized, on-brand replies to <b>every</b> Google review — positive and negative — and post them with your approval. More responses = better ranking = more customers. <b>$99/mo, cancel anytime.</b></p>
-    <a class="btn" href="{pay_link}">Start Now — $99/mo →</a>
-    <p style="font-size:11px;color:#64748b;margin-top:8px">🔒 Secure Stripe checkout · Cancel anytime · 14-day guarantee</p>
-  </div>
-
-  {thankyou_html}
-  {error_html}
-
-  <div class="card">
-    <h2>⚡ How it works</h2>
-    <div class="step"><div class="n">1</div><p><b>We connect</b> to your Google Business Profile and read your reviews.</p></div>
-    <div class="step"><div class="n">2</div><p><b>We draft responses</b> in your brand's voice — warm for fans, professional for critics.</p></div>
-    <div class="step"><div class="n">3</div><p><b>You approve</b> (or edit) in one tap. We post. You look responsive 24/7.</p></div>
-  </div>
-
-  <div class="card">
-    <h2>🎁 A real sample — this is what we'd write for you</h2>
-    <div class="demo"><div class="stars">★★★★★</div><div class="who">Maria G. · 2 days ago</div>
-      <div class="rev">"Best service in Miami! Called at 9am, they were here by noon. Super professional."</div>
-      <div class="reply">"Thank you, Maria! We're so glad we could help — our team works hard to be fast and professional every single time. We appreciate you! 🙌"</div></div>
-    <div class="demo"><div class="stars">★★☆☆☆</div><div class="who">Tom R. · 1 week ago</div>
-      <div class="rev">"Had to wait a bit longer than expected for the estimate."</div>
-      <div class="reply">"Hi Tom, thank you for the honest feedback — we're sorry about the wait. We've adjusted our scheduling so estimates go out same-day. We'd love the chance to make it right!"</div></div>
-  </div>
-
-  <div class="card" style="border-color:rgba(168,85,247,.4)">
-    <h2>📝 2-minute signup — get your free sample today</h2>
-    <form method="POST" action="/review-service/signup">
-      <label>Business name</label><input name="business_name" required placeholder="e.g. Miami Plumbers LLC">
-      <label>Your name</label><input name="contact_name" required placeholder="e.g. Jorge Rivera">
-      <label>Email (we send your sample here)</label><input type="email" name="email" required placeholder="you@business.com">
-      <label>Phone</label><input type="tel" name="phone" required placeholder="(305) 555-0123">
-      <button class="btn" type="submit" style="margin-top:18px">Send Me My Free Sample →</button>
-    </form>
-    <p style="font-size:11px;color:#64748b;text-align:center;margin-top:10px">No spam. We only write review replies — ever.</p>
-  </div>
-
-  <div class="card price">
-    <h2>Simple pricing</h2>
-    <div class="amt">$99<span style="font-size:16px;color:#64748b">/mo</span></div>
-    <p style="font-size:13px;color:#94a3b8;margin:8px 0 14px">Unlimited reviews · your voice · approve before posting · cancel anytime</p>
-    <a class="btn" href="{pay_link}">Start Now →</a>
-  </div>
-
-  <div class="card faq">
-    <h2>Questions? Answered.</h2>
-    <details><summary>Do I need to give you my Google login?</summary><p>No. You add us as a manager on your Business Profile (2 minutes) — you stay in control.</p></details>
-    <details><summary>Will responses sound like me?</summary><p>We build a voice profile from your business — you approve or edit every single reply before it goes live.</p></details>
-    <details><summary>Does responding to reviews actually help?</summary><p>Yes — businesses that respond get 35% more 5-star reviews (BrightLocal) and rank higher in local search. It's the cheapest marketing you can buy.</p></details>
-    <details><summary>Can I cancel?</summary><p>Anytime, in one click. No contracts, no calls.</p></details>
-  </div>
-
-  <div class="foot">Diazites · Google Review Response Service · support@diazites.online</div>
-</div></body></html>'''
-
+# Shared implementation lives in review_ai.py (service_page_html + signup_lead)
+# so both the dashboard (8085) and the admin (8086, which nginx serves at
+# diazites.online) expose the same page without circular imports.
 
 @app.route('/review-service')
 def review_service_page():
-    return _review_service_page(
+    import review_ai
+    return review_ai.service_page_html(
         thankyou=request.args.get('thankyou') == '1',
         error=request.args.get('error') == '1')
 
@@ -7999,23 +7900,8 @@ def review_service_page():
 @app.route('/review-service/signup', methods=['POST'])
 def review_service_signup():
     import review_ai
-    biz = (request.form.get('business_name') or '').strip()
-    contact = (request.form.get('contact_name') or '').strip()
-    email = (request.form.get('email') or '').strip()
-    phone = (request.form.get('phone') or '').strip()
-    if not biz or not contact or '@' not in email or len(phone) < 7:
-        return redirect('/review-service?error=1')
-    lid = review_ai.add_lead(business_name=biz, contact_name=contact, email=email, phone=phone)
-    lead = {'business_name': biz, 'contact_name': contact, 'email': email, 'phone': phone}
-    checkout = review_ai.create_lead_checkout(lid, email)
-    review_ai.send_package_email(lead, checkout_url=checkout)
-    try:
-        from smsgate_sms import send_sms
-        pay_txt = checkout or "https://buy.stripe.com/14AcN598d3I6gmO0hl67S04"
-        send_sms(phone, f"Hi {contact}! We got your signup for {biz}. Your free sample review response is on its way to {email}. Pay securely here: {pay_txt}")
-    except Exception:
-        pass
-    return redirect('/review-service?thankyou=1')
+    ok, _ = review_ai.signup_lead(request.form)
+    return redirect('/review-service?thankyou=1' if ok else '/review-service?error=1')
 
 
 # ── INDUSTRY PRESETS ──
