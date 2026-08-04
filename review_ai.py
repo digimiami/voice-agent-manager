@@ -747,6 +747,7 @@ def sync_call_outcomes():
         "WHERE p.status='called' AND p.last_call_id != '' AND "
         "(p.last_outcome IS NULL OR p.last_outcome='')").fetchall()
     updated = 0
+    packages = []
     for r in rows:
         d = _vapi("GET", f"/call/{r['last_call_id']}")
         if d.get("error"):
@@ -780,21 +781,24 @@ def sync_call_outcomes():
                    (status, cost, int(dur * 60), r["last_call_id"]))
         updated += 1
         log(f"  📊 {r['business_name'][:30]}: {ended} → {status}{f' 📧 {email_captured}' if email_captured else ''}")
-        # ── Auto-send demo + signup landing page on first 'interested' ──
+        # collect packages; fire AFTER the DB transaction closes (avoids "database is locked")
         if status == 'interested' and not r["sample_sent_at"]:
-            try:
-                res = send_sample_sms(r["id"])
-                log(f"  📤 Auto-package → {r['business_name'][:30]}: {res.get('message', 'sent')}")
-                if email_captured:
-                    lead = {"business_name": r["business_name"], "contact_name": r["business_name"],
-                            "email": email_captured, "phone": r["phone"],
-                            "service": r["service"] or s.get("service", "reviews")}
-                    ok = send_package_email(lead)
-                    log(f"  📧 Auto-email → {r['business_name'][:30]}: {'sent' if ok else 'FAILED'}")
-            except Exception as e:
-                log(f"  ❌ Auto-package failed: {e}")
+            packages.append((r, email_captured))
     db.commit()
     db.close()
+    # ── Auto-send demo + signup landing page on first 'interested' (no open txn) ──
+    for r, email_captured in packages:
+        try:
+            res = send_sample_sms(r["id"])
+            log(f"  📤 Auto-package → {r['business_name'][:30]}: {res.get('message', 'sent')}")
+            if email_captured:
+                lead = {"business_name": r["business_name"], "contact_name": r["business_name"],
+                        "email": email_captured, "phone": r["phone"],
+                        "service": r["service"] or s.get("service", "reviews")}
+                ok = send_package_email(lead)
+                log(f"  📧 Auto-email → {r['business_name'][:30]}: {'sent' if ok else 'FAILED'}")
+        except Exception as e:
+            log(f"  ❌ Auto-package failed: {e}")
     log(f"📊 Synced {updated} call outcome(s)")
     return updated
 
