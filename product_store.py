@@ -56,6 +56,48 @@ def get_bundle_items(bid):
 
 init_bundle_tables()
 
+
+def _ensure_order_columns():
+    """Add Stripe 1-click (off-session) columns to product_orders (idempotent)."""
+    try:
+        db = sqlite3.connect(DB_PATH)
+        db.execute("ALTER TABLE product_orders ADD COLUMN stripe_customer TEXT")
+        db.execute("ALTER TABLE product_orders ADD COLUMN stripe_pm TEXT")
+        db.commit()
+        db.close()
+    except Exception:
+        pass
+
+
+_ensure_order_columns()
+
+# ── Post-purchase 1-click upsells (per bundle + generic for single products) ──
+BUNDLE_UPSELLS = {
+    'bundle-re-growth': 'upsell-re-video-scripts',
+    'bundle-saas-launchpad': 'upsell-saas-ai-ops',
+    'bundle-ai-affiliate': 'upsell-affiliate-case-studies',
+}
+GENERIC_UPSELL = 'upsell-conversion-toolkit'
+UPSELL_RETAIL = {
+    'upsell-re-video-scripts': 54.0,
+    'upsell-saas-ai-ops': 47.0,
+    'upsell-affiliate-case-studies': 54.0,
+    'upsell-conversion-toolkit': 38.0,
+}
+
+
+def get_upsell_for(order):
+    """Pick the upsell product for an order (bundle-aware)."""
+    pid = order.get('product_id') or ''
+    if pid.startswith('bundle_'):
+        up_id = BUNDLE_UPSELLS.get(pid.replace('bundle_', ''), GENERIC_UPSELL)
+    else:
+        up_id = GENERIC_UPSELL
+    db = get_db()
+    up = db.execute("SELECT * FROM products WHERE id=?", (up_id,)).fetchone()
+    db.close()
+    return dict(up) if up else None
+
 def init_api_keys_table():
     """Ensure api_keys table exists."""
     conn = sqlite3.connect(DB_PATH)
@@ -1458,7 +1500,9 @@ def api_checkout(product_id):
             mode='payment',
             line_items=line_items,
             metadata=meta,
-            success_url=f"{base}/download/{token}?success=1",
+            customer_creation='always',
+            payment_intent_data={'setup_future_usage': 'off_session'},
+            success_url=f"{base}/upsell/{token}",
             cancel_url=f"{base}/product/{product_id}?canceled=1",
         )
         return redirect(session_data.url)
@@ -1495,7 +1539,9 @@ def api_checkout_bundle(bundle_id):
                 meta['bump_id'] = bp['id']
         sd = stripe.checkout.Session.create(
             mode='payment', line_items=line_items, metadata=meta,
-            success_url=f"{base}/download/{token}?success=1",
+            customer_creation='always',
+            payment_intent_data={'setup_future_usage': 'off_session'},
+            success_url=f"{base}/upsell/{token}",
             cancel_url=f"{base}/bundles?canceled=1")
         return redirect(sd.url)
     except Exception as e:
@@ -1591,6 +1637,101 @@ def bundles_listing():
 </div>{LAYOUT_FOOT}'''
 
 
+#  POST-PURCHASE UPSELL 
+@app.route('/upsell/<token>')
+def upsell_page(token):
+    db = get_db()
+    main = db.execute("""SELECT po.*, p.title FROM product_orders po
+                         LEFT JOIN products p ON po.product_id = p.id
+                         WHERE po.download_token=?""", (token,)).fetchone()
+    db.close()
+    if not main:
+        # webhook may not have landed yet — wait and retry
+        return f'''{LAYOUT_HEAD.replace("ShopZario", "Processing")}
+<div class="text-center py-20"><i class="fas fa-spinner fa-spin text-4xl text-[#a855f7] mb-4"></i>
+<h2 class="text-xl font-bold mb-2">Processing Your Purchase...</h2><p class="text-[#7a7a8e]">Please wait a moment.</p>
+<script>setTimeout(() => window.location.href='/upsell/{token}', 2500);</script></div>{LAYOUT_FOOT}'''
+    main = dict(main)
+    up = get_upsell_for(main)
+    if not up:
+        return redirect(f'/download/{token}?success=1')
+    retail = UPSELL_RETAIL.get(up['id'], up['price'] * 2)
+    main_title = main['title'] or 'your order'
+    return f'''{LAYOUT_HEAD}{TOP_NAV}
+<div class="max-w-lg mx-auto px-4 py-10">
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 rounded-full bg-[#4ade80]/15 flex items-center justify-center mx-auto mb-3"><i class="fas fa-check text-2xl text-[#4ade80]"></i></div>
+    <h1 class="text-xl font-bold mb-1">Order Confirmed — {main_title}</h1>
+    <p class="text-xs text-[#7a7a8e]">One last thing before your downloads…</p>
+  </div>
+  <div class="card mb-4" style="border-color:rgba(168,85,247,0.4);background:linear-gradient(135deg,#160a2a,#0e0e16)">
+    <div class="flex items-center justify-between mb-2">
+      <span class="tag tag-purple"><i class="fas fa-bolt mr-1"></i> TODAY ONLY</span>
+      <span class="text-sm text-[#5c5c70]"><s>${retail:.0f}</s> → <span class="font-bold text-lg text-[#c084fc]">${up['price']:.0f}</span></span>
+    </div>
+    <h2 class="font-bold text-lg mb-1">{up['title']}</h2>
+    <p class="text-xs text-[#7a7a8e] mb-4">{up['description']}</p>
+    <form method="POST" action="/api/upsell/{token}">
+      <button type="submit" class="btn-primary w-full" style="font-size:15px" onclick="if(window.szBeginCheckout)szBeginCheckout({up['price']:.2f})">YES — Add It For ${up['price']:.0f}</button>
+    </form>
+    <p class="text-[10px] text-[#5c5c70] text-center mt-2">1-click — charged to the card you just used · 14-day guarantee</p>
+  </div>
+  <a href="/download/{token}?success=1" class="btn-secondary w-full justify-center" style="padding:14px">No thanks, take me to my downloads →</a>
+</div>{LAYOUT_FOOT}'''
+
+
+@app.route('/api/upsell/<token>', methods=['POST'])
+def api_upsell(token):
+    try:
+        from premium_features import load_stripe_config
+        import stripe
+        cfg = load_stripe_config()
+        if not cfg.get('enabled') or not cfg.get('secret_key'):
+            return redirect(f'/download/{token}?success=1')
+        stripe.api_key = cfg['secret_key']
+        db = get_db()
+        main = db.execute("SELECT * FROM product_orders WHERE download_token=?", (token,)).fetchone()
+        if not main:
+            db.close()
+            return redirect(f'/download/{token}?success=1')
+        main = dict(main)
+        up = get_upsell_for(main)
+        if not up:
+            db.close()
+            return redirect(f'/download/{token}?success=1')
+        base = request.host_url.rstrip('/')
+        # ── True 1-click: charge the saved card off-session ──
+        cust = main.get('stripe_customer')
+        pm = main.get('stripe_pm')
+        if cust and pm:
+            try:
+                pi = stripe.PaymentIntent.create(
+                    amount=int(up['price'] * 100), currency='usd',
+                    customer=cust, payment_method=pm, off_session=True, confirm=True,
+                    metadata={'upsell_id': up['id'], 'download_token': token,
+                              'main_session': main.get('stripe_session_id')})
+                if pi.get('status') in ('succeeded', 'processing'):
+                    db.execute("INSERT OR IGNORE INTO product_orders (id, product_id, customer_email, amount, stripe_session_id, download_token, stripe_customer, stripe_pm) VALUES (?,?,?,?,?,?,?,?)",
+                               (str(uuid.uuid4())[:12], up['id'], main.get('customer_email'), up['price'],
+                                main.get('stripe_session_id'), token + '-upsell', cust, pm))
+                    db.commit()
+                    db.close()
+                    return redirect(f'/download/{token}?success=1')
+            except Exception:
+                pass
+        # ── Fallback: regular Checkout for the upsell (card usually prefilled) ──
+        sd = stripe.checkout.Session.create(
+            mode='payment',
+            line_items=[{'price_data': {'currency': 'usd', 'product_data': {'name': up['title'][:100], 'description': (up['description'] or '')[:160]}, 'unit_amount': int(up['price'] * 100)}, 'quantity': 1}],
+            metadata={'product_id': up['id'], 'download_token': token + '-upsell'},
+            success_url=f"{base}/download/{token}?success=1",
+            cancel_url=f"{base}/upsell/{token}?declined=1")
+        db.close()
+        return redirect(sd.url)
+    except Exception:
+        return redirect(f'/download/{token}?success=1')
+
+
 #  DOWNLOAD 
 @app.route('/download/<token>')
 def download_product(token):
@@ -1599,15 +1740,17 @@ def download_product(token):
     c = db.cursor()
     c.execute("""SELECT po.*, p.title, p.content, p.product_type, p.price, p.file_path
                  FROM product_orders po LEFT JOIN products p ON po.product_id = p.id
-                 WHERE po.download_token=?""", (token,))
-    orders = [dict(r) for r in c.fetchall()]
-    # Include bump/bonus rows bought in the same Stripe session (bump has its own token)
-    if orders and orders[0].get('stripe_session_id'):
-        c.execute("""SELECT po.*, p.title, p.content, p.product_type, p.price, p.file_path
-                     FROM product_orders po LEFT JOIN products p ON po.product_id = p.id
-                     WHERE po.stripe_session_id=? AND po.download_token != ?""",
-                  (orders[0]['stripe_session_id'], token))
-        orders.extend(dict(r) for r in c.fetchall())
+                 WHERE po.download_token=? OR po.download_token=? OR po.download_token=?
+                    OR po.stripe_session_id=(SELECT stripe_session_id FROM product_orders WHERE download_token=?)""",
+              (token, token + '-bump', token + '-upsell', token))
+    orders = []
+    seen = set()
+    for r in c.fetchall():
+        r = dict(r)
+        key = r['product_id'] or r['id']
+        if key not in seen:
+            seen.add(key)
+            orders.append(r)
     success = request.args.get('success', '')
     if not orders and success:
         return f'''{LAYOUT_HEAD.replace("ShopZario", "Processing")}
@@ -1760,24 +1903,33 @@ def stripe_webhook():
         bump_id = meta.get('bump_id')
         token = meta.get('download_token')
         email = s.get('customer_details', {}).get('email', '') or s.get('customer_email', '')
+        cust = s.get('customer')
+        pm = None
+        pi_id = s.get('payment_intent')
+        if pi_id:
+            try:
+                pi = stripe.PaymentIntent.retrieve(pi_id)
+                pm = pi.get('payment_method')
+            except Exception:
+                pass
         if (pid or bid) and token:
             db = get_db()
             c = db.cursor()
             if bid:
                 b = c.execute("SELECT price FROM bundles WHERE id=?", (bid,)).fetchone()
                 price = b[0] if b else 0
-                c.execute("INSERT OR IGNORE INTO product_orders (id, product_id, customer_email, amount, stripe_session_id, download_token) VALUES (?, ?, ?, ?, ?, ?)",
-                          (str(uuid.uuid4())[:12], 'bundle_' + bid, email, price, s.get('id', ''), token))
+                c.execute("INSERT OR IGNORE INTO product_orders (id, product_id, customer_email, amount, stripe_session_id, download_token, stripe_customer, stripe_pm) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                          (str(uuid.uuid4())[:12], 'bundle_' + bid, email, price, s.get('id', ''), token, cust, pm))
             else:
                 p = c.execute("SELECT price FROM products WHERE id=?", (pid,)).fetchone()
                 price = p[0] if p else 0
-                c.execute("INSERT OR IGNORE INTO product_orders (id, product_id, customer_email, amount, stripe_session_id, download_token) VALUES (?, ?, ?, ?, ?, ?)",
-                          (str(uuid.uuid4())[:12], pid, email, price, s.get('id', ''), token))
+                c.execute("INSERT OR IGNORE INTO product_orders (id, product_id, customer_email, amount, stripe_session_id, download_token, stripe_customer, stripe_pm) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                          (str(uuid.uuid4())[:12], pid, email, price, s.get('id', ''), token, cust, pm))
             if bump_id:
                 bp = c.execute("SELECT price FROM products WHERE id=?", (bump_id,)).fetchone()
                 bprice = bp[0] if bp else 0
-                c.execute("INSERT OR IGNORE INTO product_orders (id, product_id, customer_email, amount, stripe_session_id, download_token) VALUES (?, ?, ?, ?, ?, ?)",
-                          (str(uuid.uuid4())[:12], bump_id, email, bprice, s.get('id', ''), token + '-bump'))
+                c.execute("INSERT OR IGNORE INTO product_orders (id, product_id, customer_email, amount, stripe_session_id, download_token, stripe_customer, stripe_pm) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                          (str(uuid.uuid4())[:12], bump_id, email, bprice, s.get('id', ''), token + '-bump', cust, pm))
             db.commit()
             db.close()
     return jsonify({'ok': True})
