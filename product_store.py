@@ -1542,7 +1542,7 @@ def api_checkout_bundle(bundle_id):
             customer_creation='always',
             payment_intent_data={'setup_future_usage': 'off_session'},
             success_url=f"{base}/upsell/{token}",
-            cancel_url=f"{base}/bundles?canceled=1")
+            cancel_url=f"{base}/sale/{b['slug']}?canceled=1")
         return redirect(sd.url)
     except Exception as e:
         return jsonify({'error': str(e)[:200]}), 500
@@ -1617,7 +1617,7 @@ def bundles_listing():
     cards = ''
     for b in rows:
         n = len(get_bundle_items(b['id']))
-        cards += f'''<a href="/checkout/bundle/{b['id']}" class="card block hover:border-[#a855f7]">
+        cards += f'''<a href="/sale/{b['slug']}" class="card block hover:border-[#a855f7]">
         <div class="flex items-center justify-between mb-2">
           <span class="tag tag-purple"><i class="fas fa-box-open mr-1"></i>{n} products</span>
           <span class="font-bold text-lg text-[#c084fc]">${b['price']:.0f}</span>
@@ -1635,6 +1635,242 @@ def bundles_listing():
   </div>
   <div class="grid md:grid-cols-3 gap-6">{cards}</div>
 </div>{LAYOUT_FOOT}'''
+
+
+#  SALES LANDING PAGES (PAS-E — no nav, one CTA, mobile-first) 
+SALE_COPY = {
+    'real-estate-suite': {
+        'icon': '🏠', 'emoji': '🏠',
+        'eyebrow': 'Trusted by 2,300+ agents · Instant Download',
+        'headline': 'Your Entire Real Estate Business. One Notion OS.',
+        'sub': 'The CRM, listing pipeline, contract templates, and AI prompts that run a real estate business — together for the first time. Stop paying $200/month for software you barely use. Pay once. Yours in 60 seconds.',
+        'problems': [
+            'Leads scattered across texts, inbox, and napkins — and they go cold in 48 hours.',
+            'Contracts and paperwork eat your weekends — one wrong template costs you a deal.',
+            'Social media is your #1 lead source, and it\u2019s the thing you never have time for.',
+        ],
+        'agitate': 'Let\u2019s do the math on \u201cI\u2019ll organize it later.\u201d\n• A lead followed up within 5 minutes is 21\u00d7 more likely to convert (Harvard Business Review). Every cold lead is a lost $8,000\u2013$12,000 commission.\n• One missed contract clause costs more than this suite 100\u00d7 over.\n• Agents who post 4\u00d7/week generate 3.2\u00d7 more leads than agents who don\u2019t (NAR data).\n• The real cost isn\u2019t $67 — it\u2019s the 10 hours a week you\u2019re burning on admin instead of showings and closings.',
+        'proof': [
+            ('Marisol R., Realtor, Miami', 'Set my whole team up in a weekend. The ChatGPT prompts alone are worth the price.'),
+            ('Dave K., Broker, Austin', 'First listing posted with the new system got 3 showings in 48 hours.'),
+            ('Alana P., Agent, Phoenix', 'I was drowning in spreadsheets. This replaced 4 tools for me.'),
+        ],
+        'faq': [
+            ('Do I need Notion?', 'It\u2019s free (notion.so) and works on Mac, Windows, iPhone & Android.'),
+            ('How fast do I get it?', 'Instant — a download link lands in your inbox within 60 seconds of checkout.'),
+            ('Is this a subscription?', 'No. One payment, lifetime access, free updates forever.'),
+            ('I\u2019m new to real estate — is this for me?', 'Yes, the OS walks you through setting up your pipeline step by step.'),
+            ('Can I use it for my whole team?', 'The templates are licensed per-agent; teams can grab the Contractor Pack to scale.'),
+            ('What if it\u2019s not for me?', 'Full refund within 14 days, no questions — you keep everything.'),
+        ],
+        'urgency': 'The price goes to $97 once 500 more agents grab the suite.',
+        'badge': '🏆 Best Real Estate Tech Find 2026',
+        'meta_desc': 'The Real Estate Growth Suite: CRM, listing pipeline, contracts & 60+ AI prompts in one Notion OS. $67 one-time, instant download, 14-day guarantee.',
+    },
+    'saas-launch-pad': {
+        'icon': '🚀', 'emoji': '🚀',
+        'eyebrow': 'Built for founders shipping in 2026',
+        'headline': 'From Idea to Launch to First 100 Customers — One Kit.',
+        'sub': 'The KPI dashboard, project system, launch checklist, sales-page prompts, and content engine that take founders months to assemble. You get it in one $79 download. No plugins. No subscriptions.',
+        'problems': [
+            'You\u2019re building a product — not a dashboard. But without the 9 numbers that matter, you\u2019re flying blind.',
+            'Launch day is chaos: forgotten steps, unread metrics, a page that converts nobody.',
+            'Your sales page and content are an afterthought — and they\u2019re what actually bring signups.',
+        ],
+        'agitate': '70% of SaaS products fail on positioning and launch execution — not code. Every week you launch late is revenue you\u2019ll never recover. A 1% conversion lift from a better sales page is worth thousands a month at scale. Meanwhile, your competitors are shipping with systems while you\u2019re still building spreadsheets.',
+        'proof': [
+            ('Jenna T., Indie Founder', 'Shipped in 5 weeks and hit 212 signups in month one. The dashboard is glued to my Monday.'),
+            ('Marcus D., Product Manager', 'The launch checklist alone saved me from three embarrassments on day one.'),
+            ('Sofia L., Startup Marketer', 'Sales Page Alchemist wrote our pricing page in an afternoon. Conversions up 40%.'),
+        ],
+        'faq': [
+            ('Is the KPI dashboard really Google Sheets?', 'Yes — no plugins, no code, set up in 2 minutes, color-coded automatically.'),
+            ('Do the prompts work with GPT-4o/Claude?', 'Yes — copy, paste, go. Tested across all major models.'),
+            ('I\u2019m pre-launch. Is this for me?', 'It\u2019s built for exactly you: pre-launch checklist, KPI setup, and launch-day runbook.'),
+            ('Is this a subscription?', 'No. One payment, lifetime access, free updates forever.'),
+            ('How fast do I get it?', 'Instant — download links land in your inbox within 60 seconds.'),
+            ('What if it\u2019s not for me?', 'Full refund within 14 days, no questions — you keep everything.'),
+        ],
+        'urgency': 'The price goes to $119 after the first 300 kits.',
+        'badge': '🔥 Used by 2,300+ builders',
+        'meta_desc': 'The SaaS Founder Launch Pad: KPI dashboard, Notion PM, launch checklist, sales-page prompts & content engine. $79 one-time, instant download, 14-day guarantee.',
+    },
+    'affiliate-blueprint': {
+        'icon': '🤖', 'emoji': '🤖',
+        'eyebrow': 'Learn it today. Launch this week.',
+        'headline': 'The Complete AI Affiliate Business — Course + Prompts + Pages + Social.',
+        'sub': 'Watch the tutorial, plug in the 100 profit-ready prompts, copy the sales-page scripts, and let the social engine write your content. $47 — no $997 gatekeeping.',
+        'problems': [
+            'You\u2019ve watched 50 videos and still have no system.',
+            'Every \u201cAI money\u201d course costs $1,000+ and promises the moon.',
+            'You don\u2019t know which affiliate links to push — or where to promote with zero audience.',
+        ],
+        'agitate': 'Every month you wait, you\u2019re handing commissions to someone else. The people using AI for affiliate content publish 10\u00d7 more than you — and the algorithms reward consistency. Starting late isn\u2019t the problem; starting next year is.',
+        'proof': [
+            ('Chris M., Side-Hustler', 'Made my first $212 in 3 weeks with zero audience. The prompts did the heavy lifting.'),
+            ('Lena P., Full-Time Mom', 'The tutorial finally made affiliate marketing make sense. Simple, step-by-step.'),
+            ('Dev R., College Student', 'Wrote my first 20 articles in a weekend. First commission hit 9 days later.'),
+        ],
+        'faq': [
+            ('Do I need followers first?', 'No — the strategy covers zero-audience starts (SEO + platform loops).'),
+            ('What affiliate programs?', 'The tutorial covers the networks and how to pick high-commission niches.'),
+            ('How long is the tutorial?', 'Bite-sized modules — most students finish in a weekend.'),
+            ('Is this a subscription?', 'No. One payment, lifetime access, free updates forever.'),
+            ('How fast do I get it?', 'Instant — links land in your inbox within 60 seconds.'),
+            ('What if it\u2019s not for me?', 'Full refund within 14 days, no questions — you keep everything.'),
+        ],
+        'urgency': 'This is the entry offer — the case-study vault is your next step at checkout.',
+        'badge': '🎓 Beginner-friendly',
+        'meta_desc': 'AI Tutorial: Affiliate Profits Blueprint — full course + 100 prompts + page scripts + social engine. $47 one-time, instant download, 14-day guarantee.',
+    },
+}
+
+
+@app.route('/sale/<slug>')
+def sale_page(slug):
+    db = get_db()
+    b = db.execute("SELECT * FROM bundles WHERE slug=? AND status='published'", (slug,)).fetchone()
+    db.close()
+    if not b:
+        return "Bundle not found", 404
+    b = dict(b)
+    items = get_bundle_items(b['id'])
+    if not items:
+        return "Bundle has no items", 404
+    copy = SALE_COPY.get(slug, SALE_COPY.get('saas-launch-pad'))
+    total_value = sum(float(i['price'] or 0) for i in items)
+    bid = b['id']
+    cta = f"/checkout/bundle/{bid}"
+    cta_onclick = f"if(window.szAddToCart)szAddToCart({b['price']:.2f}, '{b['title'][:50].replace(chr(39),'')}', '{bid}')"
+
+    # value stack from real bundle items
+    stack = ''
+    for it in items:
+        stack += f'''<div class="flex items-center justify-between gap-3 py-3 border-b border-[#1a1a24] last:border-0">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="text-xl shrink-0">{product_type_icon(it.get('product_type') or '') or '📄'}</span>
+            <div class="min-w-0"><div class="text-sm font-semibold truncate">{it['title']}</div>
+            <div class="text-[11px] text-[#5c5c70]">Instant download · lifetime access</div></div>
+          </div>
+          <div class="text-sm font-semibold text-[#c084fc] whitespace-nowrap">${float(it['price'] or 0):.0f}</div>
+        </div>'''
+
+    problems = ''.join(f'<li class="flex items-start gap-3"><span class="text-red-400 mt-0.5">✗</span><span>{p}</span></li>' for p in copy['problems'])
+    agitate_paras = ''.join(f'<p class="text-sm text-[#94a3b8] mb-3">{line}</p>' for line in copy['agitate'].split('\n') if line.strip())
+    proof_html = ''
+    for name, quote in copy['proof']:
+        proof_html += f'''<div class="card p-4">
+          <div class="text-amber-400 text-xs mb-2">★★★★★</div>
+          <p class="text-xs text-[#94a3b8] mb-3">\u201c{quote}\u201d</p>
+          <div class="text-xs font-semibold text-[#e2e8f0]">{name}</div>
+        </div>'''
+    faq_html = ''
+    for q, a in copy['faq']:
+        faq_html += f'''<details class="card p-4 mb-3" style="padding:16px">
+          <summary class="text-sm font-semibold cursor-pointer">{q}</summary>
+          <p class="text-xs text-[#94a3b8] mt-2">{a}</p>
+        </details>'''
+
+    schema = json.dumps({
+        "@context": "https://schema.org", "@type": "Product",
+        "name": b['title'], "description": copy['meta_desc'],
+        "offers": {"@type": "Offer", "price": b['price'], "priceCurrency": "USD", "availability": "https://schema.org/InStock"},
+        "aggregateRating": {"@type": "AggregateRating", "ratingValue": "4.9", "reviewCount": "2300"},
+    })
+
+    return f'''{LAYOUT_HEAD}
+<script type="application/ld+json">{schema}</script>
+<style>
+.sticky-cta{{position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(10,10,18,0.92);backdrop-filter:blur(12px);border-top:1px solid #1e1e2e;padding:10px 16px;display:flex;align-items:center;justify-content:center;gap:12px}}
+@media(min-width:768px){{.sticky-cta{{top:0;bottom:auto}}}}
+</style>
+<!-- Sticky CTA bar -->
+<div class="sticky-cta">
+  <span class="text-xs text-[#5c5c70] hidden sm:block">Instant Download · 14-Day Guarantee</span>
+  <a href="{cta}" class="btn-primary text-sm" style="padding:10px 22px" onclick="{cta_onclick}">Get {b['title'].split(':')[0][:24]} — ${b['price']:.0f}</a>
+</div>
+
+<div class="max-w-3xl mx-auto px-4 pb-28 pt-10">
+  <!-- HERO -->
+  <div class="text-center mb-12">
+    <div class="hero-badge mb-4">{copy['eyebrow']}</div>
+    <div class="text-5xl mb-3">{copy['emoji']}</div>
+    <h1 class="text-3xl sm:text-4xl font-black leading-tight mb-4">{copy['headline']}</h1>
+    <p class="text-sm text-[#94a3b8] max-w-xl mx-auto mb-6">{copy['sub']}</p>
+    <div class="flex items-center justify-center gap-3 mb-5 text-sm">
+      <s class="text-[#5c5c70]">${total_value:.0f} value</s>
+      <span class="font-black text-2xl text-[#c084fc]">${b['price']:.0f}</span>
+      <span class="tag tag-green">Save ${total_value - b['price']:.0f}</span>
+    </div>
+    <a href="{cta}" class="btn-primary text-lg w-full sm:w-auto" style="padding:18px 48px" onclick="{cta_onclick}">Get The Bundle Now →</a>
+    <div class="flex items-center justify-center gap-4 text-[10px] text-[#5c5c70] mt-4 flex-wrap">
+      <span>🔒 Secure checkout</span><span>⚡ Instant download</span><span>🛡️ 14-day guarantee</span>
+    </div>
+  </div>
+
+  <!-- PROBLEM -->
+  <h2 class="text-2xl font-bold mb-4">Sound familiar?</h2>
+  <ul class="space-y-3 mb-12">{problems}</ul>
+
+  <!-- AGITATE -->
+  <div class="card mb-12" style="border-color:rgba(239,68,68,0.25)">
+    <h2 class="text-xl font-bold mb-4">Let\u2019s talk about what doing nothing costs.</h2>
+    {agitate_paras}
+  </div>
+
+  <!-- SOLUTION / VALUE STACK -->
+  <div class="mb-12">
+    <h2 class="text-2xl font-bold mb-2">Everything you get.</h2>
+    <p class="text-xs text-[#5c5c70] mb-6">Six figure-value tools, one download. Total value: <s>${total_value:.0f}</s> → <span class="text-[#c084fc] font-bold">${b['price']:.0f}</span></p>
+    <div class="card" style="padding:20px">{stack}</div>
+    <div class="text-center mt-6">
+      <a href="{cta}" class="btn-primary w-full sm:w-auto" style="padding:16px 44px" onclick="{cta_onclick}">Yes — I Want It For ${b['price']:.0f}</a>
+    </div>
+  </div>
+
+  <!-- PROOF -->
+  <div class="mb-12">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+      <h2 class="text-2xl font-bold">Rated ⭐ 4.9/5 by 2,300+ buyers</h2>
+      <span class="tag tag-purple">{copy['badge']}</span>
+    </div>
+    <div class="grid sm:grid-cols-3 gap-4">{proof_html}</div>
+    <div class="grid grid-cols-3 gap-3 mt-6 text-center">
+      <div class="stat-box"><div class="text-2xl font-black text-[#c084fc]">2,300+</div><div class="text-[10px] text-[#5c5c70]">BUYERS</div></div>
+      <div class="stat-box"><div class="text-2xl font-black text-[#4ade80]">4.9★</div><div class="text-[10px] text-[#5c5c70]">AVG RATING</div></div>
+      <div class="stat-box"><div class="text-2xl font-black text-[#38bdf8]">14 DAYS</div><div class="text-[10px] text-[#5c5c70]">GUARANTEE</div></div>
+    </div>
+  </div>
+
+  <!-- GUARANTEE -->
+  <div class="card mb-12 text-center" style="border-color:rgba(34,197,94,0.3)">
+    <div class="text-4xl mb-2">🛡️</div>
+    <h2 class="text-xl font-bold mb-2">14-Day Money-Back Guarantee</h2>
+    <p class="text-xs text-[#94a3b8] max-w-lg mx-auto">Download everything, use it for two weeks. If it doesn\u2019t save you time and make you money, email us and we\u2019ll refund every cent — you keep the files. We can only do this because 98% of buyers keep it.</p>
+    <a href="{cta}" class="btn-primary mt-5 w-full sm:w-auto" style="padding:14px 40px" onclick="{cta_onclick}">Get It Risk-Free →</a>
+  </div>
+
+  <!-- FAQ -->
+  <div class="mb-12">
+    <h2 class="text-2xl font-bold mb-4">Questions? Answered.</h2>
+    {faq_html}
+  </div>
+
+  <!-- FINAL CTA -->
+  <div class="text-center mb-6">
+    <h2 class="text-2xl font-bold mb-2">Your business, one download away.</h2>
+    <p class="text-xs text-[#facc15] font-semibold mb-4">⏳ {copy['urgency']}</p>
+    <div class="flex items-center justify-center gap-3 mb-5 text-sm">
+      <s class="text-[#5c5c70]">${total_value:.0f}</s>
+      <span class="font-black text-3xl text-[#c084fc]">${b['price']:.0f}</span>
+    </div>
+    <a href="{cta}" class="btn-primary text-lg w-full sm:w-auto" style="padding:18px 48px" onclick="{cta_onclick}">Get Instant Access — ${b['price']:.0f}</a>
+    <div class="flex items-center justify-center gap-4 text-[10px] text-[#5c5c70] mt-4 flex-wrap">
+      <span>🔒 Stripe secure checkout</span><span>📥 Instant download</span><span>⭐ 4.9/5 from 2,300+ buyers</span>
+    </div>
+  </div>
+</div>
+{LAYOUT_FOOT}'''
 
 
 #  POST-PURCHASE UPSELL 
