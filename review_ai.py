@@ -43,8 +43,9 @@ If they ask what it is:
 - We handle posting too, so you never have to think about it.
 
 Offer (important): "Want me to send you a free sample response for your latest review? No commitment at all."
-- If they say YES: thank them warmly, confirm you'll text it over right away, and confirm their number is {phone}.
+- If they say YES: thank them warmly, ask for the best email to send the sample to, repeat the email back to confirm, and confirm their number is {phone}.
 - If they say no or not interested: be friendly, thank them for their time, and hang up. Do NOT push, argue, or call back pressure.
+- STAY ON TOPIC: talk ONLY about responding to their Google reviews. Never mention websites, web design, or any other service.
 
 Keep the entire call under 2 minutes. End politely every time."""
 
@@ -60,8 +61,9 @@ If they ask what it includes:
 - They own the site and everything in it.
 
 Offer (important): "Want me to send you a free preview of what your website would look like? No commitment."
-- If they say YES: thank them warmly, confirm their number is {phone}, and tell them the preview is coming.
+- If they say YES: thank them warmly, ask for the best email to send the preview to, repeat the email back to confirm, and confirm their number is {phone}.
 - If they say no or not interested: be friendly, thank them for their time, and hang up. Do NOT push, argue, or pressure.
+- STAY ON TOPIC: talk ONLY about building their website. Never mention reviews, review responses, or any other service.
 
 Keep the entire call under 2 minutes. End politely every time."""
 
@@ -87,6 +89,11 @@ DEFAULT_SETTINGS = {
     "price_id": "price_1U0jNCGaNMCjVFzm1sFJ48O0",
     "signup_url": "https://diazites.online/review-service",
     "service_name": "Review Response Service",
+    # Website-service funnel (separate links — never mix services)
+    "website_payment_link": "https://buy.stripe.com/cNi3cv3NT3I62vYc0367S05",
+    "website_price_id": "price_1U0jeeGaNMCjVFzmD82Psu2Z",
+    "website_signup_url": "https://diazites.online/website-service",
+    "website_service_name": "Website Builder Service",
 }
 
 _stop_flag = threading.Event()
@@ -128,6 +135,7 @@ def init_tables():
         prospect_id TEXT,
         business_name TEXT, contact_name TEXT,
         email TEXT, phone TEXT,
+        service TEXT DEFAULT 'reviews',
         status TEXT DEFAULT 'new',
         stripe_customer TEXT, stripe_subscription TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -140,6 +148,14 @@ def init_tables():
             db.execute("ALTER TABLE review_prospects ADD COLUMN website TEXT")
         if "email" not in cols:
             db.execute("ALTER TABLE review_prospects ADD COLUMN email TEXT")
+        if "service" not in cols:
+            db.execute("ALTER TABLE review_prospects ADD COLUMN service TEXT")
+    except Exception:
+        pass
+    try:
+        lcols = [r[1] for r in db.execute("PRAGMA table_info(review_service_leads)")]
+        if "service" not in lcols:
+            db.execute("ALTER TABLE review_service_leads ADD COLUMN service TEXT DEFAULT 'reviews'")
     except Exception:
         pass
     db.commit()
@@ -687,8 +703,8 @@ def run_calls(max_calls=None, delay=None):
             if d.get("id"):
                 db = _db()
                 db.execute(
-                    "UPDATE review_prospects SET status='called', last_call_id=?, last_call_at=datetime('now') "
-                    "WHERE id=?", (d["id"], r["id"]))
+                    "UPDATE review_prospects SET status='called', service=?, last_call_id=?, last_call_at=datetime('now') "
+                    "WHERE id=?", (service, d["id"], r["id"]))
                 db.execute("INSERT INTO review_ai_calls (prospect_id, call_id, status) VALUES (?,?, 'placed')",
                            (r["id"], d["id"]))
                 db.commit()
@@ -736,17 +752,28 @@ def sync_call_outcomes():
             status = "no_answer"
         else:
             status = "called"
+        # ── Capture email the agent asked for (from summary/transcript) ──
+        email_captured = _extract_email(text)
+        if email_captured:
+            db.execute("UPDATE review_prospects SET email=? WHERE id=? AND (email IS NULL OR email='')",
+                       (email_captured, r["id"]))
         db.execute("UPDATE review_prospects SET status=?, last_outcome=? WHERE id=?",
                    (status, ended, r["id"]))
         db.execute("UPDATE review_ai_calls SET status=?, cost=?, duration=? WHERE call_id=?",
                    (status, cost, int(dur * 60), r["last_call_id"]))
         updated += 1
-        log(f"  📊 {r['business_name'][:30]}: {ended} → {status}")
-        # ── Auto-send demo + signup + payment links on first 'interested' ──
+        log(f"  📊 {r['business_name'][:30]}: {ended} → {status}{f' 📧 {email_captured}' if email_captured else ''}")
+        # ── Auto-send demo + signup landing page on first 'interested' ──
         if status == 'interested' and not r["sample_sent_at"]:
             try:
                 res = send_sample_sms(r["id"])
                 log(f"  📤 Auto-package → {r['business_name'][:30]}: {res.get('message', 'sent')}")
+                if email_captured:
+                    lead = {"business_name": r["business_name"], "contact_name": r["business_name"],
+                            "email": email_captured, "phone": r["phone"],
+                            "service": r["service"] or s.get("service", "reviews")}
+                    ok = send_package_email(lead)
+                    log(f"  📧 Auto-email → {r['business_name'][:30]}: {'sent' if ok else 'FAILED'}")
             except Exception as e:
                 log(f"  ❌ Auto-package failed: {e}")
     db.commit()
@@ -755,8 +782,32 @@ def sync_call_outcomes():
     return updated
 
 
+def _extract_email(text):
+    """Find the first email address the agent captured during the call."""
+    import re as _re
+    m = _re.search(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}", text or "")
+    return m.group(0).lower() if m else None
+
+
+def _service_of(prospect):
+    """Service of the call that created this prospect (never mixes)."""
+    svc = ""
+    try:
+        svc = prospect.get("service") or ""
+    except AttributeError:
+        try:
+            svc = prospect["service"] or ""
+        except Exception:
+            svc = ""
+    if svc not in ("reviews", "website"):
+        svc = get_settings().get("service", "reviews")
+        if svc != "website":
+            svc = "reviews"
+    return svc
+
+
 def send_sample_sms(prospect_id):
-    """Send the free sample review response + signup & payment links via sms-gate."""
+    """Send demo + the service's signup landing page via sms-gate (no raw Stripe links)."""
     db = _db()
     row = db.execute("SELECT * FROM review_prospects WHERE id=?", (prospect_id,)).fetchone()
     if not row:
@@ -765,26 +816,27 @@ def send_sample_sms(prospect_id):
         from smsgate_sms import send_sms
         s = get_settings()
         biz = row["business_name"] or "your business"
-        signup = s.get("signup_url", "https://diazites.online/review-service")
-        pay = s.get("payment_link", "")
-        if s.get("service") == "website":
-            body = (f"Hi! Here's the free website preview for {biz} — a mobile-friendly one-pager with "
+        svc = _service_of(row)
+        if svc == "website":
+            signup = s.get("website_signup_url", "https://diazites.online/website-service")
+            body = (f"Hi! Here's your free website preview for {biz} — a mobile-friendly one-pager with "
                     f"your services, hours, contact info and Google reviews, ready in 48 hours. "
                     f"Full site is {s.get('website_pricing', '$499')} — you own it. "
-                    f"Start yours here: {signup}  Pay here: {pay}")
+                    f"Sign up here to start yours: {signup}")
         else:
+            signup = s.get("signup_url", "https://diazites.online/review-service")
             body = (f"Hi! Here's the free sample review response we'd post for {biz}: "
                     f"“Thank you for your feedback! We really appreciate you taking the time to share "
                     f"your experience — it helps us keep improving every day. 🙌 — The {biz} Team” "
                     f"If you like it, we can handle all your reviews for {s.get('pricing', '$99/mo')} — "
                     f"you approve everything before it's posted. "
-                    f"Sign up here: {signup}  Pay here: {pay}")
+                    f"Sign up here: {signup}")
         ok = send_sms(row["phone"], body)
         if ok:
             db.execute("UPDATE review_prospects SET sample_sent_at=datetime('now') WHERE id=?", (prospect_id,))
             db.commit()
         db.close()
-        return {"success": bool(ok), "message": "✅ Package SMS sent (demo + signup + payment)" if ok else "❌ SMS send failed"}
+        return {"success": bool(ok), "message": f"✅ Package SMS sent ({svc} mode, demo + signup page)" if ok else "❌ SMS send failed"}
     except Exception as e:
         db.close()
         return {"success": False, "message": f"❌ {str(e)[:120]}"}
@@ -825,51 +877,76 @@ def send_email_via_agentmail(to, subject, body):
 
 
 def send_package_email(lead, checkout_url=None):
-    """Send demo + signup + payment links to a lead's email (AgentMail)."""
+    """Send demo + the service's signup landing page to a lead's email (AgentMail)."""
     s = get_settings()
     biz = lead.get("business_name") or "your business"
-    pay = checkout_url or s.get("payment_link", "")
-    signup = s.get("signup_url", "")
-    subject = f"Your free sample review response for {biz}"
-    body = (
-        f"Hi {lead.get('contact_name') or 'there'},\n\n"
-        f"Thanks for your interest! Here's the free sample response we'd post for {biz}:\n\n"
-        f"--------------------------------------------------\n"
-        f"“Thank you for your feedback! We really appreciate you taking the time to share your "
-        f"experience — it helps us keep improving every day. 🙌 — The {biz} Team”\n"
-        f"--------------------------------------------------\n\n"
-        f"We write personalized replies to EVERY Google review — positive and negative — in your "
-        f"brand's voice, and post them with your approval. No bots, no templates off the shelf.\n\n"
-        f"👉 Start here (2-minute signup): {signup}\n"
-        f"💳 Pay securely ($99/mo, cancel anytime): {pay}\n\n"
-        f"Questions? Just reply to this email.\n"
-        f"— The {s.get('service_name', 'Diazites')} Team"
-    )
+    svc = (lead.get("service") or s.get("service", "reviews"))
+    svc = svc if svc == "website" else "reviews"
+    if svc == "website":
+        signup = s.get("website_signup_url", "https://diazites.online/website-service")
+        subject = f"Your free website preview for {biz}"
+        body = (
+            f"Hi {lead.get('contact_name') or 'there'},\n\n"
+            f"Thanks for your interest! Here's what your free website preview will include for {biz}:\n\n"
+            f"--------------------------------------------------\n"
+            f"• Modern mobile-first design that works great on phones\n"
+            f"• Your services, hours, contact info, map & directions\n"
+            f"• A link to your Google reviews\n"
+            f"• Hosting, maintenance & updates — handled by us\n"
+            f"• You own the site and everything in it\n"
+            f"--------------------------------------------------\n\n"
+            f"Your preview will be ready in 48 hours. To get started, sign up here:\n"
+            f"👉 {signup}\n\n"
+            f"Full site is {s.get('website_pricing', '$499')} — one-time, you own it.\n\n"
+            f"Questions? Just reply to this email.\n"
+            f"— The {s.get('website_service_name', 'Diazites')} Team"
+        )
+    else:
+        signup = s.get("signup_url", "https://diazites.online/review-service")
+        subject = f"Your free sample review response for {biz}"
+        body = (
+            f"Hi {lead.get('contact_name') or 'there'},\n\n"
+            f"Thanks for your interest! Here's the free sample response we'd post for {biz}:\n\n"
+            f"--------------------------------------------------\n"
+            f"“Thank you for your feedback! We really appreciate you taking the time to share your "
+            f"experience — it helps us keep improving every day. 🙌 — The {biz} Team”\n"
+            f"--------------------------------------------------\n\n"
+            f"We write personalized replies to EVERY Google review — positive and negative — in your "
+            f"brand's voice, and post them with your approval. No bots, no templates off the shelf.\n\n"
+            f"👉 Start here (2-minute signup): {signup}\n\n"
+            f"It's {s.get('pricing', '$99/mo')} — cancel anytime.\n\n"
+            f"Questions? Just reply to this email.\n"
+            f"— The {s.get('service_name', 'Diazites')} Team"
+        )
     return send_email_via_agentmail(lead.get("email", ""), subject, body)
 
 
-def create_lead_checkout(lead_id, email, success_url="https://diazites.online/review-service?thankyou=1"):
-    """One-time subscription Checkout Session for a lead (client_reference_id = review-lead-<id>)."""
+def create_lead_checkout(lead_id, email, service="reviews"):
+    """Per-lead checkout: $99/mo subscription (reviews) or $499 one-time (website)."""
     try:
         import json as _json
         cfg = _json.load(open("/root/voice-agent-manager/stripe_config.json"))
         import stripe
         stripe.api_key = cfg["secret_key"]
         s = get_settings()
+        if service == "website":
+            mode, price, success = "payment", s.get("website_price_id", "price_1U0jeeGaNMCjVFzmD82Psu2Z"), "https://diazites.online/website-service?thankyou=1"
+        else:
+            mode, price, success = "subscription", s.get("price_id", "price_1U0jNCGaNMCjVFzm1sFJ48O0"), "https://diazites.online/review-service?thankyou=1"
         sd = stripe.checkout.Session.create(
-            mode="subscription",
-            line_items=[{"price": s.get("price_id", "price_1U0jNCGaNMCjVFzm1sFJ48O0"), "quantity": 1}],
+            mode=mode,
+            line_items=[{"price": price, "quantity": 1}],
             client_reference_id=f"review-lead-{lead_id}",
             customer_email=email or None,
-            success_url=success_url,
-            cancel_url="https://diazites.online/review-service")
+            success_url=success,
+            cancel_url="https://diazites.online/" + ("website-service" if service == "website" else "review-service"))
         return sd.url
     except Exception as e:
         return None
 
 
-def add_lead(prospect_id=None, business_name="", contact_name="", email="", phone=""):
-    """Insert a review-service lead, linking it to a prospect by phone when possible."""
+def add_lead(prospect_id=None, business_name="", contact_name="", email="", phone="", service="reviews"):
+    """Insert a service lead, linking it to a prospect by phone when possible."""
     import uuid
     db = _db()
     pid = prospect_id
@@ -877,10 +954,11 @@ def add_lead(prospect_id=None, business_name="", contact_name="", email="", phon
         row = db.execute("SELECT id FROM review_prospects WHERE phone=? ORDER BY created_at DESC LIMIT 1", (phone,)).fetchone()
         if row:
             pid = row["id"]
-            db.execute("UPDATE review_prospects SET email=? WHERE id=?", (email, pid))
+            db.execute("UPDATE review_prospects SET email=?, service=? WHERE id=?",
+                       (email, service, pid))
     lid = "lead-" + str(uuid.uuid4())[:10]
-    db.execute("""INSERT INTO review_service_leads (id, prospect_id, business_name, contact_name, email, phone)
-                  VALUES (?,?,?,?,?,?)""", (lid, pid, business_name, contact_name, email, phone))
+    db.execute("""INSERT INTO review_service_leads (id, prospect_id, business_name, contact_name, email, phone, service)
+                  VALUES (?,?,?,?,?,?,?)""", (lid, pid, business_name, contact_name, email, phone, service))
     db.commit()
     db.close()
     return lid
@@ -888,7 +966,119 @@ def add_lead(prospect_id=None, business_name="", contact_name="", email="", phon
 
 # ─────────────────── Public service page (diazites.online/review-service) ───────────────────
 
-def service_page_html(thankyou=False, error=False):
+def service_page_html(thankyou=False, error=False, service="reviews"):
+    """Public landing page for the requested service (signup + payment live on the page)."""
+    if service == "website":
+        return _website_service_page(thankyou, error)
+    return _review_service_page(thankyou, error)
+
+
+def _website_service_page(thankyou=False, error=False):
+    """Website Builder service page — $499 one-time, signup + payment."""
+    s = get_settings()
+    pay_link = s.get("website_payment_link", "https://buy.stripe.com/cNi3cv3NT3I62vYc0367S05")
+    thankyou_html = f'''<div class="card" style="border-color:rgba(74,222,128,0.35);background:linear-gradient(135deg,#052e16,#0a0f1e);margin-bottom:24px">
+      <div style="font-size:40px;text-align:center;margin-bottom:8px">✅</div>
+      <h2 style="text-align:center;font-size:18px;font-weight:800;color:#4ade80;margin-bottom:6px">You're signed up!</h2>
+      <p style="font-size:13px;color:#94a3b8;text-align:center;line-height:1.6">Your free website preview is on its way to your inbox.<br>Want to lock in your site now? <a href="{pay_link}" style="color:#c084fc;font-weight:700">Pay $499 — you own it →</a></p>
+    </div>''' if thankyou else ''
+    error_html = f'''<div class="card" style="border-color:rgba(239,68,68,0.4);margin-bottom:24px">
+      <p style="font-size:13px;color:#f87171;text-align:center">Please fill all fields with a valid email & phone.</p></div>''' if error else ''
+    return f'''<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<title>Website Builder — $499 One-Time | Diazites</title>
+<style>
+*{{margin:0;padding:0;box-sizing:border-box}}
+body{{background:#0a0a12;color:#f1f1f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.5}}
+.wrap{{max-width:720px;margin:0 auto;padding:20px 16px 40px}}
+.badge{{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.5px;padding:6px 14px;border-radius:999px;background:linear-gradient(135deg,rgba(56,189,248,.15),rgba(168,85,247,.15));border:1px solid rgba(56,189,248,.35);color:#38bdf8;margin-bottom:14px}}
+h1{{font-size:28px;line-height:1.25;margin-bottom:12px}}
+.sub{{color:#94a3b8;font-size:14px;margin-bottom:20px;line-height:1.6}}
+.btn{{display:block;width:100%;text-align:center;padding:16px;border-radius:12px;font-weight:800;font-size:16px;text-decoration:none;color:#fff;background:linear-gradient(135deg,#38bdf8,#a855f7);border:none;cursor:pointer}}
+.card{{background:#0e0e16;border:1px solid #1e1e2e;border-radius:16px;padding:20px;margin-bottom:16px}}
+h2{{font-size:18px;margin-bottom:12px}}
+.step{{display:flex;gap:12px;margin-bottom:14px;align-items:flex-start}}
+.step .n{{min-width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#38bdf8,#a855f7);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}}
+.step p{{font-size:13px;color:#94a3b8}}
+.step b{{color:#e2e8f0}}
+.mock{{background:#0a0a12;border:1px solid #1a1a24;border-radius:12px;padding:16px;margin-bottom:10px}}
+.mock .bar{{height:10px;width:140px;background:#1e1e2e;border-radius:5px;margin-bottom:12px}}
+.mock .row{{display:flex;gap:8px;margin-bottom:8px}}
+.mock .row i{{flex:1;height:34px;border-radius:8px;background:#14141f}}
+.mock .row i.hi{{background:linear-gradient(135deg,rgba(56,189,248,.25),rgba(168,85,247,.25))}}
+.mock .dots{{display:flex;gap:6px;margin-bottom:12px}}
+.mock .dots span{{width:8px;height:8px;border-radius:50%;background:#1e1e2e}}
+label{{display:block;font-size:11px;font-weight:700;letter-spacing:.4px;color:#64748b;text-transform:uppercase;margin:12px 0 5px}}
+input{{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:15px;outline:none}}
+input:focus{{border-color:#38bdf8}}
+.faq details{{margin-bottom:10px}}
+.faq summary{{font-size:13px;font-weight:700;cursor:pointer;color:#e2e8f0}}
+.faq p{{font-size:12px;color:#94a3b8;margin-top:6px}}
+.price{{text-align:center;padding:24px}}
+.price .amt{{font-size:44px;font-weight:900;color:#38bdf8}}
+.price .per{{font-size:12px;color:#64748b}}
+.foot{{text-align:center;font-size:11px;color:#475569;margin-top:24px}}
+@media(min-width:640px){{h1{{font-size:36px}}}}
+</style></head><body><div class="wrap">
+  <div style="text-align:center;margin-bottom:20px">
+    <span class="badge">🌐 WEBSITE BUILDER — LOCAL BUSINESS SITES</span>
+    <h1>Your business deserves a website customers find on Google.</h1>
+    <p class="sub">A modern, mobile-first site with your services, hours, contact info and Google reviews — built in 48 hours. Hosting, maintenance and updates handled. <b>$499 one-time, you own it.</b></p>
+    <a class="btn" href="{pay_link}">Get My Website — $499 →</a>
+    <p style="font-size:11px;color:#64748b;margin-top:8px">🔒 Secure Stripe checkout · Free preview first · No monthly fees</p>
+  </div>
+
+  {thankyou_html}
+  {error_html}
+
+  <div class="card">
+    <h2>⚡ How it works</h2>
+    <div class="step"><div class="n">1</div><p><b>Free preview first</b> — we send you a mockup of your site before you pay a cent.</p></div>
+    <div class="step"><div class="n">2</div><p><b>We build it</b> — mobile-first, fast, with your services, hours, map and reviews.</p></div>
+    <div class="step"><div class="n">3</div><p><b>You own it</b> — hosting, updates and maintenance on us. Done.</p></div>
+  </div>
+
+  <div class="card">
+    <h2>🎨 What your site looks like</h2>
+    <div class="mock"><div class="bar"></div><div class="dots"><span></span><span></span><span></span></div>
+      <div class="row"><i class="hi"></i></div>
+      <div class="row"><i></i><i></i><i></i></div>
+      <div class="row"><i></i><i></i></div></div>
+    <p style="font-size:12px;color:#64748b">Mobile-first design that loads fast and makes customers call you.</p>
+  </div>
+
+  <div class="card" style="border-color:rgba(56,189,248,.4)">
+    <h2>📝 Sign up — get your free preview in 48 hours</h2>
+    <form method="POST" action="/website-service/signup">
+      <label>Business name</label><input name="business_name" required placeholder="e.g. Miami Plumbers LLC">
+      <label>Your name</label><input name="contact_name" required placeholder="e.g. Jorge Rivera">
+      <label>Email (we send your preview here)</label><input type="email" name="email" required placeholder="you@business.com">
+      <label>Phone</label><input type="tel" name="phone" required placeholder="(305) 555-0123">
+      <button class="btn" type="submit" style="margin-top:18px">Send Me My Free Preview →</button>
+    </form>
+    <p style="font-size:11px;color:#64748b;text-align:center;margin-top:10px">No spam. Preview is free — you only pay if you love it.</p>
+  </div>
+
+  <div class="card price">
+    <h2>Simple pricing</h2>
+    <div class="amt">$499<span style="font-size:16px;color:#64748b"> once</span></div>
+    <p style="font-size:13px;color:#94a3b8;margin:8px 0 14px">Free preview · 48h delivery · hosting & updates included · you own it</p>
+    <a class="btn" href="{pay_link}">Get My Website →</a>
+  </div>
+
+  <div class="card faq">
+    <h2>Questions? Answered.</h2>
+    <details><summary>Is the preview really free?</summary><p>Yes. We build a mockup of your site first. You only pay $499 if you approve it.</p></details>
+    <details><summary>Who owns the website?</summary><p>You do. 100%. Domain, content, everything.</p></details>
+    <details><summary>Do I need to do anything after?</summary><p>No. Hosting, updates and maintenance are handled by us.</p></details>
+    <details><summary>Will it work on phones?</summary><p>It's built mobile-first — most of your customers will find you on their phone.</p></details>
+  </div>
+
+  <div class="foot">Diazites · Website Builder Service · support@diazites.online</div>
+</div></body></html>'''
+
+
+def _review_service_page(thankyou=False, error=False):
     """Standalone mobile-first service page: demo → signup → $99/mo payment."""
     s = get_settings()
     pay_link = s.get("payment_link", "https://buy.stripe.com/14AcN598d3I6gmO0hl67S04")
@@ -992,22 +1182,24 @@ input:focus{{border-color:#a855f7}}
 </div></body></html>'''
 
 
-def signup_lead(form):
-    """Process the service-page signup form. Returns (ok: bool, lead_id: str|None)."""
+def signup_lead(form, service="reviews"):
+    """Process a service-page signup form. Returns (ok: bool, lead_id: str|None)."""
     biz = (form.get("business_name") or "").strip()
     contact = (form.get("contact_name") or "").strip()
     email = (form.get("email") or "").strip()
     phone = (form.get("phone") or "").strip()
     if not biz or not contact or "@" not in email or len(phone) < 7:
         return False, None
-    lid = add_lead(business_name=biz, contact_name=contact, email=email, phone=phone)
-    lead = {"business_name": biz, "contact_name": contact, "email": email, "phone": phone}
-    checkout = create_lead_checkout(lid, email)
+    svc = service if service == "website" else "reviews"
+    lid = add_lead(business_name=biz, contact_name=contact, email=email, phone=phone, service=svc)
+    lead = {"business_name": biz, "contact_name": contact, "email": email, "phone": phone, "service": svc}
+    checkout = create_lead_checkout(lid, email, service=svc)
     send_package_email(lead, checkout_url=checkout)
     try:
         from smsgate_sms import send_sms
-        pay_txt = checkout or get_settings().get("payment_link", "")
-        send_sms(phone, f"Hi {contact}! We got your signup for {biz}. Your free sample review response is on its way to {email}. Pay securely here: {pay_txt}")
+        s = get_settings()
+        signup_url = s.get("website_signup_url" if svc == "website" else "signup_url", "")
+        send_sms(phone, f"Hi {contact}! We got your signup for {biz} — your free {'website preview' if svc == 'website' else 'sample review response'} is on its way to {email}. Sign up / pay here: {signup_url}")
     except Exception:
         pass
     return True, lid

@@ -4952,14 +4952,32 @@ def review_service_page():
     import review_ai
     return review_ai.service_page_html(
         thankyou=request.args.get('thankyou') == '1',
-        error=request.args.get('error') == '1')
+        error=request.args.get('error') == '1',
+        service='reviews')
 
 
 @app.route('/review-service/signup', methods=['POST'])
 def review_service_signup():
     import review_ai
-    ok, _ = review_ai.signup_lead(request.form)
+    ok, _ = review_ai.signup_lead(request.form, service='reviews')
     return redirect('/review-service?thankyou=1' if ok else '/review-service?error=1')
+
+
+@app.route('/website-service')
+def website_service_page():
+    """Public Website Builder service page (diazites.online/website-service)."""
+    import review_ai
+    return review_ai.service_page_html(
+        thankyou=request.args.get('thankyou') == '1',
+        error=request.args.get('error') == '1',
+        service='website')
+
+
+@app.route('/website-service/signup', methods=['POST'])
+def website_service_signup():
+    import review_ai
+    ok, _ = review_ai.signup_lead(request.form, service='website')
+    return redirect('/website-service?thankyou=1' if ok else '/website-service?error=1')
 
 
 @app.route('/admin/review-ai/call', methods=['POST'])
