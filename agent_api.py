@@ -1426,6 +1426,23 @@ def vapi_webhook():
     db.close()
 
     git_auto_commit(f'vapi webhook: call {vapi_call_id} {status}')
+
+    # Real-time Review-AI outcome sync → auto demo/package SMS+email on 'interested'
+    if status in ('ended', 'completed') or 'ended' in str(status):
+        try:
+            import threading
+            def _ra_sync():
+                try:
+                    import sys
+                    sys.path.insert(0, '/root/voice-agent-manager')
+                    import review_ai
+                    review_ai.sync_call_outcomes()
+                except Exception:
+                    pass
+            threading.Thread(target=_ra_sync, daemon=True).start()
+        except Exception:
+            pass
+
     return jsonify({'success': True, 'call_id': vapi_call_id})
 
 

@@ -4946,27 +4946,6 @@ def admin_review_ai_count():
     return redirect('/admin?tab=reviews-ai')
 
 
-@app.route('/api/v1/vapi-webhook', methods=['POST'])
-def vapi_webhook():
-    """Vapi call events → trigger outcome sync in real time (auto-package fires on 'ended')."""
-    try:
-        data = request.get_json(silent=True) or {}
-        msg = data.get('message') or {}
-        ctype = msg.get('type', '')
-        call = msg.get('call') or {}
-        if 'ended' in str(ctype) or call.get('status') == 'ended':
-            def _s():
-                import review_ai
-                try:
-                    review_ai.sync_call_outcomes()
-                except Exception:
-                    pass
-            threading.Thread(target=_s, daemon=True).start()
-    except Exception:
-        pass
-    return jsonify({'received': True}), 200
-
-
 @app.route('/review-service')
 def review_service_page():
     """Public service page (served at diazites.online/review-service via 8086)."""
