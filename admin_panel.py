@@ -2336,6 +2336,16 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
             <span id="raRunningBadge" class="text-xs font-semibold px-3 py-1.5 rounded-lg" style="background:#1a1a28;border:1px solid #252533;color:#94a3b8">…</span>
         </div>
 
+        <!-- LIVE: who's on the phone right now -->
+        <div id="raLiveBar" class="card mb-6" style="{% if not ra_live %}display:none{% endif %}">
+            <div class="flex items-center gap-3 flex-wrap">
+                <span class="text-xs font-bold uppercase tracking-wide text-[#f87171]">🔴 Live Calls</span>
+                <span id="raLiveList" class="text-sm">
+                    {% for l in ra_live %}<span class="inline-flex items-center gap-2 mr-4"><span class="w-2 h-2 rounded-full animate-pulse" style="background:#f87171"></span><b>{{ l.business_name }}</b><span class="text-[#94a3b8] font-mono text-xs">{{ l.phone }}</span><span class="text-[#fbbf24] text-xs">{{ l.status }}</span></span>{% endfor %}
+                </span>
+            </div>
+        </div>
+
         <!-- Stats -->
         <div class="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
             <div class="card text-center"><div class="stat-value">{{ ra_stats.total }}</div><div class="text-xs text-[#64748b] mt-1">🎯 Found</div></div>
@@ -2417,6 +2427,39 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
             </form>
         </div>
 
+        <!-- Follow-up queue: interested clients needing attention -->
+        <div class="card mb-6" style="border-color:#22c55e30">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold">🔥 Follow-up Queue — interested clients ({{ ra_followup|length }})</h3>
+                <span class="text-[11px] text-[#64748b]">said YES on the call · package sent · awaiting signup or follow-up</span>
+            </div>
+            {% if ra_followup %}
+            <div class="overflow-x-auto">
+            <table class="table-auto w-full text-xs">
+                <thead><tr><th>Business</th><th>Phone</th><th>Service</th><th>Package</th><th>Called</th><th></th></tr></thead>
+                <tbody>
+                {% for p in ra_followup %}
+                <tr>
+                    <td class="font-semibold">{{ p.business_name[:32] }}</td>
+                    <td class="font-mono">{{ p.phone }}</td>
+                    <td>{% if p.service == 'website' %}🌐 Web{% else %}⭐ Reviews{% endif %}</td>
+                    <td>{% if p.sample_sent_at %}<span style="color:#4ade80">✅ {{ p.sample_sent_at[:16] }}</span>{% else %}<span class="text-[#fbbf24]">pending</span>{% endif %}</td>
+                    <td class="text-[#5c5c70]">{{ (p.last_call_at or '')[:16] }}</td>
+                    <td class="whitespace-nowrap">
+                        <button class="btn-primary text-[10px]" style="padding:4px 8px" onclick="raSample('{{ p.id }}')">📤 Package</button>
+                        <button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="raAction('complete','{{ p.id }}')">✅ Done</button>
+                        <button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="raAction('call-again','{{ p.id }}')">📞 Again</button>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            {% else %}
+            <p class="text-[12px] text-[#5c5c70] py-4 text-center">No interested clients yet — they land here automatically after a call ends with a "yes".</p>
+            {% endif %}
+        </div>
+
         <!-- Prospects -->
         <div class="card mb-6">
             <div class="flex items-center justify-between mb-3">
@@ -2442,11 +2485,14 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                         {% elif p.status == 'not_interested' %}<span class="badge badge-inactive">🙅 No</span>
                         {% elif p.status == 'no_answer' %}<span class="badge badge-error">📵 No Ans</span>
                         {% elif p.status == 'do_not_call' %}<span class="badge badge-error">🚫 DNC</span>
+                        {% elif p.status == 'completed' %}<span class="badge" style="background:#22c55e20;color:#4ade80">✅ Done</span>
                         {% else %}<span class="badge">{{ p.status }}</span>{% endif %}
                     </td>
                     <td class="text-[#5c5c70]">{{ (p.last_outcome or '')[:16] }}{% if p.last_call_at %}<div class="text-[10px]">{{ p.last_call_at[:16] }}</div>{% endif %}</td>
                     <td class="whitespace-nowrap">
                         {% if p.status == 'interested' %}<button class="btn-primary text-[10px]" style="padding:4px 8px" onclick="raSample('{{ p.id }}')">📤 Package{% if p.sample_sent_at %} ✓{% endif %}</button>{% endif %}
+                        <button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="raAction('complete','{{ p.id }}')">✅</button>
+                        <button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="raAction('call-again','{{ p.id }}')">📞</button>
                         <button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="raAction('reset','{{ p.id }}')">↺</button>
                         <button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="raAction('dnc','{{ p.id }}')">🚫</button>
                         <button class="btn-danger text-[10px]" style="padding:4px 8px" onclick="raAction('delete','{{ p.id }}')">🗑</button>
@@ -2494,20 +2540,33 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
             <h3 class="font-bold mb-3">📞 Call Log ({{ ra_calls|length }})</h3>
             <div class="overflow-x-auto">
             <table class="table-auto w-full text-xs">
-                <thead><tr><th>#</th><th>Business</th><th>Status</th><th>Cost</th><th>Dur</th><th>Time</th></tr></thead>
+                <thead><tr><th>#</th><th>Business</th><th>Status</th><th>Outcome</th><th>Cost</th><th>Dur</th><th>Time</th><th></th></tr></thead>
                 <tbody>
                 {% for c in ra_calls %}
                 <tr>
                     <td class="text-[#5c5c70]">{{ c.id }}</td>
                     <td class="font-semibold">{{ (c.business_name or '')[:30] }}</td>
                     <td>{% if c.status == 'interested' %}<span class="badge" style="background:#22c55e20;color:#4ade80">🔥 {{ c.status }}</span>{% elif c.status == 'placed' %}<span class="badge" style="background:#8b5cf620;color:#c084fc">⏳ {{ c.status }}</span>{% else %}<span class="badge">{{ c.status }}</span>{% endif %}</td>
+                    <td class="text-[#94a3b8]">{{ (c.outcome or '—')[:20] }}</td>
                     <td class="font-mono">${{ '%.2f'|format(c.cost or 0) }}</td>
                     <td>{{ c.duration or 0 }}s</td>
                     <td class="text-[#5c5c70]">{{ (c.created_at or '')[:16] }}</td>
+                    <td>{% if c.call_id %}<button class="btn-secondary text-[10px]" style="padding:3px 7px" onclick="raTranscript('{{ c.call_id }}')">📄</button>{% endif %}</td>
                 </tr>
                 {% endfor %}
                 </tbody>
             </table>
+            </div>
+        </div>
+
+        <!-- Transcript modal -->
+        <div id="raTrModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:50;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)this.style.display='none'">
+            <div class="card" style="max-width:640px;width:100%;max-height:80vh;overflow-y:auto">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold">📄 Call Transcript</h3>
+                    <button class="btn-secondary text-xs" onclick="document.getElementById('raTrModal').style.display='none'">✕</button>
+                </div>
+                <div id="raTrBody" class="text-[12px] font-mono text-[#cbd5e1] whitespace-pre-wrap" style="line-height:1.6">…</div>
             </div>
         </div>
 
@@ -2527,10 +2586,31 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
             });
         }
         function raAction(kind, id){
-            var msg = kind === 'delete' ? 'Delete this prospect?' : kind === 'dnc' ? 'Mark do-not-call?' : 'Reset to new?';
+            var msg = kind === 'delete' ? 'Delete this prospect?' :
+                      kind === 'dnc' ? 'Mark do-not-call?' :
+                      kind === 'complete' ? 'Mark COMPLETED? It will never be called again.' :
+                      kind === 'call-again' ? 'Call this prospect NOW?' :
+                      'Reset to new?';
             if (!confirm(msg)) return;
             fetch('/admin/review-ai/' + kind + '/' + id, {method: 'POST'}).then(function(r){ return r.json(); })
-              .then(function(){ location.reload(); }).catch(function(){ alert('Failed'); });
+              .then(function(d){ if (d && d.message) alert(d.message); location.reload(); })
+              .catch(function(){ alert('Failed'); });
+        }
+        function raTranscript(callId){
+            var m = document.getElementById('raTrModal');
+            var body = document.getElementById('raTrBody');
+            body.textContent = 'Loading…';
+            m.style.display = 'flex';
+            fetch('/admin/review-ai/transcript/' + callId).then(function(r){ return r.json(); })
+              .then(function(d){
+                if (d.messages && d.messages.length){
+                    body.textContent = d.messages.map(function(p){ return (p[0] === 'user' ? '👤 ' : '🤖 ') + p[1]; }).join('\n');
+                } else if (d.transcript){
+                    body.textContent = d.transcript;
+                } else {
+                    body.textContent = 'No transcript yet (call may still be live).';
+                }
+              }).catch(function(){ body.textContent = 'Failed to load transcript.'; });
         }
         function raSample(id){
             if (!confirm('Send the free sample review-response SMS now?')) return;
@@ -2554,6 +2634,17 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                 }
                 var log = document.getElementById('raLog');
                 if (d.log && d.log.length){ log.textContent = d.log.join('\n'); log.scrollTop = log.scrollHeight; }
+                // LIVE calls — who's on the phone right now
+                var bar = document.getElementById('raLiveBar');
+                var list = document.getElementById('raLiveList');
+                if (d.live && d.live.length){
+                    bar.style.display = '';
+                    list.innerHTML = d.live.map(function(l){
+                        return '<span class="inline-flex items-center gap-2 mr-4"><span class="w-2 h-2 rounded-full animate-pulse" style="background:#f87171"></span><b>' + l.business_name + '</b><span class="text-[#94a3b8] font-mono text-xs">' + l.phone + '</span><span class="text-[#fbbf24] text-xs">' + l.status + '</span></span>';
+                    }).join('');
+                } else {
+                    bar.style.display = 'none';
+                }
             }).catch(function(){});
         }
         raPoll();
@@ -5060,6 +5151,30 @@ def admin_review_ai_delete(pid):
     return jsonify({'success': True})
 
 
+@app.route('/admin/review-ai/complete/<pid>', methods=['POST'])
+@admin_required
+def admin_review_ai_complete(pid):
+    """Mark prospect completed — never called again."""
+    import review_ai
+    review_ai.mark_completed(pid)
+    return jsonify({'success': True})
+
+
+@app.route('/admin/review-ai/call-again/<pid>', methods=['POST'])
+@admin_required
+def admin_review_ai_call_again(pid):
+    """Re-call a prospect right now with its own service pitch."""
+    import review_ai
+    return jsonify(review_ai.call_again(pid))
+
+
+@app.route('/admin/review-ai/transcript/<call_id>')
+@admin_required
+def admin_review_ai_transcript(call_id):
+    import review_ai
+    return jsonify(review_ai.call_transcript(call_id))
+
+
 @app.route('/admin/review-ai/status')
 @admin_required
 def admin_review_ai_status():
@@ -5069,6 +5184,7 @@ def admin_review_ai_status():
         'running': d['ra_running'],
         'stats': d['ra_stats'],
         'log': d['ra_log'][-12:],
+        'live': d['ra_live'],
     })
 
 

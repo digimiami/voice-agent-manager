@@ -165,6 +165,12 @@ def init_tables():
             db.execute("ALTER TABLE review_service_leads ADD COLUMN service TEXT DEFAULT 'reviews'")
     except Exception:
         pass
+    try:
+        ccols = [r[1] for r in db.execute("PRAGMA table_info(review_ai_calls)")]
+        if "outcome" not in ccols:
+            db.execute("ALTER TABLE review_ai_calls ADD COLUMN outcome TEXT")
+    except Exception:
+        pass
     db.commit()
     db.close()
 
@@ -782,8 +788,8 @@ def sync_call_outcomes():
                        (email_captured, r["id"]))
         db.execute("UPDATE review_prospects SET status=?, last_outcome=? WHERE id=?",
                    (status, ended, r["id"]))
-        db.execute("UPDATE review_ai_calls SET status=?, cost=?, duration=? WHERE call_id=?",
-                   (status, cost, int(dur * 60), r["last_call_id"]))
+        db.execute("UPDATE review_ai_calls SET status=?, cost=?, duration=?, outcome=? WHERE call_id=?",
+                   (status, cost, d.get("durationSeconds") or 0, ended, r["last_call_id"]))
         updated += 1
         log(f"  📊 {r['business_name'][:30]}: {ended} → {status}{f' 📧 {email_captured}' if email_captured else ''}")
         # collect packages; fire AFTER the DB transaction closes (avoids "database is locked")
@@ -1254,11 +1260,15 @@ def tab_data():
         "no_website": db.execute("SELECT COUNT(*) FROM review_prospects WHERE website IS NULL OR website=''").fetchone()[0],
     }
     calls = [dict(r) for r in db.execute(
-        "SELECT rc.*, p.business_name FROM review_ai_calls rc "
+        "SELECT rc.*, p.business_name, p.phone FROM review_ai_calls rc "
         "LEFT JOIN review_prospects p ON rc.prospect_id = p.id "
         "ORDER BY rc.id DESC LIMIT 30").fetchall()]
     leads = [dict(r) for r in db.execute(
         "SELECT * FROM review_service_leads ORDER BY created_at DESC LIMIT 15").fetchall()]
+    # Follow-up queue: interested prospects still awaiting signup/payment + unpaid signups
+    followup = [dict(r) for r in db.execute(
+        "SELECT id, business_name, phone, email, service, status, sample_sent_at, last_call_at "
+        "FROM review_prospects WHERE status='interested' ORDER BY last_call_at DESC LIMIT 50").fetchall()]
     db.close()
     return {
         "ra_settings": get_settings(),
@@ -1266,6 +1276,78 @@ def tab_data():
         "ra_stats": stats,
         "ra_calls": calls,
         "ra_leads": leads,
+        "ra_followup": followup,
+        "ra_live": live_calls(),
         "ra_running": running_state(),
         "ra_log": recent_log(),
     }
+
+
+def live_calls(max_check=4):
+    """Who is on the phone RIGHT NOW — checks Vapi status of the most recent placed calls."""
+    db = _db()
+    rows = db.execute(
+        "SELECT rc.call_id, rc.prospect_id, p.business_name, p.phone FROM review_ai_calls rc "
+        "LEFT JOIN review_prospects p ON rc.prospect_id = p.id "
+        "WHERE rc.status IN ('placed','called') AND rc.call_id != '' "
+        "ORDER BY rc.id DESC LIMIT ?", (max_check,)).fetchall()
+    db.close()
+    live = []
+    for r in rows:
+        try:
+            d = _vapi("GET", f"/call/{r[0]}")
+            st = (d.get("status") or "")
+            if st in ("in-progress", "ringing", "queued", "forwarding"):
+                live.append({"business_name": r[2] or "?", "phone": r[3] or "", "call_id": r[0], "status": st})
+        except Exception:
+            continue
+    return live
+
+
+def mark_completed(pid):
+    """Mark a prospect completed — never called again (terminal state)."""
+    db = _db()
+    db.execute("UPDATE review_prospects SET status='completed' WHERE id=?", (pid,))
+    db.commit()
+    db.close()
+    return True
+
+
+def call_again(pid):
+    """Re-call an existing prospect right now with its own service pitch."""
+    db = _db()
+    row = db.execute("SELECT * FROM review_prospects WHERE id=?", (pid,)).fetchone()
+    db.close()
+    if not row:
+        return {"success": False, "message": "Prospect not found"}
+    r = dict(row)
+    svc = (r.get("service") or "").strip() or get_settings().get("service", "reviews")
+    prospect = {"id": r["id"], "business_name": r["business_name"], "phone": r["phone"],
+                "pricing": get_settings().get("pricing", "$99/mo"),
+                "website_pricing": get_settings().get("website_pricing", "$499"),
+                "unanswered": r.get("unanswered_count") or r.get("review_count") or 0}
+    s = get_settings()
+    script = personalize(prospect, DEFAULT_WEBSITE_SCRIPT if svc == "website" else DEFAULT_SCRIPT)
+    d = _vapi("POST", "/call", {
+        "assistantId": s["assistant_id"], "phoneNumberId": s["phone_number_id"],
+        "customer": {"number": r["phone"], "name": r["business_name"]},
+        "assistantOverrides": {"model": {"provider": "xai", "model": "grok-4.3",
+            "maxTokens": 300, "temperature": 0.3, "systemPrompt": script}}})
+    if not d.get("id"):
+        return {"success": False, "message": str(d)[:120]}
+    db = _db()
+    db.execute("UPDATE review_prospects SET status='called', service=?, last_call_id=?, last_call_at=datetime('now'), last_outcome=NULL WHERE id=?",
+               (svc, d["id"], r["id"]))
+    db.execute("INSERT INTO review_ai_calls (prospect_id, call_id, status) VALUES (?,?, 'placed')", (r["id"], d["id"]))
+    db.commit()
+    db.close()
+    return {"success": True, "call_id": d["id"], "service": svc}
+
+
+def call_transcript(call_id):
+    """Fetch a call's transcript from Vapi for the call-log view."""
+    d = _vapi("GET", f"/call/{call_id}")
+    tr = d.get("transcript") or ""
+    msgs = [(m.get("role"), m.get("message")) for m in (d.get("messages") or []) if m.get("message")]
+    return {"transcript": tr, "messages": msgs, "status": d.get("status"), "ended": d.get("endedReason"),
+            "cost": d.get("cost"), "duration": d.get("durationSeconds")}
