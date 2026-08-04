@@ -1342,7 +1342,7 @@ def tab_data():
         "SELECT * FROM review_service_leads ORDER BY created_at DESC LIMIT 15").fetchall()]
     # Follow-up queue: interested prospects still awaiting signup/payment + unpaid signups
     followup = [dict(r) for r in db.execute(
-        "SELECT id, business_name, phone, email, service, status, sample_sent_at, last_call_at "
+        "SELECT id, business_name, phone, email, service, status, sample_sent_at, last_call_at, last_call_id "
         "FROM review_prospects WHERE status='interested' ORDER BY last_call_at DESC LIMIT 50").fetchall()]
     db.close()
     return {

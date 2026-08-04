@@ -2436,7 +2436,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
             {% if ra_followup %}
             <div class="overflow-x-auto">
             <table class="table-auto w-full text-xs">
-                <thead><tr><th>Business</th><th>Phone</th><th>Service</th><th>Package</th><th>Called</th><th></th></tr></thead>
+                <thead><tr><th>Business</th><th>Phone</th><th>Service</th><th>Package</th><th>Called</th><th>Call</th><th></th></tr></thead>
                 <tbody>
                 {% for p in ra_followup %}
                 <tr>
@@ -2445,6 +2445,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                     <td>{% if p.service == 'website' %}🌐 Web{% else %}⭐ Reviews{% endif %}</td>
                     <td>{% if p.sample_sent_at %}<span style="color:#4ade80">✅ {{ p.sample_sent_at[:16] }}</span>{% else %}<span class="text-[#fbbf24]">pending</span>{% endif %}</td>
                     <td class="text-[#5c5c70]">{{ (p.last_call_at or '')[:16] }}</td>
+                    <td class="whitespace-nowrap">{% if p.last_call_id %}<button class="btn-secondary text-[10px]" style="padding:3px 7px" onclick="raAudio('{{ p.last_call_id }}')">🎧</button> <button class="btn-secondary text-[10px]" style="padding:3px 7px" onclick="raTranscript('{{ p.last_call_id }}')">📄</button>{% endif %}</td>
                     <td class="whitespace-nowrap">
                         <button class="btn-primary text-[10px]" style="padding:4px 8px" onclick="raSample('{{ p.id }}')">📤 Package</button>
                         <button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="raAction('complete','{{ p.id }}')">✅ Done</button>
@@ -2491,6 +2492,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                     <td class="text-[#5c5c70]">{{ (p.last_outcome or '')[:16] }}{% if p.last_call_at %}<div class="text-[10px]">{{ p.last_call_at[:16] }}</div>{% endif %}</td>
                     <td class="whitespace-nowrap">
                         {% if p.status == 'interested' %}<button class="btn-primary text-[10px]" style="padding:4px 8px" onclick="raSample('{{ p.id }}')">📤 Package{% if p.sample_sent_at %} ✓{% endif %}</button>{% endif %}
+                        {% if p.last_call_id %}<button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="raAudio('{{ p.last_call_id }}')">🎧</button> <button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="raTranscript('{{ p.last_call_id }}')">📄</button>{% endif %}
                         <button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="raAction('complete','{{ p.id }}')">✅</button>
                         <button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="raAction('call-again','{{ p.id }}')">📞</button>
                         <button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="raAction('reset','{{ p.id }}')">↺</button>
