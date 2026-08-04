@@ -742,7 +742,8 @@ def sync_call_outcomes():
     """Poll Vapi for outcomes of calls placed but not yet resolved."""
     db = _db()
     rows = db.execute(
-        "SELECT p.id, p.business_name, p.last_call_id FROM review_prospects p "
+        "SELECT p.id, p.business_name, p.last_call_id, p.sample_sent_at, p.service, p.email, p.phone "
+        "FROM review_prospects p "
         "WHERE p.status='called' AND p.last_call_id != '' AND "
         "(p.last_outcome IS NULL OR p.last_outcome='')").fetchall()
     updated = 0
