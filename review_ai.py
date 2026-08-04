@@ -757,7 +757,7 @@ def sync_call_outcomes():
         cost = d.get("cost") or 0
         analysis = d.get("analysis") or {}
         summary = (analysis.get("summary") or "")[:400]
-        transcript = " ".join([m.get("message", "") for m in (d.get("messages") or [])])[:800]
+        transcript = (d.get("transcript") or "")[:2000] or " ".join([m.get("message", "") for m in (d.get("messages") or [])])[:2000]
         text = (summary + " " + transcript).lower()
         if ended in ("customer-ended-call", "assistant-ended-call"):
             t = text
