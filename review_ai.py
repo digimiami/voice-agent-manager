@@ -35,7 +35,7 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 DEFAULT_SCRIPT = """You are calling the owner of a local business to talk about their Google reviews. Be warm, brief, and completely human — never mention being AI, a bot, or software.
 
 Opening line — say it naturally, using the customer's business name:
-"Hi! This is a quick call — I noticed {business_name} has {unanswered} unanswered Google reviews. I run a service that writes personalized responses to every review and posts them with your approval. It's just {pricing} a month."
+"Hi! This is a quick call — I noticed {business_name} has {unanswered} on Google. I run a service that writes personalized responses to every review and posts them with your approval. It's just {pricing} a month."
 
 If they ask what it is:
 - We write authentic, on-brand replies to every Google review — positive and negative.
@@ -251,7 +251,7 @@ def ensure_assistant():
 def unanswered_text(prospect):
     n = prospect.get("unanswered_count")
     if n is not None:
-        return f"{n} unanswered"
+        return f"{n} unanswered reviews"
     rc = prospect.get("review_count") or 0
     if rc:
         return f"{rc} reviews, several unanswered"
