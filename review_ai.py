@@ -950,9 +950,9 @@ def send_sample_sms(prospect_id):
     if not row:
         return {"success": False, "message": "Prospect not found"}
     try:
-        if row["line_type"] == "landline":
+        if row["line_type"] in ("landline", "tollFree"):
             db.close()
-            return {"success": False, "message": "⚠️ Landline — SMS can't be delivered (email package sent instead)"}
+            return {"success": False, "message": "⚠️ Landline/toll-free — SMS can't be delivered (email package sent instead)"}
     except Exception:
         pass
     try:
