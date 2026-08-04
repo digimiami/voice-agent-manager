@@ -2276,10 +2276,10 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
         </div>
         {% elif tab == 'security' %}
         <h2 class="text-xl font-bold mb-6">🛡️ Admin Security</h2>
-        <div class="card max-w-xl">
+        <div class="card max-w-xl mb-4">
             <h3 class="font-bold mb-3">Two-Factor Authentication (TOTP)</h3>
             {% if twofa.enabled %}
-            <p class="text-xs text-green-400 mb-3">✅ 2FA is enabled</p>
+            <p class="text-xs text-green-400 mb-3">✅ 2FA is enabled — a code is required at every login.</p>
             <form method="POST" action="/admin/security-2fa-disable"><button class="btn-danger text-sm"><i class="fas fa-unlock mr-1"></i> Disable 2FA</button></form>
             {% else %}
             <p class="text-xs text-[#64748b] mb-3">Enable TOTP: scan the QR with Google Authenticator / Authy, then enter the 6-digit code.</p>
@@ -2289,7 +2289,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                 <p class="text-xs text-[#5c5c70] mt-2">Secret: <code class="font-mono">{{ twofa.secret }}</code></p>
             </div>
             <form method="POST" action="/admin/security-2fa-verify" class="flex gap-2">
-                <input type="text" name="code" placeholder="6-digit code" class="text-xs font-mono w-32" maxlength="6">
+                <input type="text" name="code" placeholder="6-digit code" class="text-xs font-mono w-32" maxlength="6" autocomplete="one-time-code">
                 <button class="btn-primary text-sm">Verify & Enable</button>
             </form>
             {% else %}
@@ -2297,6 +2297,24 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
             {% endif %}
             {% endif %}
         </div>
+        {% if twofa.backup_count or session.get('admin_2fa_new_codes') %}
+        <div class="card max-w-xl">
+            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <h3 class="font-bold">🔑 Backup Codes</h3>
+                <form method="POST" action="/admin/security-2fa-backup-codes"><button class="btn-secondary text-sm"><i class="fas fa-sync mr-1"></i> Regenerate</button></form>
+            </div>
+            {% if session.get('admin_2fa_new_codes') %}
+            <div class="bg-[#12121a] border border-yellow-500/30 rounded-lg p-4 mb-3">
+                <p class="text-xs text-yellow-400 font-semibold mb-2">⚠️ Save these codes somewhere safe. Each one works <strong>once</strong> at login if you lose your phone.</p>
+                <div class="grid grid-cols-2 gap-2 font-mono text-sm">
+                    {% for c in session['admin_2fa_new_codes'] %}<span class="bg-[#1a1a28] rounded px-3 py-2 text-center">{{ c }}</span>{% endfor %}
+                </div>
+                <form method="POST" action="/admin/security-2fa-dismiss" class="mt-3"><button class="btn-primary text-xs">I saved them</button></form>
+            </div>
+            {% endif %}
+            <p class="text-xs text-[#64748b]">Remaining unused backup codes: <span class="font-bold text-[#e2e8f0]">{{ twofa.backup_count }}</span></p>
+        </div>
+        {% endif %}
         {% elif tab == 'reviews-ai' %}
         <div class="flex items-center justify-between mb-6">
             <h2 class="text-xl font-bold">{% if ra_settings.service == 'website' %}🌐 Review AI — Web Development Outreach{% else %}⭐ Review AI — Google Review Response Service{% endif %}</h2>
@@ -2503,12 +2521,21 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
     <div class="w-full min-h-screen flex items-center justify-center p-4">
         <div class="max-w-sm w-full card text-center">
             <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">A</div>
+            {% if twofa_step %}
+            <h2 class="text-lg font-bold mb-1">Two-Factor Authentication</h2>
+            <p class="text-xs text-[#64748b] mb-6">Enter the 6-digit code from your authenticator app, or a backup code.</p>
+            <form method="POST" action="/admin" class="space-y-3">
+                <input type="text" name="code" placeholder="6-digit or backup code" class="text-center font-mono" autofocus autocomplete="one-time-code">
+                <button type="submit" class="btn-primary w-full">Verify →</button>
+            </form>
+            {% else %}
             <h2 class="text-lg font-bold mb-1">Admin Login</h2>
             <p class="text-xs text-[#64748b] mb-6">Diazites Management</p>
             <form method="POST" action="/admin" class="space-y-3">
                 <input type="password" name="password" placeholder="Admin Password" class="text-center" autofocus>
                 <button type="submit" class="btn-primary w-full">Login →</button>
             </form>
+            {% endif %}
             {% if error %}<p class="text-red-400 text-xs mt-3">{{ error }}</p>{% endif %}
         </div>
     </div>
@@ -2584,17 +2611,40 @@ def admin_root():
 @app.route('/admin', methods=['GET', 'POST'])
 def admin_login():
     if request.method == 'POST':
+        # ── Step 2: TOTP / backup code ──
+        if session.get('admin_2fa_pending'):
+            code = request.form.get('code', '').strip()
+            if verify_2fa(code, consume=True):
+                session['admin_logged_in'] = True
+                session.pop('admin_2fa_pending', None)
+                session.permanent = True
+                audit('2fa_login', 'admin authenticated with 2FA')
+                return redirect('/admin?tab=dashboard')
+            return render_template_string(ADMIN_HTML, session=session, error='Invalid code. Try again or use a backup code.', tab='', twofa_step=True)
+        # ── Step 1: password ──
         pw = request.form.get('password', '')
         if pw == 'admin123':
+            if load_2fa().get('enabled'):
+                session['admin_2fa_pending'] = True
+                return render_template_string(ADMIN_HTML, session=session, error='', tab='', twofa_step=True)
             session['admin_logged_in'] = True
             session.permanent = True
             return redirect('/admin?tab=dashboard')
         return render_template_string(ADMIN_HTML, session=session, error='Invalid password', tab='')
+    # GET
+    if session.get('admin_2fa_pending'):
+        return render_template_string(ADMIN_HTML, session=session, error='', tab='', twofa_step=True)
     # If already logged in, show dashboard with data
     if session.get('admin_logged_in'):
         session.permanent = True  # Refresh session expiry on every page view
         return admin_dashboard()
     return render_template_string(ADMIN_HTML, session=session, error='', tab='')
+
+
+@app.route('/admin/logout')
+def admin_logout():
+    session.clear()
+    return redirect('/admin')
 
 # admin_dashboard is defined below
 @app.route('/admin/business/<bid>')
@@ -4081,6 +4131,61 @@ BACKUP_DIR = "/root/voice-agent-manager/backups"
 TWOFA_PATH = "/root/voice-agent-manager/admin_2fa.json"
 
 
+def _2fa_hash(code):
+    return hashlib.sha256(code.encode()).hexdigest()
+
+
+def _2fa_normalize(code):
+    """Normalize a code for comparison: strip spaces/dashes, uppercase."""
+    return ''.join(ch for ch in code.strip().upper() if ch.isalnum())
+
+
+def _gen_backup_codes(n=10):
+    import secrets
+    codes = []
+    for _ in range(n):
+        hx = secrets.token_hex(3).upper()
+        codes.append(f"{hx[:3]}-{hx[3:]}")
+    return codes
+
+
+def load_2fa():
+    try:
+        with open(TWOFA_PATH) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_2fa(d):
+    with open(TWOFA_PATH, 'w') as f:
+        json.dump(d, f)
+
+
+def verify_2fa(code, d=None, consume=False):
+    """Verify a TOTP code OR a (hashed) backup code. Backup codes are one-time."""
+    import pyotp
+    d = d if d is not None else load_2fa()
+    if not d.get('enabled'):
+        return False
+    norm = _2fa_normalize(code)
+    if d.get('secret'):
+        try:
+            if pyotp.TOTP(d['secret']).verify(norm):
+                return True
+        except Exception:
+            pass
+    h = _2fa_hash(norm)
+    hashes = d.get('backup_codes') or []
+    if h in hashes:
+        if consume:
+            hashes.remove(h)
+            d['backup_codes'] = hashes
+            save_2fa(d)
+        return True
+    return False
+
+
 def _load_env_keys():
     """Load /root/.env + manager .env into os.environ (idempotent)."""
     for p in ("/root/.env", "/root/voice-agent-manager/.env"):
@@ -4388,8 +4493,9 @@ def get_twofa():
     try:
         with open(TWOFA_PATH) as f:
             d = json.load(f)
+        bcount = len(d.get('backup_codes') or [])
         if d.get('enabled'):
-            return {'enabled': True}
+            return {'enabled': True, 'backup_count': bcount}
         if d.get('secret'):
             try:
                 import qrcode
@@ -4399,12 +4505,12 @@ def get_twofa():
                 buf = _io.BytesIO()
                 img.save(buf, format='PNG')
                 qr = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
-                return {'enabled': False, 'secret': d['secret'], 'qr': qr}
+                return {'enabled': False, 'secret': d['secret'], 'qr': qr, 'backup_count': bcount}
             except Exception:
-                return {'enabled': False, 'secret': d['secret']}
+                return {'enabled': False, 'secret': d['secret'], 'backup_count': bcount}
     except Exception:
         pass
-    return {'enabled': False}
+    return {'enabled': False, 'backup_count': 0}
 
 
 def admin_extra_data(tab):
@@ -4678,9 +4784,10 @@ def admin_2fa_setup():
     try:
         import pyotp
         secret = pyotp.random_base32()
-        with open(TWOFA_PATH, 'w') as f:
-            json.dump({'enabled': False, 'secret': secret}, f)
-        audit('2fa_setup', 'QR generated')
+        codes = _gen_backup_codes()
+        save_2fa({'enabled': False, 'secret': secret, 'backup_codes': [_2fa_hash(_2fa_normalize(c)) for c in codes]})
+        session['admin_2fa_new_codes'] = codes
+        audit('2fa_setup', 'QR generated, backup codes created')
     except Exception as e:
         flash(f'❌ pyotp missing: {str(e)[:80]}', 'error')
     return redirect('/admin?tab=security')
@@ -4691,19 +4798,40 @@ def admin_2fa_setup():
 def admin_2fa_verify():
     code = request.form.get('code', '').strip()
     try:
-        with open(TWOFA_PATH) as f:
-            d = json.load(f)
+        d = load_2fa()
         import pyotp
-        if pyotp.TOTP(d['secret']).verify(code):
+        if d.get('secret') and pyotp.TOTP(d['secret']).verify(_2fa_normalize(code)):
             d['enabled'] = True
-            with open(TWOFA_PATH, 'w') as f:
-                json.dump(d, f)
+            save_2fa(d)
             audit('2fa_enable', 'TOTP enabled')
-            flash('✅ 2FA enabled!', 'success')
+            flash('✅ 2FA enabled! Backup codes below — save them somewhere safe.', 'success')
         else:
             flash('❌ Invalid code', 'error')
     except Exception as e:
         flash(f'❌ {str(e)[:80]}', 'error')
+    return redirect('/admin?tab=security')
+
+
+@app.route('/admin/security-2fa-backup-codes', methods=['POST'])
+@admin_required
+def admin_2fa_backup_codes():
+    d = load_2fa()
+    if not d.get('secret'):
+        flash('❌ No 2FA to manage', 'error')
+        return redirect('/admin?tab=security')
+    codes = _gen_backup_codes()
+    d['backup_codes'] = [_2fa_hash(_2fa_normalize(c)) for c in codes]
+    save_2fa(d)
+    session['admin_2fa_new_codes'] = codes
+    audit('2fa_backup_codes', 'backup codes regenerated')
+    flash('🆕 New backup codes generated — copy them now!', 'success')
+    return redirect('/admin?tab=security')
+
+
+@app.route('/admin/security-2fa-dismiss', methods=['POST'])
+@admin_required
+def admin_2fa_dismiss():
+    session.pop('admin_2fa_new_codes', None)
     return redirect('/admin?tab=security')
 
 
@@ -4712,6 +4840,7 @@ def admin_2fa_verify():
 def admin_2fa_disable():
     try:
         os.remove(TWOFA_PATH)
+        session.pop('admin_2fa_new_codes', None)
         audit('2fa_disable', 'TOTP disabled')
         flash('✅ 2FA disabled', 'success')
     except Exception:

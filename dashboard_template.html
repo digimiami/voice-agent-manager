@@ -1554,6 +1554,50 @@ setTimeout(refreshMonitor, 500);
     <div class="card"><h3 class="font-bold mb-3">⏰ Max Call Duration</h3><p class="text-xs text-[#7a7a8e] mb-2">Max call length.</p><form method="POST" action="/update-call-settings"><input type="range" name="max_duration" min="60" max="1800" step="30" value="{{ biz_info.max_duration_seconds or 300 }}" oninput="this.nextElementSibling.textContent=this.value+'s'" class="w-full"><output class="text-sm font-bold text-[#4ade80] block text-center mb-2">{{ biz_info.max_duration_seconds or 300 }}s</output><button type="submit" class="btn-primary text-xs w-full">Save</button></form></div>
   </div>
 
+  <!-- Two-Factor Authentication (user TOTP) -->
+  <div class="card mt-6">
+    <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+      <h3 class="font-bold">🔐 Two-Factor Authentication</h3>
+      {% if user_2fa.enabled %}
+      <span class="badge badge-success">✅ Enabled</span>
+      {% else %}
+      <span class="badge badge-inactive">Off</span>
+      {% endif %}
+    </div>
+    <p class="text-xs text-[#7a7a8e] mb-3">Protect your dashboard: after enabling, a 6-digit code from your authenticator app (Google Authenticator / Authy) is required at every login.</p>
+
+    {% if user_2fa.enabled %}
+    <div class="flex gap-2 flex-wrap">
+      <form method="POST" action="/2fa/backup-codes"><button type="submit" class="btn-secondary text-xs" style="padding:8px 16px">🔄 Regenerate Backup Codes</button></form>
+      <form method="POST" action="/2fa/disable" onsubmit="return confirm('Disable 2FA for this account?')"><button type="submit" class="btn-danger text-xs" style="padding:8px 16px">Disable 2FA</button></form>
+    </div>
+    {% elif user_2fa.qr %}
+    <div class="bg-[#12121a] rounded-lg p-4 mb-3 text-center">
+      <img src="{{ user_2fa.qr }}" alt="2FA QR" class="mx-auto w-48 h-48">
+      <p class="text-xs text-[#5c5c70] mt-2">Scan with Google Authenticator / Authy, then enter the 6-digit code.</p>
+    </div>
+    <form method="POST" action="/2fa/verify" class="flex gap-2 max-w-sm">
+      <input type="text" name="code" placeholder="6-digit code" maxlength="6" class="text-center font-mono" autocomplete="one-time-code">
+      <button type="submit" class="btn-primary text-xs">Verify & Enable</button>
+    </form>
+    {% else %}
+    <form method="POST" action="/2fa/setup"><button type="submit" class="btn-primary text-xs" style="padding:8px 18px"><i class="fas fa-qrcode mr-1"></i> Enable 2FA</button></form>
+    {% endif %}
+
+    {% if user_2fa.new_codes %}
+    <div class="bg-[#12121a] border border-yellow-500/30 rounded-lg p-4 mt-4">
+      <p class="text-xs text-yellow-400 font-semibold mb-2">⚠️ Save these backup codes somewhere safe. Each one works <strong>once</strong> at login if you lose your phone.</p>
+      <div class="grid grid-cols-2 gap-2 font-mono text-sm">
+        {% for c in user_2fa.new_codes %}<span class="bg-[#1a1a26] rounded px-3 py-2 text-center">{{ c }}</span>{% endfor %}
+      </div>
+      <form method="POST" action="/2fa/dismiss-codes" class="mt-3"><button type="submit" class="btn-primary text-xs">I saved them</button></form>
+    </div>
+    {% endif %}
+    {% if user_2fa.backup_count and not user_2fa.new_codes %}
+    <p class="text-xs text-[#5c5c70] mt-3">Remaining unused backup codes: <span class="font-bold text-[#f1f1f5]">{{ user_2fa.backup_count }}</span></p>
+    {% endif %}
+  </div>
+
   <!-- ======== TAB: LANDING PAGE ======== -->
   {% elif tab == 'landing' %}
   <div class="space-y-6">

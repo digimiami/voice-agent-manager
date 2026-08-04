@@ -1616,12 +1616,21 @@ input:focus{border-color:#a855f7}
 </style></head><body class="text-[#f1f1f5] min-h-screen flex items-center justify-center p-4">
 <div class="max-w-sm w-full card text-center">
 <div class="text-4xl mb-4">🎙️</div>
+{% if twofa_step %}
+<h1 class="text-xl font-bold gradient-text mb-2">Two-Factor Authentication</h1>
+<p class="text-sm text-[#7a7a8e] mb-6">Enter the 6-digit code from your authenticator app, or a backup code.</p>
+<form method="POST" action="/login" class="space-y-3">
+<input type="text" name="code" placeholder="6-digit or backup code" class="text-center font-mono" required autofocus>
+<button type="submit" class="btn-primary w-full">Verify →</button>
+</form>
+{% else %}
 <h1 class="text-xl font-bold gradient-text mb-2">Diazites Hub</h1>
 <p class="text-sm text-[#7a7a8e] mb-6">Enter your Business ID to access your dashboard</p>
 <form method="POST" action="/login" class="space-y-3">
 <input type="text" name="business_id" placeholder="Your Business ID" class="text-center" required>
 <button type="submit" class="btn-primary w-full">Access Dashboard →</button>
 </form>
+{% endif %}
 {% if error %}<p class="text-red-400 text-xs mt-3">{{ error }}</p>{% endif %}
 <a href="/" class="text-xs text-[#5c5c70] mt-4 inline-block hover:text-[#c084fc]">← Back to Home</a>
 </div></body></html>"""
@@ -1631,6 +1640,85 @@ def get_db():
     db = sqlite3.connect(DB_PATH)
     db.row_factory = sqlite3.Row
     return db
+
+# ── User (business owner) TOTP 2FA ──
+USER_2FA_PATH = "/root/voice-agent-manager/user_2fa.json"
+
+
+def _u2fa_hash(code):
+    return hashlib.sha256(code.encode()).hexdigest()
+
+
+def _u2fa_norm(code):
+    return ''.join(ch for ch in code.strip().upper() if ch.isalnum())
+
+
+def _u2fa_gen_codes(n=10):
+    import secrets as _s
+    codes = []
+    for _ in range(n):
+        hx = _s.token_hex(3).upper()
+        codes.append(f"{hx[:3]}-{hx[3:]}")
+    return codes
+
+
+def load_user_2fa():
+    try:
+        with open(USER_2FA_PATH) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_user_2fa(d):
+    with open(USER_2FA_PATH, 'w') as f:
+        json.dump(d, f)
+
+
+def get_user_2fa(bid):
+    return load_user_2fa().get(bid) or {}
+
+
+def user_2fa_qr(entry):
+    """Return a data-URI QR for a pending secret, or None."""
+    try:
+        import qrcode
+        from pyotp import totp
+        uri = totp.TOTP(entry['secret']).provisioning_uri(
+            name=entry.get('biz_name') or 'Diazites User', issuer_name='Diazites')
+        img = qrcode.make(uri)
+        import base64 as _b64
+        import io as _io2
+        buf = _io2.BytesIO()
+        img.save(buf, format='PNG')
+        return "data:image/png;base64," + _b64.b64encode(buf.getvalue()).decode()
+    except Exception:
+        return None
+
+
+def verify_user_2fa(bid, code, consume=False):
+    """Verify a TOTP or one-time backup code for a business user."""
+    entry = get_user_2fa(bid)
+    if not entry.get('enabled') or not entry.get('secret'):
+        return False
+    import pyotp
+    norm = _u2fa_norm(code)
+    try:
+        if pyotp.TOTP(entry['secret']).verify(norm):
+            return True
+    except Exception:
+        pass
+    h = _u2fa_hash(norm)
+    hashes = entry.get('backup_codes') or []
+    if h in hashes:
+        if consume:
+            hashes.remove(h)
+            entry['backup_codes'] = hashes
+            all2 = load_user_2fa()
+            all2[bid] = entry
+            save_user_2fa(all2)
+        return True
+    return False
 
 def get_available_voices():
     """Return available voice options for the dropdown."""
@@ -1823,6 +1911,20 @@ def signup_redirect():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
+    # ── Step 2: TOTP / backup code ──
+    if request.method == 'POST' and session.get('user_2fa_pending'):
+        bid = session['user_2fa_pending']
+        code = request.form.get('code', '').strip()
+        if verify_user_2fa(bid, code, consume=True):
+            db = get_db()
+            c = db.cursor()
+            c.execute("SELECT * FROM businesses WHERE id = ?", (bid,))
+            biz = c.fetchone()
+            session['business_id'] = bid
+            session['biz_name'] = biz['name'] if biz else bid
+            session.pop('user_2fa_pending', None)
+            return redirect('/')
+        return render_template_string(LOGIN_FORM, error='Invalid code. Try again or use a backup code.', twofa_step=True)
     if request.method == 'POST':
         bid = request.form.get('business_id', '').strip()
         db = get_db()
@@ -1830,18 +1932,98 @@ def login_page():
         c.execute("SELECT * FROM businesses WHERE id = ?", (bid,))
         biz = c.fetchone()
         if biz:
+            if get_user_2fa(bid).get('enabled'):
+                session['user_2fa_pending'] = bid
+                return render_template_string(LOGIN_FORM, error='', twofa_step=True)
             session['business_id'] = bid
             session['biz_name'] = biz['name']
             return redirect('/')
         return render_template_string(LOGIN_FORM, error='Invalid Business ID')
     if 'business_id' in session:
         return redirect('/')
+    if session.get('user_2fa_pending'):
+        return render_template_string(LOGIN_FORM, error='', twofa_step=True)
     return render_template_string(LOGIN_FORM, error='')
 
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect('/')
+
+
+@app.route('/2fa/setup', methods=['POST'])
+@login_required
+def user_2fa_setup():
+    """Enable flow step 1: create secret + backup codes, show QR."""
+    bid = session['business_id']
+    import pyotp
+    secret = pyotp.random_base32()
+    codes = _u2fa_gen_codes()
+    all2 = load_user_2fa()
+    all2[bid] = {
+        'enabled': False, 'secret': secret,
+        'backup_codes': [_u2fa_hash(_u2fa_norm(c)) for c in codes],
+        'biz_name': session.get('biz_name', ''),
+    }
+    save_user_2fa(all2)
+    session['user_2fa_new_codes'] = codes
+    flash('📲 Scan the QR code with Google Authenticator / Authy, then enter the 6-digit code to confirm.', 'success')
+    return redirect('/?tab=settings')
+
+
+@app.route('/2fa/verify', methods=['POST'])
+@login_required
+def user_2fa_verify():
+    bid = session['business_id']
+    code = request.form.get('code', '').strip()
+    entry = get_user_2fa(bid)
+    import pyotp
+    if entry.get('secret') and pyotp.TOTP(entry['secret']).verify(_u2fa_norm(code)):
+        entry['enabled'] = True
+        all2 = load_user_2fa()
+        all2[bid] = entry
+        save_user_2fa(all2)
+        flash('✅ 2FA enabled! Backup codes below — save them somewhere safe.', 'success')
+    else:
+        flash('❌ Invalid code', 'error')
+    return redirect('/?tab=settings')
+
+
+@app.route('/2fa/disable', methods=['POST'])
+@login_required
+def user_2fa_disable():
+    bid = session['business_id']
+    all2 = load_user_2fa()
+    all2.pop(bid, None)
+    save_user_2fa(all2)
+    session.pop('user_2fa_new_codes', None)
+    flash('✅ 2FA disabled', 'success')
+    return redirect('/?tab=settings')
+
+
+@app.route('/2fa/backup-codes', methods=['POST'])
+@login_required
+def user_2fa_backup_codes():
+    bid = session['business_id']
+    entry = get_user_2fa(bid)
+    if not entry.get('secret'):
+        flash('❌ No 2FA to manage', 'error')
+        return redirect('/?tab=settings')
+    codes = _u2fa_gen_codes()
+    entry['backup_codes'] = [_u2fa_hash(_u2fa_norm(c)) for c in codes]
+    all2 = load_user_2fa()
+    all2[bid] = entry
+    save_user_2fa(all2)
+    session['user_2fa_new_codes'] = codes
+    flash('🆕 New backup codes generated — copy them now!', 'success')
+    return redirect('/?tab=settings')
+
+
+@app.route('/2fa/dismiss-codes', methods=['POST'])
+@login_required
+def user_2fa_dismiss():
+    session.pop('user_2fa_new_codes', None)
+    return redirect('/?tab=settings')
 
 @app.route('/api/signup', methods=['POST'])
 def api_signup():
@@ -3071,6 +3253,16 @@ def dashboard():
         "WHERE business_id=? ORDER BY created_at DESC", (bid,))
     kb_documents_list = c.fetchall()
 
+    # Two-factor auth state for the Settings tab
+    u2fa_entry = get_user_2fa(bid)
+    u2fa = {
+        'enabled': bool(u2fa_entry.get('enabled')),
+        'backup_count': len(u2fa_entry.get('backup_codes') or []),
+        'new_codes': session.get('user_2fa_new_codes'),
+    }
+    if u2fa_entry.get('secret') and not u2fa_entry.get('enabled'):
+        u2fa['qr'] = user_2fa_qr(u2fa_entry)
+
     return render_template_string(dashboard_html.replace('<!-- GSC_META -->', gsc_meta_tag()),
         session=session, tab=tab, biz_name=biz['name'],
         industry_title=(biz['industry'] or '').title(),
@@ -3096,7 +3288,8 @@ def dashboard():
         today_date=today_date,
         seven_days_ago=seven_days_ago,
         total_duration=total_duration, user_tier=user_tier,
-        extra_minutes=extra_minutes, total_minutes_limit=total_minutes_limit)
+        extra_minutes=extra_minutes, total_minutes_limit=total_minutes_limit,
+        user_2fa=u2fa)
 
 # ── CONVERSATIONS API ROUTES ──
 
