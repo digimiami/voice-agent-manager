@@ -1424,5 +1424,22 @@ def call_transcript(call_id):
     d = _vapi("GET", f"/call/{call_id}")
     tr = d.get("transcript") or ""
     msgs = [(m.get("role"), m.get("message")) for m in (d.get("messages") or []) if m.get("message")]
+    summary = ((d.get("analysis") or {}).get("summary") or "")[:600]
     return {"transcript": tr, "messages": msgs, "status": d.get("status"), "ended": d.get("endedReason"),
-            "cost": d.get("cost"), "duration": d.get("durationSeconds")}
+            "cost": d.get("cost"), "duration": d.get("durationSeconds"), "summary": summary}
+
+
+def call_recording(call_id):
+    """Fetch a call's mono recording (bytes + mime) via Vapi's authenticated
+    302-redirect endpoint — works for any call that has a recording.
+    Uses requests (urllib gets HTTP 400 on this endpoint; curl/requests get 302→200)."""
+    import requests
+    key = vapi_key()
+    try:
+        r = requests.get(f"{VAPI_BASE}/call/{call_id}/mono-recording",
+                         headers={"Authorization": "Bearer " + key}, timeout=120)
+        if r.status_code != 200:
+            return None, None
+        return r.content, r.headers.get("Content-Type", "audio/mpeg")
+    except Exception:
+        return None, None

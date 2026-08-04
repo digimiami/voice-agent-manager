@@ -2551,7 +2551,7 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                     <td class="font-mono">${{ '%.2f'|format(c.cost or 0) }}</td>
                     <td>{{ c.duration or 0 }}s</td>
                     <td class="text-[#5c5c70]">{{ (c.created_at or '')[:16] }}</td>
-                    <td>{% if c.call_id %}<button class="btn-secondary text-[10px]" style="padding:3px 7px" onclick="raTranscript('{{ c.call_id }}')">📄</button>{% endif %}</td>
+                    <td>{% if c.call_id %}<button class="btn-secondary text-[10px]" style="padding:3px 7px" onclick="raTranscript('{{ c.call_id }}')">📄</button> <button class="btn-secondary text-[10px]" style="padding:3px 7px" onclick="raAudio('{{ c.call_id }}')">🎧</button>{% endif %}</td>
                 </tr>
                 {% endfor %}
                 </tbody>
@@ -2567,6 +2567,20 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                     <button class="btn-secondary text-xs" onclick="document.getElementById('raTrModal').style.display='none'">✕</button>
                 </div>
                 <div id="raTrBody" class="text-[12px] font-mono text-[#cbd5e1] whitespace-pre-wrap" style="line-height:1.6">…</div>
+            </div>
+        </div>
+
+        <!-- Recording player modal -->
+        <div id="raAuModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:50;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)this.style.display='none'">
+            <div class="card" style="max-width:520px;width:100%">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold">🎧 Call Recording</h3>
+                    <button class="btn-secondary text-xs" onclick="document.getElementById('raAuModal').style.display='none'">✕</button>
+                </div>
+                <audio id="raAuPlayer" controls autoplay style="width:100%">
+                    <source src="" type="audio/mpeg">
+                </audio>
+                <p class="text-[11px] text-[#64748b] mt-2">No audio? The recording may still be processing — try again in a minute.</p>
             </div>
         </div>
 
@@ -2603,14 +2617,25 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
             m.style.display = 'flex';
             fetch('/admin/review-ai/transcript/' + callId).then(function(r){ return r.json(); })
               .then(function(d){
+                var out = [];
+                if (d.summary) out.push('📌 SUMMARY: ' + d.summary + '\n────────────────────────');
                 if (d.messages && d.messages.length){
-                    body.textContent = d.messages.map(function(p){ return (p[0] === 'user' ? '👤 ' : '🤖 ') + p[1]; }).join('\n');
+                    out.push(d.messages.map(function(p){ return (p[0] === 'user' ? '👤 ' : '🤖 ') + p[1]; }).join('\n'));
                 } else if (d.transcript){
-                    body.textContent = d.transcript;
+                    out.push(d.transcript);
                 } else {
-                    body.textContent = 'No transcript yet (call may still be live).';
+                    out.push('No transcript yet (call may still be live).');
                 }
+                body.textContent = out.join('\n');
               }).catch(function(){ body.textContent = 'Failed to load transcript.'; });
+        }
+        function raAudio(callId){
+            var m = document.getElementById('raAuModal');
+            var player = document.getElementById('raAuPlayer');
+            player.src = '/admin/review-ai/recording/' + callId;
+            player.load();
+            m.style.display = 'flex';
+            player.play().catch(function(){});
         }
         function raSample(id){
             if (!confirm('Send the free sample review-response SMS now?')) return;
@@ -5173,6 +5198,18 @@ def admin_review_ai_call_again(pid):
 def admin_review_ai_transcript(call_id):
     import review_ai
     return jsonify(review_ai.call_transcript(call_id))
+
+
+@app.route('/admin/review-ai/recording/<call_id>')
+@admin_required
+def admin_review_ai_recording(call_id):
+    """Stream a call recording (Vapi authenticated endpoint → proxied audio)."""
+    import review_ai
+    from flask import Response
+    data, ctype = review_ai.call_recording(call_id)
+    if not data:
+        return jsonify({'error': 'No recording available yet (calls need to end first)'}), 404
+    return Response(data, mimetype=ctype or 'audio/mpeg')
 
 
 @app.route('/admin/review-ai/status')
