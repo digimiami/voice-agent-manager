@@ -22,6 +22,7 @@ import os
 import re
 import sqlite3
 import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -106,6 +107,11 @@ DEFAULT_SETTINGS = {
 _stop_flag = threading.Event()
 _running = {"scrape": False, "calls": False, "count": False}
 _run_log = []
+
+# Shared runner state/log — survives page refreshes AND service restarts.
+# Campaigns run in a DETACHED child process; the web app reads its state file.
+RA_LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "review_ai_log.txt")
+RA_STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "review_ai_runner_state.json")
 
 
 # ─────────────────────────── DB ───────────────────────────
@@ -216,14 +222,62 @@ def log(msg):
     _run_log.append(line)
     _run_log[:] = _run_log[-200:]
     print(line, flush=True)
-
-
-def running_state():
-    return dict(_running)
+    try:
+        with open(RA_LOG_FILE, "a") as f:
+            f.write(line + "\n")
+    except Exception:
+        pass
 
 
 def recent_log(n=25):
-    return _run_log[-n:]
+    try:
+        with open(RA_LOG_FILE) as f:
+            lines = f.read().splitlines()
+        return lines[-n:]
+    except Exception:
+        return _run_log[-n:]
+
+
+def _write_runner_state(state):
+    try:
+        with open(RA_STATE_FILE, "w") as f:
+            json.dump(state, f)
+    except Exception:
+        pass
+
+
+def _clear_runner_state():
+    try:
+        os.remove(RA_STATE_FILE)
+    except Exception:
+        pass
+
+
+def _detached_running():
+    """Is a detached campaign process alive right now?"""
+    try:
+        st = json.load(open(RA_STATE_FILE))
+    except Exception:
+        return None
+    pid = st.get("pid")
+    if not pid:
+        return None
+    try:
+        os.kill(pid, 0)
+        return st
+    except ProcessLookupError:
+        return None
+    except OSError:
+        return st
+
+
+def running_state():
+    state = dict(_running)
+    det = _detached_running()
+    if det:
+        state["calls"] = True
+        state["detached"] = True
+    return state
 
 
 # ─────────────────── Vapi API (curl — bypasses Cloudflare) ───────────────────
@@ -669,19 +723,32 @@ def count_unanswered_all(limit=100):
 # ─────────────────── Calls ───────────────────
 
 def run_calls(max_calls=None, delay=None):
-    """Background: place Vapi outbound calls to 'new' prospects."""
-    def worker():
-        if _running["calls"]:
-            return
-        _running["calls"] = True
-        _stop_flag.clear()
+    """Start a campaign. Runs in a DETACHED child process so page refreshes,
+    admin restarts, and deploys can NEVER stop a campaign mid-run."""
+    if _detached_running():
+        return False  # already running elsewhere
+    code = (
+        "import sys; sys.path.insert(0, %r); "
+        "import review_ai as r; r._run_calls_child(%r, %r)"
+    ) % (os.path.dirname(os.path.abspath(__file__)), max_calls, delay)
+    subprocess.Popen([sys.executable, "-c", code],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                     start_new_session=True)
+    return True
+
+
+def _run_calls_child(max_calls=None, delay=None):
+    """Worker that runs inside the detached campaign process."""
+    _stop_flag.clear()
+    _write_runner_state({"pid": os.getpid(), "mode": "calls",
+                         "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+    try:
         s = get_settings()
         maxc = int(max_calls or s["max_calls_per_run"] or 5)
         wait = int(delay or s["delay_seconds"] or 90)
         aid, _ = ensure_assistant()
         if not aid:
             log("❌ No assistant — cannot call")
-            _running["calls"] = False
             return
         phone_id = s["phone_number_id"]
         service = s.get("service", "reviews")
@@ -695,7 +762,7 @@ def run_calls(max_calls=None, delay=None):
             rows = _db().execute(
                 "SELECT * FROM review_prospects WHERE status='new' ORDER BY created_at LIMIT ?",
                 (maxc,)).fetchall()
-        log(f"📞 Placing up to {len(rows)} calls ({service} mode, assistant {aid[:8]}…, phone {phone_id[:8]}…)")
+        log(f"📞 Campaign started ({service} mode, assistant {aid[:8]}…, up to {len(rows)} calls, delay {wait}s)")
         placed = 0
         for r in rows:
             if _stop_flag.is_set():
@@ -728,20 +795,20 @@ def run_calls(max_calls=None, delay=None):
                 log(f"  ❌ {r['business_name'][:35]}: {str(d)[:120]}")
             if placed < maxc:
                 time.sleep(wait)
-        log(f"📞 Run complete: {placed} calls placed")
-        _running["calls"] = False
+        log(f"📞 Campaign complete: {placed} calls placed")
         if placed:
             # auto-sync shortly after the last call finishes → auto-packages fire
-            def _auto_sync():
-                time.sleep(90)
+            def _delayed_sync():
+                time.sleep(120)
                 try:
                     sync_call_outcomes()
                 except Exception as e:
-                    log(f"⚠️ Auto-sync failed: {e}")
-            threading.Thread(target=_auto_sync, daemon=True).start()
-    t = threading.Thread(target=worker, daemon=True)
-    t.start()
-    return True
+                    log(f"⚠️ auto-sync: {e}")
+            t = threading.Thread(target=_delayed_sync, daemon=False)
+            t.start()
+            t.join(timeout=600)
+    finally:
+        _clear_runner_state()
 
 
 def sync_call_outcomes():
@@ -1240,7 +1307,15 @@ def signup_lead(form, service="reviews"):
 
 
 def stop_all():
+    """Stop everything: in-process flags + kill any detached campaign process."""
     _stop_flag.set()
+    det = _detached_running()
+    if det:
+        try:
+            os.kill(det["pid"], 15)
+            log("⏹ Campaign process stopped")
+        except Exception:
+            pass
     return True
 
 
