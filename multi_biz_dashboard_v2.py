@@ -7889,6 +7889,22 @@ def stripe_webhook():
 # so both the dashboard (8085) and the admin (8086, which nginx serves at
 # diazites.online) expose the same page without circular imports.
 
+@app.route('/painter-service')
+def painter_service_page():
+    import review_ai
+    return review_ai.service_page_html(
+        thankyou=request.args.get('thankyou') == '1',
+        error=request.args.get('error') == '1',
+        service='painter')
+
+
+@app.route('/painter-service/signup', methods=['POST'])
+def painter_service_signup():
+    import review_ai
+    ok, _ = review_ai.signup_lead(request.form, service='painter')
+    return redirect('/painter-service?thankyou=1' if ok else '/painter-service?error=1')
+
+
 @app.route('/review-service')
 def review_service_page():
     import review_ai

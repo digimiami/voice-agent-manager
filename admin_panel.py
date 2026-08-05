@@ -2366,6 +2366,10 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
                     <form method="POST" action="/admin/review-ai/count-unanswered" class="inline"><button class="btn-secondary text-xs" style="padding:8px 14px">🔢 Count Unanswered</button></form>
                     {% endif %}
                     <form method="POST" action="/admin/review-ai/call" class="inline flex items-center gap-1">
+                        <select name="category" title="Niche filter — call only this category" style="padding:8px 10px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
+                            <option value="">🎯 All niches</option>
+                            {% for c in ra_settings.categories.split(',') %}<option value="{{ c.strip() }}">{{ c.strip() }}</option>{% endfor %}
+                        </select>
                         <input type="number" name="max_calls" placeholder="calls" min="1" max="20" value="{{ ra_settings.max_calls_per_run }}" style="width:70px;padding:8px 10px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
                         <button class="text-xs font-semibold" style="padding:8px 14px;border-radius:8px;background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff">📞 Call Next N</button>
                     </form>
@@ -5090,6 +5094,23 @@ def review_service_signup():
     return redirect('/review-service?thankyou=1' if ok else '/review-service?error=1')
 
 
+@app.route('/painter-service')
+def painter_service_page():
+    """Public Painter niche page (diazites.online/painter-service via 8086)."""
+    import review_ai
+    return review_ai.service_page_html(
+        thankyou=request.args.get('thankyou') == '1',
+        error=request.args.get('error') == '1',
+        service='painter')
+
+
+@app.route('/painter-service/signup', methods=['POST'])
+def painter_service_signup():
+    import review_ai
+    ok, _ = review_ai.signup_lead(request.form, service='painter')
+    return redirect('/painter-service?thankyou=1' if ok else '/painter-service?error=1')
+
+
 @app.route('/website-service')
 def website_service_page():
     """Public Website Builder service page (diazites.online/website-service)."""
@@ -5131,8 +5152,9 @@ def admin_review_ai_call():
         flash('⚠️ Call run already in progress', 'warning')
         return redirect('/admin?tab=reviews-ai')
     n = request.form.get('max_calls', '') or ''
-    review_ai.run_calls(max_calls=int(n) if n.isdigit() else None)
-    flash('📞 Call run started (background)', 'success')
+    cat = (request.form.get('category') or '').strip() or None
+    review_ai.run_calls(max_calls=int(n) if n.isdigit() else None, category=cat)
+    flash(f'📞 Call run started (background{", niche: " + cat if cat else ""})', 'success')
     return redirect('/admin?tab=reviews-ai')
 
 

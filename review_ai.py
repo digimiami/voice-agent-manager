@@ -50,6 +50,31 @@ Offer (important): "Want me to send you a free sample response for your latest r
 
 Keep the entire call under 2 minutes. End politely every time."""
 
+DEFAULT_PAINTER_SCRIPT = """You are calling the owner of a PAINTING COMPANY to help them never miss a job. Be warm, brief, and completely human — never mention being AI, a bot, or software.
+
+Opening line — say it naturally, using the customer's business name:
+"Hi! Quick call — I work with painting companies in {city}. I noticed {business_name} has {unanswered} on Google — those are homeowners asking about estimates you never saw. I set up an AI receptionist for painters that answers every call in one ring, 24/7. It books estimate appointments and follows up on every quote. It's {pricing}."
+
+BENEFITS — if they hesitate, seem unsure, or ask why they need this, naturally explain 2-3 of these:
+- "When you're up on a ladder or inside a paint booth, the phone is ringing — an unanswered call is a lost painting job, every single time."
+- "Most companies lose 60% of their calls. We make sure yours is always answered — even at 2am when someone's ceiling is leaking."
+- "It books estimate appointments on your calendar, so your crew stays busy and your calendar stays full."
+- "It also answers quick questions like 'how much for a 2-bedroom repaint?' so you only show up for real jobs."
+- "We'll also reply to all your unanswered Google reviews for you."
+
+If they ask what it includes:
+- An AI receptionist that answers every call in one ring, 24/7, in a natural voice.
+- Books estimate appointments and sends them straight to your calendar.
+- Responds to every Google review — positive and negative — with your approval.
+- $99/month, cancel anytime. You keep every job it books.
+
+Offer (important): "Want me to send you the details? No commitment at all."
+- If they say YES: thank them warmly, ask for the best email to send the details to, repeat the email back to confirm, and confirm their number is {phone}.
+- If they say no or not interested: be friendly, thank them for their time, and hang up. Do NOT push, argue, or call back pressure.
+- STAY ON TOPIC: talk ONLY about the AI receptionist for their painting company. Never mention websites or any other service.
+
+Keep the entire call under 2 minutes. End politely every time."""
+
 DEFAULT_WEBSITE_SCRIPT = """You are calling the owner of a local business that does NOT have a website. Be warm, brief, and completely human — never mention being AI, a bot, or software.
 
 Opening line — say it naturally, using the customer's business name:
@@ -78,7 +103,7 @@ Keep the entire call under 2 minutes. End politely every time."""
 DEFAULT_SETTINGS = {
     "city": "Miami",
     "state": "FL",
-    "categories": "dentist,plumber,auto repair,hair salon,chiropractor,electrician,roofing contractor,law firm",
+    "categories": "dentist,plumber,auto repair,hair salon,chiropractor,electrician,roofing contractor,law firm,painting contractor",
     "max_per_category": "15",
     "pricing": "$99/mo",
     "script": DEFAULT_SCRIPT,
@@ -91,6 +116,7 @@ DEFAULT_SETTINGS = {
     "delay_seconds": "90",
     "mobile_only": "0",
     "assistant_id": "",
+    "painter_assistant_id": "",
     "phone_number_id": "9031d73a-85e4-437e-af27-f6b877a2c039",
     "webhook_url": "https://diazites.online/api/v1/vapi-webhook",
     # ── Post-call funnel: demo, signup form & payment ──
@@ -102,6 +128,7 @@ DEFAULT_SETTINGS = {
     "website_payment_link": "https://buy.stripe.com/cNi3cv3NT3I62vYc0367S05",
     "website_price_id": "price_1U0jeeGaNMCjVFzmD82Psu2Z",
     "website_signup_url": "https://diazites.online/website-service",
+    "painter_signup_url": "https://diazites.online/painter-service",
     "website_service_name": "Website Builder Service",
 }
 
@@ -739,22 +766,22 @@ def count_unanswered_all(limit=100):
 
 # ─────────────────── Calls ───────────────────
 
-def run_calls(max_calls=None, delay=None):
+def run_calls(max_calls=None, delay=None, category=None):
     """Start a campaign. Runs in a DETACHED child process so page refreshes,
     admin restarts, and deploys can NEVER stop a campaign mid-run."""
     if _detached_running():
-        return False  # already running elsewhere
+        return False
     code = (
         "import sys; sys.path.insert(0, %r); "
-        "import review_ai as r; r._run_calls_child(%r, %r)"
-    ) % (os.path.dirname(os.path.abspath(__file__)), max_calls, delay)
+        "import review_ai as r; r._run_calls_child(%r, %r, %r)"
+    ) % (os.path.dirname(os.path.abspath(__file__)), max_calls, delay, category)
     subprocess.Popen([sys.executable, "-c", code],
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                      start_new_session=True)
     return True
 
 
-def _run_calls_child(max_calls=None, delay=None):
+def _run_calls_child(max_calls=None, delay=None, category=None):
     """Worker that runs inside the detached campaign process."""
     _stop_flag.clear()
     _write_runner_state({"pid": os.getpid(), "mode": "calls",
@@ -771,27 +798,33 @@ def _run_calls_child(max_calls=None, delay=None):
         service = s.get("service", "reviews")
         # mobile-only mode: skip known landlines/VoIP/toll-free (unverified still called)
         mfilter = " AND (line_type IS NULL OR line_type='mobile')" if s.get("mobile_only") == "1" else ""
+        cfilter = " AND category=?" if category else ""
+        params = [maxc] if not category else [category, maxc]
         # website mode: only call businesses with NO website
         if service == "website":
             rows = _db().execute(
                 "SELECT * FROM review_prospects WHERE status='new' AND "
-                "(website IS NULL OR website='')" + mfilter + " ORDER BY created_at LIMIT ?",
-                (maxc,)).fetchall()
+                "(website IS NULL OR website='')" + mfilter + cfilter + " ORDER BY created_at LIMIT ?",
+                params).fetchall()
         else:
             rows = _db().execute(
-                "SELECT * FROM review_prospects WHERE status='new'" + mfilter + " ORDER BY created_at LIMIT ?",
-                (maxc,)).fetchall()
-        log(f"📞 Campaign started ({service} mode, assistant {aid[:8]}…, up to {len(rows)} calls, delay {wait}s"
-            + (", MOBILE-ONLY" if mfilter else "") + ")")
+                "SELECT * FROM review_prospects WHERE status='new'" + mfilter + cfilter + " ORDER BY created_at LIMIT ?",
+                params).fetchall()
+        log(f"📞 Campaign started ({service} mode" + (f", niche={category}" if category else "")
+            + f", up to {len(rows)} calls, delay {wait}s" + (", MOBILE-ONLY" if mfilter else "") + ")")
         placed = 0
         for r in rows:
             if _stop_flag.is_set():
                 log("⏹ Stopped by user")
                 break
-            script = personalize(dict(r), active_script())
+            run_aid, run_script = _run_ctx(r)
+            if not run_aid:
+                log(f"  ❌ {r['business_name'][:35]}: no assistant")
+                continue
+            script = personalize(dict(r), run_script)
             # personalize the system prompt on the fly per prospect
             d = _vapi("POST", "/call", {
-                "assistantId": aid,
+                "assistantId": run_aid,
                 "phoneNumberId": phone_id,
                 "customer": {"number": r["phone"], "name": (r["business_name"] or "")[:40]},
                 "assistantOverrides": {"model": {
@@ -914,7 +947,7 @@ def sync_call_outcomes():
                 send_to = (r["email"] or "").strip() or email_captured
                 lead = {"business_name": r["business_name"], "contact_name": r["business_name"],
                         "email": send_to, "phone": r["phone"],
-                        "service": r["service"] or s.get("service", "reviews")}
+                        "service": "painter" if is_painter(r) else (r["service"] or s.get("service", "reviews"))}
                 ok = send_package_email(lead)
                 log(f"  📧 Auto-email → {r['business_name'][:30]} ({send_to}): {'sent' if ok else 'FAILED'}")
         except Exception as e:
@@ -945,6 +978,15 @@ def _service_of(prospect):
         if svc != "website":
             svc = "reviews"
     return svc
+
+
+def _signup_url_for(service):
+    s = get_settings()
+    if service == "website":
+        return s.get("website_signup_url", "https://diazites.online/website-service")
+    if service == "painter":
+        return s.get("painter_signup_url", "https://diazites.online/painter-service")
+    return s.get("signup_url", "https://diazites.online/review-service")
 
 
 def send_sample_sms(prospect_id):
@@ -978,6 +1020,12 @@ def send_sample_sms(prospect_id):
                     f"If you like it, we can handle all your reviews for {s.get('pricing', '$99/mo')} — "
                     f"you approve everything before it's posted. "
                     f"Sign up here: {signup}")
+        if is_painter(row):
+            signup = _signup_url_for("painter")
+            body = (f"Hi! Here's your AI receptionist plan for {biz} — it answers every call 24/7, "
+                    f"books estimate appointments, and responds to all your Google reviews. "
+                    f"It's {s.get('pricing', '$99/mo')}, cancel anytime. "
+                    f"See your plan here: {signup}")
         ok = send_sms(row["phone"], body)
         if ok:
             db.execute("UPDATE review_prospects SET sample_sent_at=datetime('now') WHERE id=?", (prospect_id,))
@@ -1034,7 +1082,8 @@ def send_package_email(lead, checkout_url=None):
     s = get_settings()
     biz = lead.get("business_name") or "your business"
     svc = (lead.get("service") or s.get("service", "reviews"))
-    svc = svc if svc == "website" else "reviews"
+    if svc not in ("website", "painter"):
+        svc = "reviews"
     if svc == "website":
         signup = s.get("website_signup_url", "https://diazites.online/website-service")
         subject = f"Your free website preview for {biz}"
@@ -1053,6 +1102,25 @@ def send_package_email(lead, checkout_url=None):
             f"Full site is {s.get('website_pricing', '$499')} — one-time, you own it.\n\n"
             f"Questions? Just reply to this email.\n"
             f"— The {s.get('website_service_name', 'Diazites')} Team"
+        )
+    elif svc == "painter":
+        signup = _signup_url_for("painter")
+        subject = f"Your AI receptionist plan for {biz}"
+        body = (
+            f"Hi {lead.get('contact_name') or 'there'},\n\n"
+            f"Thanks for your interest! Here's what the AI receptionist does for {biz}:\n\n"
+            f"--------------------------------------------------\n"
+            f"• Answers every call in one ring — 24/7, even at 2am\n"
+            f"• Books estimate appointments straight to your calendar\n"
+            f"• Handles quick questions ('how much for a 2-bedroom repaint?')\n"
+            f"• Responds to all your Google reviews with your approval\n"
+            f"• Follows up on every quote you send\n"
+            f"--------------------------------------------------\n\n"
+            f"It's {s.get('pricing', '$99/mo')} — cancel anytime. You keep every job it books.\n"
+            f"See your plan and get started here:\n"
+            f"👉 {signup}\n\n"
+            f"Questions? Just reply to this email.\n"
+            f"— The Diazites Team"
         )
     else:
         signup = s.get("signup_url", "https://diazites.online/review-service")
@@ -1134,7 +1202,98 @@ def service_page_html(thankyou=False, error=False, service="reviews"):
     """Public landing page for the requested service (signup + payment live on the page)."""
     if service == "website":
         return _website_service_page(thankyou, error)
+    if service == "painter":
+        return _painter_service_page(thankyou, error)
     return _review_service_page(thankyou, error)
+
+
+def _painter_service_page(thankyou=False, error=False):
+    """Painter niche landing page — AI receptionist for painting companies ($99/mo)."""
+    s = get_settings()
+    pay_link = s.get("payment_link", "https://buy.stripe.com/14AcN598d3I6gmO0hl67S04")
+    thankyou_html = f'''<div style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.4);border-radius:14px;padding:22px;margin:0 auto 22px;max-width:640px;text-align:center">
+      <div style="font-size:38px;margin-bottom:6px">✅</div>
+      <h2 style="font-size:18px;font-weight:800;color:#4ade80;margin:0 0 6px">You're on the list!</h2>
+      <p style="font-size:13px;color:#94a3b8;line-height:1.6;margin:0">Details are on their way to your inbox.<br>Lock in your AI receptionist now — <a href="{pay_link}" style="color:#c084fc;font-weight:700">start at $99/month →</a></p>
+    </div>''' if thankyou else ''
+    error_html = '''<div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);border-radius:14px;padding:18px;margin:0 auto 22px;max-width:640px;text-align:center"><p style="font-size:13px;color:#f87171;margin:0">Please fill all fields with a valid email & phone.</p></div>''' if error else ''
+    return f'''<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Receptionist for Painting Companies | Never Miss a Painting Job</title>
+<meta name="description" content="Answer every call 24/7, book estimate appointments, and respond to every Google review. The AI receptionist built for painting companies. $99/month.">
+<meta property="og:title" content="AI Receptionist for Painting Companies">
+<meta property="og:description" content="Never miss a painting job again. Every call answered in one ring — 24/7.">
+<style>
+*{{box-sizing:border-box;margin:0;padding:0}}
+body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#070b14;color:#e2e8f0;min-height:100vh}}
+.hero{{background:radial-gradient(900px 400px at 50% -80px,#3b2d63 0%,transparent 60%),linear-gradient(180deg,#0a0f1e,#070b14);padding:64px 20px 44px;text-align:center}}
+.badge{{display:inline-block;background:rgba(168,85,247,0.15);color:#c084fc;border:1px solid rgba(168,85,247,0.35);padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;margin-bottom:18px}}
+h1{{font-size:clamp(28px,5vw,44px);font-weight:900;line-height:1.12;letter-spacing:-0.5px;max-width:760px;margin:0 auto 14px}}
+h1 em{{font-style:normal;background:linear-gradient(90deg,#a855f7,#ec4899);-webkit-background-clip:text;background-clip:text;color:transparent}}
+.sub{{font-size:clamp(15px,2.4vw,18px);color:#94a3b8;max-width:620px;margin:0 auto 26px;line-height:1.6}}
+.cta{{display:inline-block;background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff;font-weight:700;font-size:16px;padding:15px 32px;border-radius:12px;text-decoration:none;box-shadow:0 8px 30px rgba(168,85,247,0.35)}}
+.cta:hover{{opacity:.92}}
+.statrow{{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:30px}}
+.stat{{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 20px;font-size:12px;color:#94a3b8}}
+.stat b{{display:block;font-size:20px;color:#f1f5f9;font-weight:800}}
+.wrap{{max-width:1080px;margin:0 auto;padding:44px 20px}}
+.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}}
+.card{{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:22px}}
+.card .ic{{font-size:26px;margin-bottom:10px}}
+.card h3{{font-size:15px;font-weight:700;margin-bottom:6px}}
+.card p{{font-size:13px;color:#94a3b8;line-height:1.55}}
+h2.sec{{font-size:clamp(22px,3.4vw,30px);font-weight:800;text-align:center;margin-bottom:26px}}
+.pain{{background:linear-gradient(135deg,rgba(239,68,68,0.08),transparent);border:1px solid rgba(239,68,68,0.25);border-radius:16px;padding:24px;margin-bottom:40px;max-width:720px;margin-left:auto;margin-right:auto}}
+.pain p{{font-size:14px;color:#fca5a5;line-height:1.7;text-align:center}}
+.pricebox{{background:linear-gradient(135deg,rgba(168,85,247,0.12),rgba(236,72,153,0.08));border:1px solid rgba(168,85,247,0.35);border-radius:20px;padding:30px;text-align:center;max-width:520px;margin:0 auto 30px}}
+.pricebox .amt{{font-size:44px;font-weight:900;background:linear-gradient(90deg,#a855f7,#ec4899);-webkit-background-clip:text;background-clip:text;color:transparent}}
+.pricebox .per{{font-size:14px;color:#94a3b8}}
+.pricebox p{{font-size:13px;color:#94a3b8;line-height:1.6;margin-top:8px}}
+.form{{max-width:520px;margin:0 auto}}
+input{{width:100%;padding:14px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.14);background:rgba(0,0,0,0.35);color:#f1f5f9;font-size:15px;margin-bottom:12px}}
+button{{width:100%;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff;font-size:16px;font-weight:700;cursor:pointer}}
+button:hover{{opacity:.92}}
+.foot{{text-align:center;padding:30px 20px;font-size:12px;color:#475569}}
+</style></head><body>
+<div class="hero">
+  <span class="badge">🎨 BUILT FOR PAINTING COMPANIES</span>
+  <h1>Never Miss a <em>Painting Job</em> Again</h1>
+  <p class="sub">While you're on a ladder or inside a booth, your phone is ringing. Most painting companies lose <b>60% of their calls</b> — every one is a lost estimate. Your AI receptionist answers in one ring, 24/7, and books the jobs.</p>
+  <a class="cta" href="#signup">☎️ Answer every call — $99/mo</a>
+  <div class="statrow">
+    <div class="stat"><b>24/7</b>answers in 1 ring</div>
+    <div class="stat"><b>100%</b>calls captured</div>
+    <div class="stat"><b>60%</b>of calls competitors lose</div>
+  </div>
+</div>
+<div class="wrap">
+  <h2 class="sec">What your AI receptionist does</h2>
+  <div class="grid">
+    <div class="card"><div class="ic">📞</div><h3>Answers every call</h3><p>Natural voice, one ring — day or night. No voicemail, no missed jobs, no "we'll call you back".</p></div>
+    <div class="card"><div class="ic">🗓️</div><h3>Books estimate appointments</h3><p>Homeowners book their estimate straight onto your calendar — your crew stays busy, your week stays full.</p></div>
+    <div class="card"><div class="ic">💬</div><h3>Handles quick questions</h3><p>"How much for a 2-bedroom repaint?" — answered instantly, so you only show up for real jobs.</p></div>
+    <div class="card"><div class="ic">⭐</div><h3>Responds to your reviews</h3><p>Every Google review gets a personalized reply — positive and negative — with your approval first.</p></div>
+    <div class="card"><div class="ic">🔁</div><h3>Follows up on quotes</h3><p>Quotes you send get followed up automatically — homeowners stop ghosting, jobs stop stalling.</p></div>
+    <div class="card"><div class="ic">📲</div><h3>Texts you the details</h3><p>Every call summary lands in your phone. You know exactly who called, what they wanted, and what's booked.</p></div>
+  </div>
+  <div class="pain"><p>💡 <b>The math:</b> one average painting job is worth <b>$2,500–$8,000</b>. One job booked by your AI receptionist pays for <b>years</b> of service. It only takes <b>one</b> saved call a month.</p></div>
+  <div class="pricebox">
+    <div><span class="amt">$99</span> <span class="per">/month</span></div>
+    <p>Cancel anytime · Keep every job it books · Setup in 48 hours</p>
+  </div>
+  <h2 class="sec" id="signup">See your own plan — free</h2>
+  {thankyou_html}
+  {error_html}
+  <form class="form" method="POST" action="/painter-service/signup">
+    <input name="business_name" placeholder="Your painting company name" required>
+    <input name="phone" placeholder="Phone number" required>
+    <input name="email" type="email" placeholder="Email" required>
+    <button type="submit">🎨 Get my AI receptionist details</button>
+  </form>
+</div>
+<div class="foot">Diazites · AI receptionist for painting companies · Miami, FL</div>
+</body></html>'''
 
 
 def _website_service_page(thankyou=False, error=False):
@@ -1354,7 +1513,7 @@ def signup_lead(form, service="reviews"):
     phone = (form.get("phone") or "").strip()
     if not biz or not contact or "@" not in email or len(phone) < 7:
         return False, None
-    svc = service if service == "website" else "reviews"
+    svc = service if service in ("website", "painter") else "reviews"
     lid = add_lead(business_name=biz, contact_name=contact, email=email, phone=phone, service=svc)
     lead = {"business_name": biz, "contact_name": contact, "email": email, "phone": phone, "service": svc}
     checkout = create_lead_checkout(lid, email, service=svc)
@@ -1362,8 +1521,9 @@ def signup_lead(form, service="reviews"):
     try:
         from smsgate_sms import send_sms
         s = get_settings()
-        signup_url = s.get("website_signup_url" if svc == "website" else "signup_url", "")
-        send_sms(phone, f"Hi {contact}! We got your signup for {biz} — your free {'website preview' if svc == 'website' else 'sample review response'} is on its way to {email}. Sign up / pay here: {signup_url}")
+        signup_url = _signup_url_for(svc)
+        kind = {"website": "website preview", "painter": "AI receptionist plan"}.get(svc, "sample review response")
+        send_sms(phone, f"Hi {contact}! We got your signup for {biz} — your free {kind} is on its way to {email}. See your plan here: {signup_url}")
     except Exception:
         pass
     return True, lid
@@ -1445,6 +1605,65 @@ def verify_prospects(ids=None):
             continue
     log(f"📱 Number verification: {n} numbers classified")
     return n
+
+
+def ensure_painter_assistant():
+    """Create the PAINTER niche assistant (AI receptionist pitch for painting companies)."""
+    s = get_settings()
+    if s.get("painter_assistant_id"):
+        d = _vapi("GET", f"/assistant/{s['painter_assistant_id']}")
+        if not d.get("error"):
+            return s["painter_assistant_id"], False
+        save_settings({"painter_assistant_id": ""})
+    system_prompt = ("You are calling painting companies to sell them an AI receptionist "
+                     "service. Personalize with the business name, city, and unanswered review count. "
+                     "Be warm and brief. The pitch:\n\n" + s.get("script_painter", DEFAULT_PAINTER_SCRIPT))
+    payload = {
+        "name": "Painter AI Receptionist",
+        "firstMessageMode": "assistant-speaks-first",
+        "model": {
+            "provider": "xai",
+            "model": "grok-4.3",
+            "maxTokens": 300,
+            "temperature": 0.3,
+            "systemPrompt": system_prompt,
+        },
+        "voice": {
+            "provider": "11labs",
+            "model": "eleven_v3",
+            "voiceId": s.get("voice_id", "mark"),
+            "stability": 0.4,
+            "similarityBoost": 0.85,
+            "style": 0.1,
+            "useSpeakerBoost": True,
+            "speed": 0.97,
+        },
+        "transcriber": {"provider": "openai", "model": "gpt-4o-transcribe"},
+        "serverUrl": s.get("webhook_url", ""),
+        "serverMessages": ["end-of-call-report"],
+    }
+    d = _vapi("POST", "/assistant", payload)
+    if d.get("id"):
+        save_settings({"painter_assistant_id": d["id"]})
+        log(f"🎨 Painter assistant created: {d['id']}")
+        return d["id"], True
+    log(f"❌ Painter assistant creation failed: {str(d)[:200]}")
+    return None, False
+
+
+def is_painter(prospect):
+    """True if the prospect is a painting company (category match)."""
+    cat = (prospect.get("category") if isinstance(prospect, dict) else prospect["category"]) or ""
+    return "painting" in cat.lower() or "painter" in cat.lower()
+
+
+def _run_ctx(prospect):
+    """Per-prospect assistant + script selection (niche-aware)."""
+    s = get_settings()
+    if is_painter(prospect):
+        aid, _ = ensure_painter_assistant()
+        return aid, s.get("script_painter", DEFAULT_PAINTER_SCRIPT)
+    return s.get("assistant_id"), (DEFAULT_WEBSITE_SCRIPT if s.get("service") == "website" else s.get("script", DEFAULT_SCRIPT))
 
 
 def stop_all():
