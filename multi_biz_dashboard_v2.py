@@ -4476,8 +4476,17 @@ def api_inventory_search():
             "url": v.get("url"),
         })
     results.sort(key=lambda r: r["price"])
-    top = results[:12]
-    return jsonify({"vehicles": top, "count": len(top), "total_matches": len(results)})
+    # dedupe identical units (same name+price+mileage appear multiple times in the dealer feed)
+    seen = set()
+    deduped = []
+    for r in results:
+        key = (r["name"], r["price"], r["mileage"])
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(r)
+    top = deduped[:12]
+    return jsonify({"vehicles": top, "count": len(top), "total_matches": len(deduped)})
 
 
 @app.route('/api/calcom/save-settings', methods=['POST'])
