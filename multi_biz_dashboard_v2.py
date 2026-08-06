@@ -4396,6 +4396,90 @@ def landing_upload_media():
 
 # ── CAL.COM INTEGRATION ──
 
+@app.route('/api/inventory/search', methods=['GET', 'POST'])
+def api_inventory_search():
+    """Live inventory search for the Daytona Auto Mall demo agent (VAPI server tool).
+    Reads the daily-refreshed cache (daytona_inventory.json) and returns matching
+    vehicles with price, mileage, engine, and features. Accepts GET query params,
+    form data, or a JSON body (VAPI server tools POST the call args as JSON).
+    """
+    import json as _json
+    args = {}
+    if request.is_json:
+        body = request.get_json(silent=True) or {}
+        args = body.get("args") if isinstance(body, dict) and "args" in body else body
+    args.update({k: v for k, v in request.args.items()})
+    args.update({k: v for k, v in request.form.items()})
+
+    inv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "daytona_inventory.json")
+    if not os.path.exists(inv_path):
+        return jsonify({"vehicles": [], "count": 0, "error": "inventory not loaded yet"})
+    with open(inv_path) as f:
+        vehicles = _json.load(f)
+
+    q = str(args.get("q") or "").strip().lower()
+    make = str(args.get("make") or "").strip().lower()
+    model = str(args.get("model") or "").strip().lower()
+    try:
+        year_min = int(args.get("yearMin") or 0) or None
+    except (TypeError, ValueError):
+        year_min = None
+    try:
+        year_max = int(args.get("yearMax") or 0) or None
+    except (TypeError, ValueError):
+        year_max = None
+    try:
+        price_max = int(args.get("priceMax") or 0) or None
+    except (TypeError, ValueError):
+        price_max = None
+    try:
+        price_min = int(args.get("priceMin") or 0) or None
+    except (TypeError, ValueError):
+        price_min = None
+
+    results = []
+    for v in vehicles:
+        name = (v.get("name") or "").lower()
+        vm = (v.get("make") or "").lower()
+        vmo = (v.get("model") or "").lower()
+        if q and q not in name and q not in vm and q not in vmo:
+            continue
+        if make and vm != make:
+            continue
+        if model and model not in vmo:
+            continue
+        y = v.get("year") or 0
+        if year_min and y < year_min:
+            continue
+        if year_max and y > year_max:
+            continue
+        p = v.get("price") or 0
+        if p <= 0:
+            continue  # call-for-price units are excluded from search results
+        if price_min and p < price_min:
+            continue
+        if price_max and p > price_max:
+            continue
+        results.append({
+            "name": v.get("name"),
+            "year": y,
+            "price": p,
+            "price_text": f"${p:,.0f}",
+            "mileage": v.get("mileage"),
+            "engine": v.get("engine"),
+            "transmission": v.get("transmission"),
+            "drivetrain": v.get("drivetrain"),
+            "fuel": v.get("fuel"),
+            "body": v.get("body"),
+            "exterior_color": v.get("ext_color"),
+            "features": v.get("features") or [],
+            "url": v.get("url"),
+        })
+    results.sort(key=lambda r: r["price"])
+    top = results[:12]
+    return jsonify({"vehicles": top, "count": len(top), "total_matches": len(results)})
+
+
 @app.route('/api/calcom/save-settings', methods=['POST'])
 @login_required
 def save_calcom_settings():
