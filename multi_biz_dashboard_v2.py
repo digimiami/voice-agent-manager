@@ -4451,6 +4451,8 @@ def api_inventory_search():
         "suv": ("suv", "sport utility"),
     }
     q_tokens = [t for t in _re.split(r"[^a-z0-9]+", q) if t and t not in _FILLER]
+    # drop price-like tokens (40000, 30k, 25,000) — they belong to price_max, not the text match
+    q_tokens = [t for t in q_tokens if not _re.fullmatch(r"(?:\d{2,}(?:k)?|k)", t)]
     # auto-detect a price cap inside the query ("under 30k", "$25,000", "30000")
     if not price_max:
         m = _re.search(r"(?:under|below|max|less)[^0-9]{0,6}(\d{1,3}(?:,\d{3})*(?:\.\d+)?)k?", q)
