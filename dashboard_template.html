@@ -1484,6 +1484,48 @@ setTimeout(refreshMonitor, 500);
       </form>
     </div>
     <div class="card">
+      <h3 class="font-bold mb-3">🔗 CRM Webhook — AI Instant Callback</h3>
+      <p class="text-xs text-[#7a7a8e] mb-3">When a lead comes in (your website form, Facebook lead, or CRM), send it here and the AI agent <strong>calls them back within seconds</strong>.</p>
+      <div class="mb-3" style="padding:10px 12px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
+        <div class="text-[10px] text-[#7a7a8e] mb-1">WEBHOOK URL</div>
+        <div class="flex items-center gap-2">
+          <code class="text-[11px] flex-1 break-all">https://diazites.online/api/lead-received</code>
+          <button type="button" onclick="copyText('https://diazites.online/api/lead-received',this)" class="btn-secondary text-xs" style="padding:3px 8px">📋 Copy</button>
+        </div>
+      </div>
+      <div class="mb-3" style="padding:10px 12px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
+        <div class="text-[10px] text-[#7a7a8e] mb-1">YOUR API KEY (X-Outbound-Key header)</div>
+        {% if webhook_key_id %}
+        <div class="flex items-center gap-2">
+          <code class="text-[11px] flex-1">{{ webhook_key_id }} ·•••••••</code>
+          <button type="button" onclick="genKey(this)" class="btn-secondary text-xs" style="padding:3px 8px">🔄 Regenerate</button>
+        </div>
+        {% else %}
+        <button type="button" onclick="genKey(this)" class="btn-primary text-xs w-full">🔑 Generate Webhook Key</button>
+        {% endif %}
+        <div id="newkeybox" style="display:none;margin-top:10px;padding:10px;border-radius:8px;background:#0c0c18;border:1px solid #38bdf8">
+          <div class="text-[10px] text-[#38bdf8] mb-1">⚠️ COPY THIS NOW — shown only once</div>
+          <div class="flex items-center gap-2">
+            <code id="newkey" class="text-[11px] flex-1 break-all"></code>
+            <button type="button" onclick="copyText(document.getElementById('newkey').textContent,this)" class="btn-secondary text-xs" style="padding:3px 8px">📋 Copy</button>
+          </div>
+        </div>
+      </div>
+      <div class="mb-3" style="padding:10px 12px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
+        <div class="text-[10px] text-[#7a7a8e] mb-1">EXAMPLE — point your form/CRM at this</div>
+        <pre style="font-size:10px;overflow-x:auto;color:#a5b4fc;margin:0">curl -X POST https://diazites.online/api/lead-received \
+  -H "Content-Type: application/json" \
+  -H "X-Outbound-Key: YOUR_API_KEY" \
+  -d '{"phone":"+1XXXXXXXXXX","name":"John","business_id":"{{ biz_info.id }}","source":"website form"}'</pre>
+      </div>
+      <div class="mb-2 text-xs text-[#7a7a8e]">📞 Test it — the agent will call this number:</div>
+      <div class="flex gap-2">
+        <input type="tel" id="whtest" placeholder="+1XXXXXXXXXX" class="flex-1">
+        <button type="button" onclick="webhookTest()" class="btn-primary text-xs" style="padding:6px 12px">Send Test Lead</button>
+      </div>
+      <div id="whteststatus" class="text-xs mt-2" style="display:none"></div>
+    </div>
+    <div class="card">
       <h3 class="font-bold mb-3">🔇 Background Noise Reduction</h3>
       <form method="POST" action="/update-denoise">
         <p class="text-xs text-[#7a7a8e] mb-3">Filters out background noise and background speech while the caller talks (Krisp smart denoising) — clearer calls, better transcripts.</p>
@@ -3010,6 +3052,30 @@ function submitEditLead(){var id=document.getElementById('editLeadId').value;var
 function filterLeads(val){var q=val.toLowerCase().trim();var rows=document.querySelectorAll('.lead-row');var visible=0;rows.forEach(function(r){var search=r.getAttribute('data-search')||'';if(!q||search.indexOf(q)!==-1){r.style.display='';visible++}else{r.style.display='none'}});document.getElementById('noLeadsMsg').classList.toggle('hidden',visible>0);}
 // Call History functions
 function toggleRecording(id,url){var p=document.getElementById('rec-player-'+id);var btn=document.getElementById('rec-btn-'+id);if(p.classList.contains('hidden')){p.classList.remove('hidden');btn.textContent='🔊 Playing...';p.querySelector('audio').play()}else{p.classList.add('hidden');btn.textContent='🔊 Play Recording';p.querySelector('audio').pause();p.querySelector('audio').currentTime=0}}
+function copyText(txt,btn){navigator.clipboard.writeText(txt).then(()=>{if(btn){var o=btn.textContent;btn.textContent='✅ Copied';setTimeout(()=>btn.textContent=o,1500)}})}
+function genKey(btn){
+  btn.disabled=true;var o=btn.textContent;btn.textContent='Generating…';
+  fetch('/api/webhook-key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'generate'})})
+    .then(r=>r.json()).then(d=>{
+      btn.disabled=false;btn.textContent=o;
+      if(d.key){
+        document.getElementById('newkey').textContent=d.key;
+        document.getElementById('newkeybox').style.display='block';
+      }
+      location.reload();
+    }).catch(()=>{btn.disabled=false;btn.textContent=o});
+}
+function webhookTest(){
+  var phone=document.getElementById('whtest').value.replace(/[^0-9+]/g,'');
+  var st=document.getElementById('whteststatus');
+  if(!phone||phone.length<10){st.style.display='block';st.style.color='#fca5a5';st.textContent='Enter a valid phone number.';return;}
+  st.style.display='block';st.style.color='#6ee7b7';st.textContent='📞 Calling '+phone+'…';
+  fetch('/api/webhook/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:phone})})
+    .then(r=>r.json()).then(d=>{
+      if(d.success){st.textContent='✅ Agent is calling '+phone+' now (call '+d.call_id.slice(0,12)+'…). Pick up!';}
+      else{st.style.color='#fca5a5';st.textContent='⚠️ '+d.error;}
+    }).catch(()=>{st.style.color='#fca5a5';st.textContent='Network error.'});
+}
 function toggleTranscript(id){var t=document.getElementById('transcript-'+id);var btn=document.getElementById('trans-btn-'+id);if(t.classList.contains('hidden')){t.classList.remove('hidden');btn.textContent='📝 Hide Transcript'}else{t.classList.add('hidden');btn.textContent='📝 Show Transcript'}}
 function enableNoteEdit(id){document.getElementById('note-view-'+id).classList.add('hidden');document.getElementById('note-edit-'+id).classList.remove('hidden');document.getElementById('note-edit-btn-'+id).classList.add('hidden')}
 function cancelNoteEdit(id){document.getElementById('note-view-'+id).classList.remove('hidden');document.getElementById('note-edit-'+id).classList.add('hidden');document.getElementById('note-edit-btn-'+id).classList.remove('hidden')}

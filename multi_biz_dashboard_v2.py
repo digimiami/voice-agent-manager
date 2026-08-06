@@ -3230,10 +3230,20 @@ def dashboard():
     if u2fa_entry.get('secret') and not u2fa_entry.get('enabled'):
         u2fa['qr'] = user_2fa_qr(u2fa_entry)
 
+    # CRM webhook key state for the Settings tab
+    webhook_key_id = None
+    try:
+        wk = c.execute("SELECT id FROM user_api_keys WHERE business_id=? AND active=1 LIMIT 1", (bid,)).fetchone()
+        if wk:
+            webhook_key_id = wk['id']
+    except Exception:
+        pass
+
     return render_template_string(dashboard_html.replace('<!-- GSC_META -->', gsc_meta_tag()),
         session=session, tab=tab, biz_name=biz['name'],
         industry_title=(biz['industry'] or '').title(),
         biz_info=biz, campaign_status=campaign_status,
+        webhook_key_id=webhook_key_id,
         campaign_data=camp, total_leads=leads_total,
         stats={'calls_made':calls_made,'appointments':appointments,
                'leads_total':leads_total,'total_cost':total_cost,
@@ -4396,6 +4406,50 @@ def landing_upload_media():
 
 # ── CAL.COM INTEGRATION ──
 
+@app.route('/api/webhook-key', methods=['POST'])
+@login_required
+def api_webhook_key():
+    """Generate (or re-generate) the business's CRM webhook API key.
+    Raw key is returned ONCE — keys are stored hashed."""
+    bid = session['business_id']
+    data = request.get_json(silent=True) or request.form
+    action = data.get('action', 'generate')
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    db.execute("""CREATE TABLE IF NOT EXISTS user_api_keys (
+        id TEXT PRIMARY KEY, key_hash TEXT UNIQUE NOT NULL, name TEXT NOT NULL,
+        description TEXT DEFAULT '', permissions TEXT DEFAULT 'read,write',
+        created_at TEXT DEFAULT (datetime('now')), last_used_at TEXT, expires_at TEXT,
+        active INTEGER DEFAULT 1, created_by TEXT DEFAULT 'dashboard', business_id TEXT DEFAULT '')""")
+    db.commit()
+    existing = db.execute("SELECT id FROM user_api_keys WHERE business_id=? AND active=1 LIMIT 1", (bid,)).fetchone()
+    if action == 'generate' or not existing:
+        if existing:
+            db.execute("UPDATE user_api_keys SET active=0 WHERE business_id=?", (bid,))
+            db.commit()
+        raw = f"dz_{uuid.uuid4().hex}_{uuid.uuid4().hex[:16]}"
+        kid = f"key_{uuid.uuid4().hex[:12]}"
+        db.execute("INSERT INTO user_api_keys (id, key_hash, name, description, permissions, created_by, business_id) VALUES (?,?,?,?,?,?,?)",
+                   (kid, hashlib.sha256(raw.encode()).hexdigest(), 'CRM Webhook',
+                    f'CRM webhook auth for {bid}', 'read,write', 'dashboard', bid))
+        db.commit()
+        db.close()
+        return jsonify({'success': True, 'key': raw, 'key_id': kid})
+    db.close()
+    return jsonify({'success': True, 'key': None, 'key_id': existing['id']})
+
+
+@app.route('/api/webhook/test', methods=['POST'])
+@login_required
+def api_webhook_test():
+    """Send a test lead → the business's AI agent calls the number (same path as the CRM webhook)."""
+    data = request.get_json(silent=True) or request.form
+    phone = _e164(str(data.get("phone") or "").strip())
+    if not phone:
+        return jsonify({"success": False, "error": "valid phone required"}), 400
+    return _place_lead_call(phone, "Test Lead", session['business_id'], "webhook-test")
+
+
 @app.route('/api/lead-received', methods=['POST'])
 def api_lead_received():
     """CRM / website-lead webhook: a lead just came in → the business's AI agent
@@ -4403,8 +4457,6 @@ def api_lead_received():
     or lead form fires. Body: {"phone": "+1...", "name": "John", "business_id": "daytona-auto-mall", "source": "website"}
     Header: X-Outbound-Key. Returns the VAPI call id.
     """
-    if request.headers.get("X-Outbound-Key", "") != os.environ.get("OUTBOUND_CALL_KEY", VAPI_API_KEY):
-        return jsonify({"success": False, "error": "unauthorized"}), 401
     data = request.get_json(silent=True) or request.form
     phone = _e164(str(data.get("phone") or "").strip())
     if not phone:
@@ -4412,6 +4464,18 @@ def api_lead_received():
     name = str(data.get("name") or "Prospect")[:60]
     biz_id = str(data.get("business_id") or "daytona-auto-mall").strip()
     source = str(data.get("source") or "website")[:60]
+    # Auth: global key OR a business-scoped dashboard API key (agent_api_keys / user_api_keys)
+    provided = request.headers.get("X-Outbound-Key", "")
+    if provided != os.environ.get("OUTBOUND_CALL_KEY", VAPI_API_KEY):
+        try:
+            from agent_api import validate_api_key
+            kd = validate_api_key(provided)
+            if kd and (not kd.get("business_id") or kd.get("business_id") == biz_id):
+                pass  # business-scoped key matches the target business
+            else:
+                return jsonify({"success": False, "error": "unauthorized"}), 401
+        except Exception:
+            return jsonify({"success": False, "error": "unauthorized"}), 401
     return _place_lead_call(phone, name, biz_id, source)
 
 
