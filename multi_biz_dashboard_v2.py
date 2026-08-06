@@ -4417,10 +4417,10 @@ def api_webhook_key():
     db = get_db()
     db.row_factory = sqlite3.Row
     db.execute("""CREATE TABLE IF NOT EXISTS user_api_keys (
-        id TEXT PRIMARY KEY, key_hash TEXT UNIQUE NOT NULL, name TEXT NOT NULL,
-        description TEXT DEFAULT '', permissions TEXT DEFAULT 'read,write',
+        id TEXT PRIMARY KEY, key_hash TEXT UNIQUE NOT NULL, raw_prefix TEXT DEFAULT '',
+        name TEXT NOT NULL, description TEXT DEFAULT '', permissions TEXT DEFAULT 'read,write',
         created_at TEXT DEFAULT (datetime('now')), last_used_at TEXT, expires_at TEXT,
-        active INTEGER DEFAULT 1, created_by TEXT DEFAULT 'dashboard', business_id TEXT DEFAULT '')""")
+        active INTEGER DEFAULT 1, business_id TEXT DEFAULT '')""")
     db.commit()
     existing = db.execute("SELECT id FROM user_api_keys WHERE business_id=? AND active=1 LIMIT 1", (bid,)).fetchone()
     if action == 'generate' or not existing:
@@ -4429,9 +4429,9 @@ def api_webhook_key():
             db.commit()
         raw = f"dz_{uuid.uuid4().hex}_{uuid.uuid4().hex[:16]}"
         kid = f"key_{uuid.uuid4().hex[:12]}"
-        db.execute("INSERT INTO user_api_keys (id, key_hash, name, description, permissions, created_by, business_id) VALUES (?,?,?,?,?,?,?)",
-                   (kid, hashlib.sha256(raw.encode()).hexdigest(), 'CRM Webhook',
-                    f'CRM webhook auth for {bid}', 'read,write', 'dashboard', bid))
+        db.execute("INSERT INTO user_api_keys (id, key_hash, raw_prefix, name, description, permissions, business_id) VALUES (?,?,?,?,?,?,?)",
+                   (kid, hashlib.sha256(raw.encode()).hexdigest(), raw[:12] + "...", 'CRM Webhook',
+                    f'CRM webhook auth for {bid}', 'read,write', bid))
         db.commit()
         db.close()
         return jsonify({'success': True, 'key': raw, 'key_id': kid})
