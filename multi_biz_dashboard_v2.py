@@ -4418,7 +4418,8 @@ def api_outbound_call():
         db.close()
     if not biz or not biz["vapi_assistant_id"]:
         return jsonify({"success": False, "error": f"business {biz_id} not found or has no assistant"}), 404
-    lead = {"phone": phone, "name": str(data.get("name") or "Prospect")[:60], "id": ""}
+    lead = {"phone": phone, "name": str(data.get("name") or "Prospect")[:60], "id": "",
+            "business_name": str(data.get("business_name") or biz["name"] or "your business")}
     call_id = make_vapi_call(lead, dict(biz), biz["vapi_assistant_id"], biz["vapi_phone_id"], 0)
     if not call_id:
         return jsonify({"success": False, "error": "VAPI call failed to start"}), 502
