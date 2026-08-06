@@ -4396,6 +4396,182 @@ def landing_upload_media():
 
 # ── CAL.COM INTEGRATION ──
 
+@app.route('/api/lead-received', methods=['POST'])
+def api_lead_received():
+    """CRM / website-lead webhook: a lead just came in → the business's AI agent
+    calls them back immediately (outbound). This is the endpoint a dealer's CRM
+    or lead form fires. Body: {"phone": "+1...", "name": "John", "business_id": "daytona-auto-mall", "source": "website"}
+    Header: X-Outbound-Key. Returns the VAPI call id.
+    """
+    if request.headers.get("X-Outbound-Key", "") != os.environ.get("OUTBOUND_CALL_KEY", VAPI_API_KEY):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    data = request.get_json(silent=True) or request.form
+    phone = _e164(str(data.get("phone") or "").strip())
+    if not phone:
+        return jsonify({"success": False, "error": "valid phone required"}), 400
+    name = str(data.get("name") or "Prospect")[:60]
+    biz_id = str(data.get("business_id") or "daytona-auto-mall").strip()
+    source = str(data.get("source") or "website")[:60]
+    return _place_lead_call(phone, name, biz_id, source)
+
+
+@app.route('/lead-demo', methods=['GET'])
+def lead_demo_page():
+    """Dealer-style lead capture demo page: visitor leaves name+phone, the AI
+    salesman calls them back instantly. Reusable per business via ?biz=<id>."""
+    biz_id = request.args.get("biz", "daytona-auto-mall")
+    db = get_db()
+    try:
+        biz = db.execute("SELECT * FROM businesses WHERE id=?", (biz_id,)).fetchone()
+    finally:
+        db.close()
+    biz_name = biz["name"] if biz else "Diazites Demo Business"
+    biz_phone = (biz["phone_number"] if biz and biz["phone_number"] else "386-274-2886").replace("+1", "").replace("+", "")
+    return f"""<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Get a Call Back — {biz_name}</title>
+<style>
+  * {{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }}
+  body {{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:linear-gradient(160deg,#0b1220 0%,#101c33 100%); min-height:100vh; color:#e8ecf4; display:flex; flex-direction:column; }}
+  .wrap {{ max-width:420px; margin:0 auto; width:100%; padding:28px 20px 40px; flex:1; }}
+  .badge {{ display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); border-radius:999px; padding:6px 14px; font-size:12px; letter-spacing:.4px; color:#9fb2d0; }}
+  h1 {{ font-size:26px; line-height:1.25; margin:18px 0 8px; font-weight:700; }}
+  h1 span {{ color:#38bdf8; }}
+  .sub {{ color:#93a5c4; font-size:15px; line-height:1.5; margin-bottom:26px; }}
+  .card {{ background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:18px; padding:22px; }}
+  label {{ display:block; font-size:13px; color:#b6c4dd; margin:14px 0 6px; }}
+  input {{ width:100%; background:#0d1526; border:1px solid rgba(255,255,255,.16); border-radius:12px; padding:15px 16px; font-size:17px; color:#fff; outline:none; }}
+  input:focus {{ border-color:#38bdf8; }}
+  input::placeholder {{ color:#5b6d8c; }}
+  .btn {{ width:100%; margin-top:22px; background:#38bdf8; color:#071022; border:0; border-radius:12px; padding:17px; font-size:17px; font-weight:700; cursor:pointer; }}
+  .btn:active {{ transform:scale(.98); }}
+  .btn[disabled] {{ opacity:.6; }}
+  .status {{ display:none; margin-top:18px; background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.4); border-radius:12px; padding:14px 16px; font-size:15px; color:#6ee7b7; line-height:1.45; }}
+  .err {{ background:rgba(239,68,68,.12); border-color:rgba(239,68,68,.4); color:#fca5a5; }}
+  .foot {{ text-align:center; color:#5b6d8c; font-size:12px; margin-top:26px; line-height:1.6; }}
+  .callring {{ display:none; margin-top:18px; text-align:center; padding:10px 0; }}
+  .ring {{ display:inline-block; width:14px; height:14px; border-radius:50%; background:#38bdf8; margin-right:8px; animation:pulse 1s infinite; }}
+  @keyframes pulse {{ 0%,100%{{opacity:1}} 50%{{opacity:.25}} }}
+</style></head><body>
+<div class="wrap">
+  <div class="badge">🚗 {biz_name} · AI Sales Assistant</div>
+  <h1>Get a <span>call back</span> in 60 seconds</h1>
+  <p class="sub">Leave your number — our AI sales team calls you right away with real vehicles, real prices, no waiting.</p>
+  <div class="card">
+    <label for="name">Your name</label>
+    <input id="name" placeholder="John Smith" autocomplete="name">
+    <label for="phone">Phone number</label>
+    <input id="phone" type="tel" placeholder="(386) 555-0123" autocomplete="tel">
+    <button class="btn" id="go">Call me now →</button>
+    <div class="callring" id="ring"><span class="ring"></span>Calling you…</div>
+    <div class="status" id="status"></div>
+  </div>
+  <div class="foot">Questions? Call us at {biz_phone}<br>Powered by Diazites AI Voice Agents</div>
+</div>
+<script>
+  const go=document.getElementById('go'),status=document.getElementById('status'),ring=document.getElementById('ring');
+  go.onclick=async ()=>{{
+    const name=document.getElementById('name').value.trim(), phone=document.getElementById('phone').value.replace(/[^0-9+]/g,'');
+    if(!phone||phone.length<10){{ status.className='status err'; status.style.display='block'; status.textContent='Please enter a valid phone number.'; return; }}
+    go.disabled=true; go.textContent='Placing call…'; ring.style.display='block';
+    try{{
+      const r=await fetch('/lead-demo/submit',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{name,phone,business_id:'{biz_id}'}})}});
+      const d=await r.json();
+      ring.style.display='none';
+      if(d.success){{ status.className='status'; status.textContent='✅ {biz_name} AI assistant is calling '+phone+' right now. Pick up — it\'s real!' }}
+      else{{ status.className='status err'; status.textContent='⚠️ '+d.error; }}
+      status.style.display='block';
+    }}catch(e){{ ring.style.display='none'; status.className='status err'; status.style.display='block'; status.textContent='Network error — try again.'; }}
+    go.disabled=false; go.textContent='Call me now →';
+  }};
+</script>
+</body></html>"""
+
+
+@app.route('/lead-demo/submit', methods=['POST'])
+def lead_demo_submit():
+    data = request.get_json(silent=True) or request.form
+    phone = _e164(str(data.get("phone") or "").strip())
+    if not phone:
+        return jsonify({"success": False, "error": "valid phone required"}), 400
+    name = str(data.get("name") or "Prospect")[:60]
+    biz_id = str(data.get("business_id") or "daytona-auto-mall").strip()
+    return _place_lead_call(phone, name, biz_id, "lead-demo-form")
+
+
+def _e164(phone):
+    if not phone:
+        return ""
+    digits = "".join(c for c in phone if c.isdigit())
+    if not digits:
+        return ""
+    if phone.startswith("+"):
+        return "+" + digits
+    if len(digits) == 10:
+        return "+1" + digits
+    if len(digits) == 11 and digits.startswith("1"):
+        return "+" + digits
+    return "+" + digits
+
+
+_lead_call_cooldown = {}
+def _place_lead_call(phone, name, biz_id, source):
+    """Create the VAPI outbound call + call_log row (with cooldown). Shared by
+    the CRM webhook and the demo form."""
+    now = time.time()
+    if _lead_call_cooldown.get(phone, 0) > now - 120:
+        return jsonify({"success": False, "error": "already calling this number — wait a minute"}), 429
+    db = get_db()
+    try:
+        biz = db.execute("SELECT * FROM businesses WHERE id=?", (biz_id,)).fetchone()
+    finally:
+        db.close()
+    if not biz or not biz["vapi_assistant_id"]:
+        return jsonify({"success": False, "error": f"business {biz_id} not found or has no assistant"}), 404
+    bizd = dict(biz)
+    greeting = (f"Hi {name}! This is Mark calling from {bizd['name']} — I saw you just requested "
+                f"a call back and wanted to reach you right away. Are you looking for a specific "
+                f"vehicle today, or should I help you find the perfect car for your budget?")
+    payload = {
+        "assistantId": bizd["vapi_assistant_id"],
+        "phoneNumberId": bizd["vapi_phone_id"],
+        "customer": {"number": phone},
+        "assistantOverrides": {
+            "firstMessage": greeting,
+            "firstMessageMode": "assistant-speaks-first",
+            "variableValues": {
+                "business_name": bizd.get("name") or "",
+                "industry": bizd.get("industry") or "",
+                "prospect_name": name or "",
+                "prospect_notes": f"Lead source: {source}"
+            }
+        }
+    }
+    try:
+        r = subprocess.run(["curl", "-s", "-X", "POST", f"{VAPI_BASE}/call",
+                            "-H", f"Authorization: Bearer {VAPI_API_KEY}",
+                            "-H", "Content-Type: application/json",
+                            "-d", json.dumps(payload)],
+                           capture_output=True, text=True, timeout=30)
+        call_data = json.loads(r.stdout or "{}")
+        call_id = call_data.get("id", "")
+        if not call_id:
+            return jsonify({"success": False, "error": f"VAPI: {call_data.get('message','failed')}"}), 502
+        _lead_call_cooldown[phone] = now
+        db = get_db()
+        try:
+            db.execute("INSERT OR IGNORE INTO call_log (id, business_id, lead_id, vapi_call_id, outcome) VALUES (?,?,?,?,'queued')",
+                       (str(uuid.uuid4())[:8], bizd["id"], "", call_id))
+            db.commit()
+        finally:
+            db.close()
+        print(f"✅ Lead call placed: {call_id} -> {phone} ({source})")
+        return jsonify({"success": True, "call_id": call_id, "phone": phone, "business": biz_id})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)[:120]}), 502
+
+
 @app.route('/api/outbound/call', methods=['POST'])
 def api_outbound_call():
     """Trigger an outbound call from a business's AI agent to any number.
