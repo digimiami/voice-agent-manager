@@ -1390,15 +1390,6 @@ setTimeout(refreshMonitor, 500);
               <option value="assistant-waits" {% if biz_info.first_message_mode == 'assistant-waits' %}selected{% endif %}>🔇 Assistant Waits for Caller</option>
             </select>
           </div>
-          <div>
-            <label class="text-xs font-semibold text-[#c084fc] block mb-1">🤖 Voice Provider</label>
-            <p class="text-xs text-[#7a7a8e] mb-1">TTS engine for the AI voice.</p>
-            <select name="voice_provider" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
-            <option value="11labs" {% if not biz_info.voice_provider or biz_info.voice_provider == '11labs' %}selected{% endif %}>ElevenLabs</option>
-            <option value="vapi" {% if biz_info.voice_provider == 'vapi' %}selected{% endif %}>Vapi</option>
-            <option value="azure" {% if biz_info.voice_provider == 'azure' %}selected{% endif %}>Azure</option>
-            </select>
-          </div>
         </div>
         <div class="flex gap-2 items-center flex-wrap">
           <button type="button" onclick="generateKB('outbound')" id="genKBBtn" class="btn-secondary text-xs" style="padding:6px 14px">🤖 AI Generate KB</button>
@@ -1480,11 +1471,27 @@ setTimeout(refreshMonitor, 500);
       </form>
     </div>
     <div class="card">
-      <h3 class="font-bold mb-3">📞 Call Forwarding</h3>
+      <h3 class="font-bold mb-3">📞 Call Transfer to Manager</h3>
       <form method="POST" action="/update-forwarding">
-        <input type="text" name="forward_to" placeholder="+1234567890" value="{{ biz_info.forward_to or '' }}" class="mb-2">
+        <p class="text-xs text-[#7a7a8e] mb-3">When a caller asks to speak with a <strong>manager, owner, or supervisor</strong>, the AI says "one moment" and <strong>transfers the call</strong> to the number below.</p>
+        <label class="flex items-center gap-2 cursor-pointer mb-2" style="padding:10px 14px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
+          <input type="checkbox" name="forwarding_enabled" value="1" {% if biz_info.call_forwarding %}checked{% endif %} style="width:18px;height:18px;accent-color:#c084fc">
+          <span class="text-sm">Enable call transfer</span>
+        </label>
+        <input type="text" name="forward_to" placeholder="+1234567890 — manager's phone" value="{{ biz_info.forward_to or '' }}" class="mb-2">
         <select name="forward_when" class="mb-2"><option value="always" {% if biz_info.forward_when == 'always' %}selected{% endif %}>Always</option><option value="hours" {% if biz_info.forward_when == 'hours' %}selected{% endif %}>Business Hours</option><option value="after" {% if biz_info.forward_when == 'after' %}selected{% endif %}>After Hours</option></select>
-        <button type="submit" class="btn-primary text-xs w-full">Save Forwarding</button>
+        <button type="submit" class="btn-primary text-xs w-full">💾 Save Transfer Settings</button>
+      </form>
+    </div>
+    <div class="card">
+      <h3 class="font-bold mb-3">🔇 Background Noise Reduction</h3>
+      <form method="POST" action="/update-denoise">
+        <p class="text-xs text-[#7a7a8e] mb-3">Filters out background noise and background speech while the caller talks (Krisp smart denoising) — clearer calls, better transcripts.</p>
+        <label class="flex items-center gap-2 cursor-pointer mb-3" style="padding:10px 14px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
+          <input type="checkbox" name="denoise_enabled" value="1" {% if biz_info.denoise_enabled != 0 %}checked{% endif %} style="width:18px;height:18px;accent-color:#c084fc">
+          <span class="text-sm">Noise reduction ON (recommended)</span>
+        </label>
+        <button type="submit" class="btn-primary text-xs w-full">💾 Save Noise Setting</button>
       </form>
     </div>
     <div class="card">

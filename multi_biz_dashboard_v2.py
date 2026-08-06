@@ -1721,45 +1721,12 @@ def verify_user_2fa(bid, code, consume=False):
     return False
 
 def get_available_voices():
-    """Return available voice options for the dropdown."""
+    """Return the 4 premium voices offered to clients (2 female + 2 male)."""
     return [
-        # Current Eleven Labs voices (kept for backward compatibility)
-        {"id": "burt", "name": "Burt (Male, Professional)", "provider": "11labs"},
-        {"id": "indy", "name": "Indy (Female, Warm)", "provider": "11labs"},
-        {"id": "michael", "name": "Michael (Male, Deep)", "provider": "11labs"},
-        {"id": "emma", "name": "Emma (Female, Friendly)", "provider": "11labs"},
-        {"id": "antoni", "name": "Antoni (Male, Calm)", "provider": "11labs"},
-        # Latest Eleven Labs premium voices
         {"id": "rachel", "name": "Rachel (Female, Warm — Most Popular)", "provider": "11labs"},
-        {"id": "domi", "name": "Domi (Female, Friendly)", "provider": "11labs"},
-        {"id": "bella", "name": "Bella (Female, Melodic)", "provider": "11labs"},
-        {"id": "elli", "name": "Elli (Female, Youthful)", "provider": "11labs"},
-        {"id": "josh", "name": "Josh (Male, Deep)", "provider": "11labs"},
-        {"id": "arnold", "name": "Arnold (Male, Authoritative)", "provider": "11labs"},
+        {"id": "emma", "name": "Emma (Female, Friendly)", "provider": "11labs"},
+        {"id": "mark", "name": "Mark (Male, Best Overall)", "provider": "11labs"},
         {"id": "adam", "name": "Adam (Male, Confident)", "provider": "11labs"},
-        {"id": "sam", "name": "Sam (Male, Warm)", "provider": "11labs"},
-        {"id": "patrick", "name": "Patrick (Male, Professional)", "provider": "11labs"},
-        {"id": "clyde", "name": "Clyde (Male, Storytelling)", "provider": "11labs"},
-        {"id": "alice", "name": "Alice (Female, Friendly)", "provider": "11labs"},
-        # New ElevenLabs premium voices (UUID-based)
-        {"id": "TX3LPaxmHKxFdv7VOQHJ", "name": "Liam (Male, Energetic)", "provider": "11labs"},
-        {"id": "onwK4e9ZLuTAKqWW03F9", "name": "Daniel (Male, Steady Broadcaster)", "provider": "11labs"},
-        {"id": "bIHbv24MWmeRgasZH58o", "name": "Will (Male, Relaxed Optimist)", "provider": "11labs"},
-        {"id": "iP95p4xoKVk53GoZ742B", "name": "Chris (Male, Charming)", "provider": "11labs"},
-        {"id": "cjVigY5qzO86Huf0OWal", "name": "Eric (Male, Smooth)", "provider": "11labs"},
-        {"id": "cgSgspJ2msm6clMCkdW9", "name": "Jessica (Female, Playful)", "provider": "11labs"},
-        {"id": "XrExE9yKIg1WjnnlVkGX", "name": "Matilda (Female, Professional)", "provider": "11labs"},
-        {"id": "pFZP5JQG7iQjIQuC4Bku", "name": "Lily (Female, Velvety)", "provider": "11labs"},
-        {"id": "CwhRBWXzGAHq8TQ4Fs17", "name": "Roger (Male, Laid-Back)", "provider": "11labs"},
-        {"id": "EXAVITQu4vr4xnSDxMaL", "name": "Sarah (Female, Reassuring)", "provider": "11labs"},
-        {"id": "IKne3meq5aSn9XLyUdCD", "name": "Charlie (Male, Deep)", "provider": "11labs"},
-        {"id": "JBFqnCBsd6RMkjVDRZzb", "name": "George (Male, Captivating)", "provider": "11labs"},
-        {"id": "SAz9YHcvj6GT2YYXdXww", "name": "River (Relaxed, Neutral)", "provider": "11labs"},
-        {"id": "N2lVS1w4EtoT3dr4eOWO", "name": "Callum (Male, Husky)", "provider": "11labs"},
-        {"id": "SOYHLrjzK2X1ezoPC6cr", "name": "Harry (Male, Fierce)", "provider": "11labs"},
-        {"id": "nPczCjzI2devNBz1zQrb", "name": "Brian (Male, Resonant)", "provider": "11labs"},
-        {"id": "pqHfZKP75CvOlQylNhV4", "name": "Bill (Male, Wise)", "provider": "11labs"},
-        {"id": "FGY2WhTYpPnrIDTdsKH5", "name": "Laura (Female, Enthusiast)", "provider": "11labs"},
     ]
 
 def login_required(f):
@@ -6569,15 +6536,23 @@ def update_script():
     kb = request.form.get('knowledge_base', '')
     first_message = request.form.get('first_message', '')
     first_message_mode = request.form.get('first_message_mode', 'assistant-speaks-first')
-    voice_provider = request.form.get('voice_provider', 'elevenlabs')
-    
+    voice_provider = request.form.get('voice_provider', '')
+
     db = get_db()
     c = db.cursor()
-    c.execute("""UPDATE businesses 
-                 SET script_template = ?, knowledge_base = ?, 
-                     first_message = ?, first_message_mode = ?, voice_provider = ?
-                 WHERE id = ?""",
-        (script, kb, first_message, first_message_mode, voice_provider, bid))
+    if voice_provider:
+        c.execute("""UPDATE businesses 
+                     SET script_template = ?, knowledge_base = ?, 
+                         first_message = ?, first_message_mode = ?, voice_provider = ?
+                     WHERE id = ?""",
+            (script, kb, first_message, first_message_mode, voice_provider, bid))
+    else:
+        # Voice Provider selector removed — preserve the stored provider
+        c.execute("""UPDATE businesses 
+                     SET script_template = ?, knowledge_base = ?, 
+                         first_message = ?, first_message_mode = ?
+                     WHERE id = ?""",
+            (script, kb, first_message, first_message_mode, bid))
     db.commit()
     
     # ── Sync to Vapi assistant ──
@@ -6716,6 +6691,72 @@ def patch_vapi_assistant(aid, payload):
         return json.loads(r.stdout)
     except Exception:
         return {"error": r.stdout[:200]}
+
+
+TRANSFER_TAG = "[TRANSFER-INSTRUCTION]"
+
+
+def add_transfer_to_assistant(aid, forward_to):
+    """Add/remove the transferCall tool + transfer instruction on a VAPI assistant.
+    When forward_to is set, the agent transfers callers who ask for a manager/owner.
+    Preserves the assistant's model provider, voice, transcriber, and analysis plan.
+    """
+    try:
+        cur = fetch_vapi_assistant(aid)
+    except Exception:
+        return {"error": "could not fetch assistant"}
+    model = cur.get("model") or {}
+    provider = model.get("provider", "xai")
+    model_name = model.get("model", "grok-4.3")
+
+    # ── system prompt (messages-style or systemPrompt-style) ──
+    if model.get("messages"):
+        msgs = list(model["messages"])
+        sys_idx = next((i for i, m in enumerate(msgs) if m.get("role") == "system"), None)
+        if sys_idx is not None:
+            prompt = msgs[sys_idx].get("content", "")
+        else:
+            prompt = ""
+    else:
+        prompt = model.get("systemPrompt", "")
+        msgs = None
+
+    # strip any previous transfer instruction
+    if TRANSFER_TAG in prompt:
+        prompt = prompt.split(TRANSFER_TAG)[0].rstrip()
+
+    if forward_to:
+        prompt = (prompt.rstrip() + "\n\n" + TRANSFER_TAG +
+                  "\nIf the caller asks to speak with a manager, owner, supervisor, or asks to be transferred, "
+                  "say \"Of course, one moment please\" and immediately use the transferCall function to "
+                  f"transfer the call to {forward_to}. Do not transfer for sales calls or wrong numbers.\n").strip()
+    else:
+        prompt = prompt.strip()
+
+    # ── tools ──
+    tools = [t for t in (model.get("tools") or []) if t.get("type") != "transferCall"]
+    if forward_to:
+        tools.append({"type": "transferCall", "destinations": [{"type": "number", "number": forward_to}]})
+
+    model_patch = {
+        "provider": provider,
+        "model": model_name,
+        "tools": tools,
+    }
+    if model.get("messages") or msgs is not None:
+        if sys_idx is not None:
+            msgs[sys_idx] = {**msgs[sys_idx], "content": prompt}
+        else:
+            msgs = [{"role": "system", "content": prompt}] + (msgs or [])
+        model_patch["messages"] = msgs
+    else:
+        model_patch["systemPrompt"] = prompt
+    if model.get("temperature") is not None:
+        model_patch["temperature"] = model["temperature"]
+    if model.get("maxTokens") is not None:
+        model_patch["maxTokens"] = model["maxTokens"]
+
+    return patch_vapi_assistant(aid, {"model": model_patch})
 
 
 @app.route('/update-agent-prompt', methods=['POST'])
@@ -6965,11 +7006,51 @@ def update_forwarding():
     db = get_db()
     c = db.cursor()
     enabled = 1 if request.form.get('forwarding_enabled') else 0
+    forward_to = request.form.get('forward_to','')
     c.execute("UPDATE businesses SET call_forwarding = ?, forward_to = ?, forward_when = ? WHERE id = ?",
-        (enabled, request.form.get('forward_to',''), request.form.get('forward_when','after-hours'), bid))
+        (enabled, forward_to, request.form.get('forward_when','after-hours'), bid))
     db.commit()
-    flash('✅ Call forwarding updated!', 'success')
+    # Sync transfer-to-manager tool + instruction to the VAPI assistant
+    c.execute("SELECT vapi_assistant_id FROM businesses WHERE id = ?", (bid,))
+    row = c.fetchone()
+    db.close()
+    if row and row['vapi_assistant_id'] and forward_to:
+        result = add_transfer_to_assistant(row['vapi_assistant_id'], forward_to)
+        if result.get('error') or 'statusCode' in result:
+            flash('⚠️ Forwarding saved, but Vapi transfer sync failed: ' + str(result.get('message') or result.get('error')), 'warning')
+        else:
+            flash('✅ Forwarding saved — callers asking for a manager now transfer to ' + forward_to, 'success')
+    else:
+        flash('✅ Forwarding updated!', 'success')
     return redirect('/?tab=forwarding')
+
+@app.route('/update-denoise', methods=['POST'])
+@login_required
+def update_denoise():
+    """Toggle Krisp background-noise reduction on the AI voice (on/off)."""
+    bid = session['business_id']
+    enabled = 1 if request.form.get('denoise_enabled') == '1' else 0
+    db = get_db()
+    db.execute("UPDATE businesses SET denoise_enabled = ? WHERE id = ?", (enabled, bid))
+    db.commit()
+    c = db.cursor()
+    c.execute("SELECT vapi_assistant_id FROM businesses WHERE id = ?", (bid,))
+    row = c.fetchone()
+    db.close()
+    if row and row['vapi_assistant_id']:
+        result = patch_vapi_assistant(row['vapi_assistant_id'], {
+            "backgroundSpeechDenoisingPlan": {
+                "smartDenoisingPlan": {"enabled": bool(enabled)},
+                "fourierDenoisingPlan": {"enabled": False}
+            }
+        })
+        if 'statusCode' in result:
+            flash('⚠️ Saved locally, Vapi sync failed: ' + str(result.get('message')), 'warning')
+        else:
+            flash('🔇 Background noise reduction ' + ('ON' if enabled else 'OFF') + ' — synced to voice agent!', 'success')
+    else:
+        flash('🔇 Background noise reduction ' + ('ON' if enabled else 'OFF'), 'success')
+    return redirect('/?tab=settings')
 
 @app.route('/update-sms-ai', methods=['POST'])
 @login_required
