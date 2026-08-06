@@ -4438,24 +4438,34 @@ def api_inventory_search():
         price_min = None
 
     results = []
-    # tokenize the query: drop filler words, match ANY remaining token across
-    # name/make/model/body/features so natural phrases ("new pickup truck") work
+    # tokenize the query: drop filler words, group synonyms, require EVERY group
+    # to match (AND) so "Mercedes SUV" = Mercedes AND SUV, while "new pickup truck"
+    # still matches pickups (truck/pickup are one group)
     import re as _re
     _FILLER = {"new", "used", "a", "an", "the", "for", "under", "over", "my", "i",
                "want", "wanted", "looking", "look", "please", "car", "cars",
                "vehicle", "vehicles", "with", "and", "or", "about", "budget"}
+    _SYN = {
+        "truck": ("pickup", "truck", "f-150", "f150", "silverado", "ram"),
+        "pickup": ("pickup", "truck", "f-150", "f150", "silverado", "ram"),
+        "suv": ("suv", "sport utility"),
+    }
     q_tokens = [t for t in _re.split(r"[^a-z0-9]+", q) if t and t not in _FILLER]
-    if q == "truck":
-        q_tokens += ["pickup", "f-150", "f150", "silverado", "ram"]
-    elif q == "suv":
-        q_tokens += ["suv", "sport utility"]
+    groups = []
+    for t in q_tokens:
+        g = _SYN.get(t, (t,))
+        if not any(g == _SYN.get(x, (x,)) for x in groups):
+            groups.append(g)
     for v in vehicles:
         name = (v.get("name") or "").lower()
         vm = (v.get("make") or "").lower()
         vmo = (v.get("model") or "").lower()
         body = (v.get("body") or "").lower()
         feats = " ".join(f.lower() for f in (v.get("features") or []))
-        if q_tokens and not any(t in name or t in vm or t in vmo or t in body or t in feats for t in q_tokens):
+        if groups and not all(
+            any(t in name or t in vm or t in vmo or t in body or t in feats for t in g)
+            for g in groups
+        ):
             continue
         if make and vm != make:
             continue
