@@ -5683,7 +5683,7 @@ def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
         # Fetch the assistant's actual model config to match provider/model
         try:
             r_model = subprocess.run(["curl","-s",f"{VAPI_BASE}/assistant/{assistant_id}",
-                "-H",f"Authorization: Bearer ***"], capture_output=True, text=True, timeout=10)
+                "-H",f"Authorization: Bearer {VAPI_API_KEY}"], capture_output=True, text=True, timeout=10)
             asst_data = json.loads(r_model.stdout)
             model_config = asst_data.get('model', {})
             model_provider = model_config.get('provider', 'xai')
@@ -5771,7 +5771,7 @@ def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
                     time.sleep(15)
                     try:
                         r2 = subprocess.run(["curl", "-s", f"{VAPI_BASE}/call/{cid}",
-                            "-H", f"Authorization: Bearer ***"], capture_output=True, text=True, timeout=20)
+                            "-H", f"Authorization: Bearer {VAPI_API_KEY}"], capture_output=True, text=True, timeout=20)
                         cd = json.loads(r2.stdout)
                         st = (cd or {}).get('status', '')
                         if st in ('ended', 'completed', 'failed', 'cancelled', 'voicemail'):
@@ -6608,19 +6608,22 @@ def update_script():
                 script=saved_script, knowledge_base=saved_kb
             )
         
-        # Build Vapi assistant update payload
+        # Build Vapi assistant update payload — PRESERVE existing model provider
+        try:
+            cur_assistant = fetch_vapi_assistant(biz['vapi_assistant_id'])
+        except Exception:
+            cur_assistant = {}
         vapi_payload = {
-            "model": {
-                "provider": "xai",
-                "model": "grok-4.3",
-                "systemPrompt": full_prompt
-            }
+            "model": build_model_patch(cur_assistant, full_prompt)
         }
         
         # Add first message settings if set
         if first_msg:
             vapi_payload["firstMessage"] = first_msg
             vapi_payload["firstMessageMode"] = first_message_mode
+        
+        # Only update voice if the user explicitly selected one this save
+        # (preserve the assistant's live voice otherwise)
         
         # Add voice provider mapping
         vp = biz['voice_provider'] or '11labs'
@@ -6666,6 +6669,55 @@ def update_script():
     
     return redirect('/?tab=settings')
 
+def fetch_vapi_assistant(aid):
+    """GET current VAPI assistant config (used to preserve model/voice on PATCH)."""
+    import urllib.request
+    req = urllib.request.Request(
+        f"{VAPI_BASE}/assistant/{aid}",
+        headers={"Authorization": f"Bearer {VAPI_API_KEY}"})
+    with urllib.request.urlopen(req, timeout=15) as r:
+        return json.loads(r.read())
+
+
+def build_model_patch(cur_assistant, full_prompt, temperature=None, max_tokens=None):
+    """Build a model PATCH that PRESERVES the assistant's existing provider/model structure.
+    Supports both systemPrompt-style (openai/xai) and messages-style (anthropic) models.
+    """
+    cur_model = (cur_assistant or {}).get("model") or {}
+    patch = {
+        "provider": cur_model.get("provider", "xai"),
+        "model": cur_model.get("model", "grok-4.3"),
+    }
+    if cur_model.get("messages"):
+        msgs = list(cur_model["messages"])
+        sys_idx = next((i for i, m in enumerate(msgs) if m.get("role") == "system"), None)
+        if sys_idx is not None:
+            msgs[sys_idx] = {**msgs[sys_idx], "content": full_prompt}
+        else:
+            msgs.insert(0, {"role": "system", "content": full_prompt})
+        patch["messages"] = msgs
+    else:
+        patch["systemPrompt"] = full_prompt
+    if temperature is not None:
+        patch["temperature"] = float(temperature)
+    if max_tokens is not None:
+        patch["maxTokens"] = int(max_tokens)
+    return patch
+
+
+def patch_vapi_assistant(aid, payload):
+    """PATCH a VAPI assistant with proper auth. Returns parsed response."""
+    import subprocess
+    r = subprocess.run(["curl", "-s", "-X", "PATCH", f"{VAPI_BASE}/assistant/{aid}",
+        "-H", f"Authorization: Bearer {VAPI_API_KEY}",
+        "-H", "Content-Type: application/json",
+        "-d", json.dumps(payload)], capture_output=True, text=True, timeout=15)
+    try:
+        return json.loads(r.stdout)
+    except Exception:
+        return {"error": r.stdout[:200]}
+
+
 @app.route('/update-agent-prompt', methods=['POST'])
 @login_required
 def update_agent_prompt():
@@ -6703,12 +6755,12 @@ def update_agent_prompt():
                 knowledge_base=kb
             )
         
-        subprocess.run(["curl","-s","-X","PATCH",f"{VAPI_BASE}/assistant/{biz['vapi_assistant_id']}",
-            "-H",f"Authorization: Bearer ***",
-            "-H","Content-Type: application/json",
-            "-d",json.dumps({
-                "model": {"provider": "xai", "model": "grok-4.3", "systemPrompt": full_prompt}
-            })], capture_output=True, text=True)
+        try:
+            cur = fetch_vapi_assistant(biz['vapi_assistant_id'])
+        except Exception:
+            cur = {}
+        patch_vapi_assistant(biz['vapi_assistant_id'],
+            {"model": build_model_patch(cur, full_prompt)})
     
     flash('✅ Agent prompt updated!', 'success')
     return redirect('/?tab=settings')
@@ -6892,22 +6944,16 @@ def update_settings():
             knowledge_base=kb
         )
         
-        subprocess.run(["curl","-s","-X","PATCH",f"{VAPI_BASE}/assistant/{biz['vapi_assistant_id']}",
-            "-H",f"Authorization: Bearer {VAPI_API_KEY}",
-            "-H","Content-Type: application/json",
-            "-d",json.dumps({
-                "model": {
-                    "provider": "xai",
-                    "model": "grok-4.3",
-                    "temperature": temp,
-                    "maxTokens": int(request.form.get('max_tokens',200)),
-                    "systemPrompt": full_script
-                },
-                "voice": {"provider": "11labs", "voiceId": voice_id, "speed": voice_speed, "stability": 0.5, "similarityBoost": 0.7},
-                "silenceTimeoutSeconds": silence,
-                "responseDelaySeconds": 0.1
-            })],
-            capture_output=True, text=True)
+        try:
+            cur = fetch_vapi_assistant(biz['vapi_assistant_id'])
+        except Exception:
+            cur = {}
+        patch_vapi_assistant(biz['vapi_assistant_id'], {
+            "model": build_model_patch(cur, full_script,
+                temperature=temp, max_tokens=int(request.form.get('max_tokens',200))),
+            "silenceTimeoutSeconds": silence,
+            "responseDelaySeconds": 0.1
+        })
     
     flash('✅ Settings saved!', 'success')
     return redirect('/?tab=settings')
