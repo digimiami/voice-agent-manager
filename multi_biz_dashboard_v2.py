@@ -4451,6 +4451,17 @@ def api_inventory_search():
         "suv": ("suv", "sport utility"),
     }
     q_tokens = [t for t in _re.split(r"[^a-z0-9]+", q) if t and t not in _FILLER]
+    # auto-detect a price cap inside the query ("under 30k", "$25,000", "30000")
+    if not price_max:
+        m = _re.search(r"(?:under|below|max|less)[^0-9]{0,6}(\d{1,3}(?:,\d{3})*(?:\.\d+)?)k?", q)
+        if not m:
+            m = _re.search(r"\b(\d{2,3}(?:,\d{3})+)\b", q) or _re.search(r"\b(\d{1,3})k\b", q)
+        if m:
+            try:
+                raw = m.group(1).replace(",", "")
+                price_max = int(float(raw) * 1000) if "k" in m.group(0).lower() and float(raw) < 200 else int(float(raw))
+            except (ValueError, TypeError):
+                pass
     groups = []
     for t in q_tokens:
         g = _SYN.get(t, (t,))
