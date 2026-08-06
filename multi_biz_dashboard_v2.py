@@ -4438,21 +4438,24 @@ def api_inventory_search():
         price_min = None
 
     results = []
-    # common-sense synonyms so natural queries match the feed's vocabulary
-    q_terms = {q}
+    # tokenize the query: drop filler words, match ANY remaining token across
+    # name/make/model/body/features so natural phrases ("new pickup truck") work
+    import re as _re
+    _FILLER = {"new", "used", "a", "an", "the", "for", "under", "over", "my", "i",
+               "want", "wanted", "looking", "look", "please", "car", "cars",
+               "vehicle", "vehicles", "with", "and", "or", "about", "budget"}
+    q_tokens = [t for t in _re.split(r"[^a-z0-9]+", q) if t and t not in _FILLER]
     if q == "truck":
-        q_terms.update(["pickup", "f-150", "f150", "silverado", "ram"])
+        q_tokens += ["pickup", "f-150", "f150", "silverado", "ram"]
     elif q == "suv":
-        q_terms.update(["suv", "sport utility"])
-    elif q == "car":
-        q_terms.update(["car", "sedan", "coupe"])
+        q_tokens += ["suv", "sport utility"]
     for v in vehicles:
         name = (v.get("name") or "").lower()
         vm = (v.get("make") or "").lower()
         vmo = (v.get("model") or "").lower()
         body = (v.get("body") or "").lower()
         feats = " ".join(f.lower() for f in (v.get("features") or []))
-        if q and not any(t in name or t in vm or t in vmo or t in body or t in feats for t in q_terms):
+        if q_tokens and not any(t in name or t in vm or t in vmo or t in body or t in feats for t in q_tokens):
             continue
         if make and vm != make:
             continue
