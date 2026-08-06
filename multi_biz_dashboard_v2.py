@@ -4453,15 +4453,16 @@ def api_inventory_search():
     q_tokens = [t for t in _re.split(r"[^a-z0-9]+", q) if t and t not in _FILLER]
     # drop price-like tokens (40000, 30k, 25,000) — they belong to price_max, not the text match
     q_tokens = [t for t in q_tokens if not _re.fullmatch(r"(?:\d{2,}(?:k)?|k)", t)]
-    # auto-detect a price cap inside the query ("under 30k", "$25,000", "30000")
+    # auto-detect a price cap inside the query ("under 30k", "$25,000", "40000")
     if not price_max:
-        m = _re.search(r"(?:under|below|max|less)[^0-9]{0,6}(\d{1,3}(?:,\d{3})*(?:\.\d+)?)k?", q)
+        m = _re.search(r"(?:under|below|max|less|budget|around)[^0-9]{0,8}\$?\s*(\d{1,3}(?:,\d{3})*|\d{4,7})(k)?\b", q)
         if not m:
-            m = _re.search(r"\b(\d{2,3}(?:,\d{3})+)\b", q) or _re.search(r"\b(\d{1,3})k\b", q)
+            m = _re.search(r"\b(\d{1,3}(?:,\d{3})+|\d{5,7})\b", q) or _re.search(r"\b(\d{1,3})k\b", q)
         if m:
             try:
                 raw = m.group(1).replace(",", "")
-                price_max = int(float(raw) * 1000) if "k" in m.group(0).lower() and float(raw) < 200 else int(float(raw))
+                is_k = bool(m.group(2)) or (len(m.group(1)) <= 3 and m.group(0).strip().endswith("k"))
+                price_max = int(float(raw) * 1000) if is_k else int(float(raw))
             except (ValueError, TypeError):
                 pass
     groups = []
