@@ -4459,8 +4459,9 @@ def api_inventory_search():
         "suv": ("suv", "sport utility"),
     }
     q_tokens = [t for t in _re.split(r"[^a-z0-9]+", q) if t and t not in _FILLER]
-    # drop price-like tokens (40000, 30k, 25,000) — they belong to price_max, not the text match
-    q_tokens = [t for t in q_tokens if not _re.fullmatch(r"(?:\d{2,}(?:k)?|k)", t)]
+    # drop price-like tokens (40000, 30k, 25,000) — they belong to price_max, not the text
+    # match. Years (2020-2026) are 4-digit and must SURVIVE as search tokens.
+    q_tokens = [t for t in q_tokens if not _re.fullmatch(r"(?:\d{5,}(?:k)?|\d{1,3}k)", t)]
     # auto-detect a price cap inside the query ("under 30k", "$25,000", "40000")
     if not price_max:
         m = _re.search(r"(?:under|below|max|less|budget|around)[^0-9]{0,8}\$?\s*(\d{1,3}(?:,\d{3})*|\d{4,7})(k)?\b", q)
@@ -4520,7 +4521,12 @@ def api_inventory_search():
             "features": v.get("features") or [],
             "url": v.get("url"),
         })
-    results.sort(key=lambda r: r["price"])
+    if price_min or price_max:
+        results.sort(key=lambda r: r["price"])
+    else:
+        # no budget given → show the newest/most valuable first so the agent sees
+        # the full range (not just the cheapest 12)
+        results.sort(key=lambda r: (-(r["year"] or 0), -(r["price"] or 0)))
     # dedupe identical units (same name+price+mileage appear multiple times in the dealer feed)
     seen = set()
     deduped = []
