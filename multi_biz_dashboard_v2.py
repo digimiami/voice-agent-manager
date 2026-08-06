@@ -4407,7 +4407,15 @@ def api_inventory_search():
     args = {}
     if request.is_json:
         body = request.get_json(silent=True) or {}
-        args = body.get("args") if isinstance(body, dict) and "args" in body else body
+        # VAPI function-tool envelope: {"message": {"toolCallList": [{"arguments": {...}}]}}
+        msg = body.get("message") if isinstance(body, dict) else None
+        tcl = (msg or {}).get("toolCallList") or [] if isinstance(msg, dict) else []
+        if tcl and isinstance(tcl[0], dict) and isinstance(tcl[0].get("arguments"), dict):
+            args = tcl[0]["arguments"]
+        elif isinstance(body, dict) and "args" in body:
+            args = body["args"]
+        elif isinstance(body, dict):
+            args = body
     args.update({k: v for k, v in request.args.items()})
     args.update({k: v for k, v in request.form.items()})
 
