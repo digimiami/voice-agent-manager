@@ -4438,13 +4438,21 @@ def api_inventory_search():
         price_min = None
 
     results = []
+    # common-sense synonyms so natural queries match the feed's vocabulary
+    q_terms = {q}
+    if q == "truck":
+        q_terms.update(["pickup", "f-150", "f150", "silverado", "ram"])
+    elif q == "suv":
+        q_terms.update(["suv", "sport utility"])
+    elif q == "car":
+        q_terms.update(["car", "sedan", "coupe"])
     for v in vehicles:
         name = (v.get("name") or "").lower()
         vm = (v.get("make") or "").lower()
         vmo = (v.get("model") or "").lower()
         body = (v.get("body") or "").lower()
         feats = " ".join(f.lower() for f in (v.get("features") or []))
-        if q and q not in name and q not in vm and q not in vmo and q not in body and q not in feats:
+        if q and not any(t in name or t in vm or t in vmo or t in body or t in feats for t in q_terms):
             continue
         if make and vm != make:
             continue

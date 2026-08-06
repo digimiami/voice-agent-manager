@@ -19,7 +19,8 @@ HDRS = {
 
 
 def fetch_page(page):
-    url = f"{BASE}?host=www.daytonaautomall.com&PageNumber={page}&PageSize=12"
+    # DealerOn cosmos SRP paginates with `pt` (PageNumber is ignored — returns page 1 forever)
+    url = f"{BASE}?host=www.daytonaautomall.com&PageSize=12&pt={page}"
     req = urllib.request.Request(url, headers=HDRS)
     with urllib.request.urlopen(req, timeout=25) as r:
         return json.loads(r.read())
