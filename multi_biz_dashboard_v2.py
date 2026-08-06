@@ -4442,7 +4442,9 @@ def api_inventory_search():
         name = (v.get("name") or "").lower()
         vm = (v.get("make") or "").lower()
         vmo = (v.get("model") or "").lower()
-        if q and q not in name and q not in vm and q not in vmo:
+        body = (v.get("body") or "").lower()
+        feats = " ".join(f.lower() for f in (v.get("features") or []))
+        if q and q not in name and q not in vm and q not in vmo and q not in body and q not in feats:
             continue
         if make and vm != make:
             continue
