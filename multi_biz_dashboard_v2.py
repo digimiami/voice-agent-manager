@@ -4396,6 +4396,35 @@ def landing_upload_media():
 
 # ── CAL.COM INTEGRATION ──
 
+@app.route('/api/outbound/call', methods=['POST'])
+def api_outbound_call():
+    """Trigger an outbound call from a business's AI agent to any number.
+    Body: {"phone": "+1786...", "business_id": "daytona-auto-mall" (default), "name": "Prospect"}
+    Header: X-Outbound-Key (matches OUTBOUND_CALL_KEY env or the VAPI key).
+    Returns the VAPI call id; the existing background poller + end-of-call
+    webhook handle call_log updates, SMS confirmations, and appointments.
+    """
+    if request.headers.get("X-Outbound-Key", "") != os.environ.get("OUTBOUND_CALL_KEY", VAPI_API_KEY):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    data = request.get_json(silent=True) or request.form
+    phone = str(data.get("phone") or "").strip()
+    biz_id = str(data.get("business_id") or "daytona-auto-mall").strip()
+    if not phone:
+        return jsonify({"success": False, "error": "phone is required"}), 400
+    db = get_db()
+    try:
+        biz = db.execute("SELECT * FROM businesses WHERE id=?", (biz_id,)).fetchone()
+    finally:
+        db.close()
+    if not biz or not biz["vapi_assistant_id"]:
+        return jsonify({"success": False, "error": f"business {biz_id} not found or has no assistant"}), 404
+    lead = {"phone": phone, "name": str(data.get("name") or "Prospect")[:60], "id": ""}
+    call_id = make_vapi_call(lead, dict(biz), biz["vapi_assistant_id"], biz["vapi_phone_id"], 0)
+    if not call_id:
+        return jsonify({"success": False, "error": "VAPI call failed to start"}), 502
+    return jsonify({"success": True, "call_id": call_id, "business": biz_id, "phone": phone})
+
+
 @app.route('/api/inventory/search', methods=['GET', 'POST'])
 def api_inventory_search():
     """Live inventory search for the Daytona Auto Mall demo agent (VAPI server tool).
