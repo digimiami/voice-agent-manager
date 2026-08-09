@@ -1323,6 +1323,7 @@ def api_signup_stripe():
         price_cents = price * 100
         success_url = f"{base}/onboard?bid={bid}"
         cancel_url = f"{base}/?signup=cancelled"
+        is_enterprise = plan in ('enterprise', 'custom')
         
         if is_enterprise:
             # Custom plan: collect info + card, NO amount charged
