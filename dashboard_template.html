@@ -1385,7 +1385,7 @@ setTimeout(refreshMonitor, 500);
         <label class="text-xs font-semibold text-[#4ade80] block mb-1">🌐 Business Website URL <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
         <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Paste your website (e.g. https://www.yourbusiness.com) and the AI reads it to write scripts and knowledge base with REAL facts — hours, services, prices — instead of placeholders. Works best on simple sites; leave empty to use templates.</div>
         <input type="text" id="genUrlInput" placeholder="e.g. https://www.brucknerautosales.com" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px" onkeydown="if(event.key==='Enter'){event.preventDefault();urlScrollGen(true);return false}" onblur="if(this.value.trim())urlScrollGen(false)">
-        <div class="text-[10px] mt-1" style="color:#5c5c70">⬇ Add your URL, then tap <b>"Generate from URL"</b> — we take you down to the Script &amp; Knowledge Base and generate using your website.</div>
+        <div class="text-[10px] mt-1" style="color:#5c5c70">⬇ Add your URL, then tap <b>"Generate from URL"</b> — we take you down to the Script &amp; Knowledge Base and generate your knowledge base + inbound &amp; outbound scripts from your website.</div>
       </div>
       <div class="flex gap-2 items-center flex-wrap">
         <button type="button" onclick="generateKB('outbound')" id="genKBBtn" class="btn-secondary text-xs" style="padding:6px 14px">🤖 AI Generate KB</button><span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8;font-size:11px">❓</span><span class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0;width:100%">Writes your knowledge base automatically using your business type + website URL (if added).</span>
@@ -3268,7 +3268,11 @@ function urlScrollGen(autoGen){
   }
   if(autoGen){
     var btn=document.getElementById('genKBBtn');
-    if(btn&&!btn.disabled)setTimeout(function(){generateKB('outbound')},350);
+    if(btn&&!btn.disabled){
+      setTimeout(function(){generateKB('outbound')},350);
+      setTimeout(function(){var b=document.getElementById('genInboundBtn');if(b&&!b.disabled)generateScript('inbound')},900);
+      setTimeout(function(){var b=document.getElementById('genOutboundBtn');if(b&&!b.disabled)generateScript('outbound')},1450);
+    }
   }
 }
 function toggleTip(el){var t=el.nextElementSibling;if(t&&t.classList.contains('tipbox')){t.style.display=(t.style.display==='block')?'none':'block'}}
