@@ -6467,55 +6467,6 @@ def import_leads():
 
 # ── SETTINGS ──
 
-@app.route('/update-business-info', methods=['POST'])
-@login_required
-def update_business_info():
-    """Step 1 — Business Information: name, industry, phone, address, hours, timezone, contact, website."""
-    bid = session['business_id']
-    db = get_db()
-    try:
-        db.execute("ALTER TABLE businesses ADD COLUMN website TEXT DEFAULT ''")
-    except Exception:
-        pass
-    try:
-        db.execute("ALTER TABLE businesses ADD COLUMN business_hours TEXT DEFAULT ''")
-    except Exception:
-        pass
-    try:
-        db.execute("ALTER TABLE businesses ADD COLUMN primary_contact TEXT DEFAULT ''")
-    except Exception:
-        pass
-    db.execute("""UPDATE businesses SET name=?, industry=?, phone_number=?, business_address=?,
-                  business_hours=?, timezone=?, primary_contact=?, website=? WHERE id=?""",
-        (request.form.get('name', '').strip()[:120],
-         request.form.get('industry', '').strip()[:80],
-         request.form.get('phone_number', '').strip()[:30],
-         request.form.get('business_address', '').strip()[:200],
-         request.form.get('business_hours', '').strip()[:200],
-         request.form.get('timezone', 'America/New_York'),
-         request.form.get('primary_contact', '').strip()[:120],
-         request.form.get('website', '').strip()[:300], bid))
-    db.commit()
-    db.close()
-    flash('✅ Business information saved!', 'success')
-    return redirect('/?tab=settings')
-
-
-@app.route('/api/setup-done', methods=['POST'])
-@login_required
-def api_setup_done():
-    """Final step — ACTIVATE: mark setup complete."""
-    db = get_db()
-    try:
-        db.execute("ALTER TABLE businesses ADD COLUMN setup_done INTEGER DEFAULT 0")
-    except Exception:
-        pass
-    db.execute("UPDATE businesses SET setup_done = 1 WHERE id = ?", (session['business_id'],))
-    db.commit()
-    db.close()
-    return jsonify({'success': True})
-
-
 @app.route('/update-script', methods=['POST'])
 @login_required
 def update_script():
@@ -6528,38 +6479,28 @@ def update_script():
     first_message_mode = request.form.get('first_message_mode', 'assistant-speaks-first')
     business_address = request.form.get('business_address', '').strip()[:200]
     voice_provider = request.form.get('voice_provider', '')
-    agent_tone = request.form.get('agent_tone', 'conversational')
-    agent_honesty = 1 if request.form.get('agent_honesty') == '1' else 0
-    try:
-        db.execute("ALTER TABLE businesses ADD COLUMN agent_tone TEXT DEFAULT 'conversational'")
-    except Exception:
-        pass
-    try:
-        db.execute("ALTER TABLE businesses ADD COLUMN agent_honesty INTEGER DEFAULT 1")
-    except Exception:
-        pass
 
     db = get_db()
     c = db.cursor()
     if voice_provider:
         c.execute("""UPDATE businesses 
                      SET script_template = ?, script_outbound = ?, knowledge_base = ?, 
-                         first_message = ?, first_message_outbound = ?, first_message_mode = ?, business_address = ?, voice_provider = ?, agent_tone = ?, agent_honesty = ?
+                         first_message = ?, first_message_outbound = ?, first_message_mode = ?, business_address = ?, voice_provider = ?
                      WHERE id = ?""",
-            (script, script_outbound, kb, first_message, first_message_outbound, first_message_mode, business_address, voice_provider, agent_tone, agent_honesty, bid))
+            (script, script_outbound, kb, first_message, first_message_outbound, first_message_mode, business_address, voice_provider, bid))
     else:
         # Voice Provider selector removed — preserve the stored provider
         c.execute("""UPDATE businesses 
                      SET script_template = ?, script_outbound = ?, knowledge_base = ?, 
-                         first_message = ?, first_message_outbound = ?, first_message_mode = ?, business_address = ?, agent_tone = ?, agent_honesty = ?
+                         first_message = ?, first_message_outbound = ?, first_message_mode = ?, business_address = ?
                      WHERE id = ?""",
-            (script, script_outbound, kb, first_message, first_message_outbound, first_message_mode, business_address, agent_tone, agent_honesty, bid))
+            (script, script_outbound, kb, first_message, first_message_outbound, first_message_mode, business_address, bid))
     db.commit()
     
     # ── Sync to Vapi assistant ──
     c.execute("""SELECT vapi_assistant_id, name, industry, script_template, 
                  knowledge_base, agent_prompt, first_message, first_message_mode,
-                 voice_id, voice_speed, voice_provider, script_outbound, agent_tone, agent_honesty
+                 voice_id, voice_speed, voice_provider, script_outbound
                  FROM businesses WHERE id = ?""", (bid,))
     biz = c.fetchone()
     db.close()
@@ -6583,20 +6524,6 @@ def update_script():
                 business_name=name, industry=industry,
                 script=saved_script, knowledge_base=saved_kb
             )
-        # AI Behavior (tone) + honesty rule
-        TONE_LINES = {
-            'professional': 'professional, polished, and clear',
-            'friendly': 'friendly and approachable',
-            'conversational': 'natural and conversational',
-            'confident': 'confident and assured',
-            'luxury': 'elegant, refined, and premium',
-            'direct': 'direct and to the point',
-        }
-        tone = (biz['agent_tone'] or 'conversational')
-        extra = "You speak in a %s tone." % TONE_LINES.get(tone, 'natural and conversational')
-        if (biz['agent_honesty'] if 'agent_honesty' in biz.keys() else 1):
-            extra += " If someone directly asks whether you are a human or an AI, be honest: tell them you are %s's AI assistant here to help." % (name or 'the business')
-        full_prompt = extra + "\n\n" + full_prompt
         # Append the outbound script (what to say when CALLING prospects)
         outbound = biz['script_outbound'] or ''
         if outbound.strip():
