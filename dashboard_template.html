@@ -1478,6 +1478,14 @@ setTimeout(refreshMonitor, 500);
       </form>
     </div>
     <div class="card">
+      <h3 class="font-bold mb-3">👤 Your User ID</h3>
+      <p class="text-xs text-[#7a7a8e] mb-2">This is what you type on the login page. Your current User ID:</p>
+      <div class="mb-3" style="padding:10px 14px;border-radius:8px;background:#1a1a26;border:1px solid #252533;font-family:monospace;font-size:13px;color:#a5b4fc">{{ biz_info.login_id or biz_info.id }}</div>
+      <input type="text" id="newLoginId" placeholder="New User ID (4-40 chars: letters, numbers, . _ -)" style="width:100%;font-size:12px;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;margin-bottom:8px">
+      <button type="button" onclick="changeLoginId()" class="btn-primary text-xs" style="padding:6px 20px">🔑 Change User ID</button>
+      <div id="loginIdStatus" class="text-xs mt-2"></div>
+    </div>
+    <div class="card">
       <h3 class="font-bold mb-3">🗣️ AI Voice</h3>
       <form method="POST" action="/update-voice">
         <p class="text-xs text-[#7a7a8e] mb-3">Click ▶️ to preview. Select active voice, language, and speed.</p>
@@ -2373,6 +2381,23 @@ setTimeout(refreshMonitor, 500);
         btn.disabled = false; btn.textContent = '💾 Save Settings';
         if (st){ st.textContent = '❌ Network error'; st.style.color = '#ef4444'; }
       });
+  }
+  function changeLoginId(){
+    var v = document.getElementById('newLoginId').value.trim();
+    var st = document.getElementById('loginIdStatus');
+    if (!v){ st.textContent = '⚠️ Type your new User ID first'; st.style.color = '#f87171'; return; }
+    fetch('/api/change-login-id', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({login_id: v})})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.success){
+          st.textContent = d.message; st.style.color = '#4ade80';
+          document.querySelector('h1').textContent = '⚙️ Settings';
+          setTimeout(function(){ location.reload(); }, 1500);
+        } else {
+          st.textContent = '❌ ' + d.error; st.style.color = '#f87171';
+        }
+      })
+      .catch(function(){ st.textContent = '❌ Network error'; st.style.color = '#f87171'; });
   }
   function sendRemindersNow(){
     var btn = document.getElementById('reminderSendNowBtn');

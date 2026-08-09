@@ -36,6 +36,12 @@ body { background: #07070d; color: #fff; }
 .reveal { opacity: 0; transform: translateY(30px); transition: all 0.8s ease; }
 .reveal.visible { opacity: 1; transform: translateY(0); }
 nav { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+/* Industry dropdown: black list, white text */
+#sIndustry { background-color: #000 !important; color: #fff !important; }
+#sIndustry option { background-color: #000 !important; color: #fff !important; }
+/* Plan dropdown: white background, black text */
+#sPlanSelect { background-color: #ffffff !important; color: #000000 !important; }
+#sPlanSelect option { background-color: #ffffff !important; color: #000000 !important; }
 </style>
 </head>
 <body class="antialiased">
@@ -718,18 +724,30 @@ No complicated setup. No long-term contract. Upgrade or cancel anytime.
     </div>
     <form id="signupFormLanding" onsubmit="return submitLandingSignup(event)" class="space-y-4">
       <input type="hidden" id="sPlan" value="pro">
-      <div class="text-center bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-sm">Plan: <span id="sPlanLabel" class="font-bold gradient-text">Professional — $197/mo</span> · 3-day free trial</div>
+      <div>
+        <label class="block text-sm font-semibold mb-2">Choose Your Plan</label>
+        <select id="sPlanSelect" onchange="syncPlan()" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+          <option value="starter">Starter — $97/mo</option>
+          <option value="pro" selected>Professional — $197/mo</option>
+          <option value="enterprise">Enterprise — Custom</option>
+        </select>
+        <div class="text-center text-xs text-gray-400 mt-2">Selected: <span id="sPlanLabel" class="font-bold gradient-text">Professional — $197/mo</span> · 3-day free trial</div>
+      </div>
       <div>
         <label class="block text-sm font-semibold mb-2">Business Name *</label>
         <input type="text" id="sBizName" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-2">Your Full Name *</label>
+        <input type="text" id="sContactName" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
       </div>
       <div>
         <label class="block text-sm font-semibold mb-2">Email *</label>
         <input type="email" id="sEmail" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
       </div>
       <div>
-        <label class="block text-sm font-semibold mb-2">Phone</label>
-        <input type="tel" id="sPhone" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+        <label class="block text-sm font-semibold mb-2">Phone *</label>
+        <input type="tel" id="sPhone" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
       </div>
       <div>
         <label class="block text-sm font-semibold mb-2">Industry</label>
@@ -894,6 +912,15 @@ document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeS
 function selectPlan(p) {
   var labels = { starter: 'Starter — $97/mo', pro: 'Professional — $197/mo', enterprise: 'Enterprise — Custom' };
   document.getElementById('sPlan').value = p;
+  var sel = document.getElementById('sPlanSelect');
+  if (sel) sel.value = p;
+  var l = document.getElementById('sPlanLabel');
+  if (l) l.textContent = labels[p] || p;
+}
+function syncPlan() {
+  var p = document.getElementById('sPlanSelect').value;
+  document.getElementById('sPlan').value = p;
+  var labels = { starter: 'Starter — $97/mo', pro: 'Professional — $197/mo', enterprise: 'Enterprise — Custom' };
   var l = document.getElementById('sPlanLabel');
   if (l) l.textContent = labels[p] || p;
 }
@@ -924,7 +951,7 @@ function submitLandingSignup(e) {
   fetch('/api/signup-stripe', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, phone, industry, plan: document.getElementById('sPlan').value })
+    body: JSON.stringify({ name, contact_name: document.getElementById('sContactName').value.trim(), email, phone, industry, plan: document.getElementById('sPlan').value })
   })
   .then(r => r.json())
   .then(d => {

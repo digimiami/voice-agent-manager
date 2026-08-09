@@ -1062,16 +1062,16 @@ def login_page():
         bid = request.form.get('business_id', '').strip()
         db = get_db()
         c = db.cursor()
-        c.execute("SELECT * FROM businesses WHERE id = ?", (bid,))
+        c.execute("SELECT * FROM businesses WHERE id = ? OR login_id = ?", (bid, bid))
         biz = c.fetchone()
         if biz:
-            if get_user_2fa(bid).get('enabled'):
-                session['user_2fa_pending'] = bid
+            if get_user_2fa(biz['id']).get('enabled'):
+                session['user_2fa_pending'] = biz['id']
                 return render_template_string(LOGIN_FORM, error='', twofa_step=True)
-            session['business_id'] = bid
+            session['business_id'] = biz['id']
             session['biz_name'] = biz['name']
             return redirect('/')
-        return render_template_string(LOGIN_FORM, error='Invalid Business ID')
+        return render_template_string(LOGIN_FORM, error='Invalid User ID')
     if 'business_id' in session:
         return redirect('/')
     if session.get('user_2fa_pending'):
@@ -1082,6 +1082,30 @@ def login_page():
 def logout():
     session.clear()
     return redirect('/')
+
+
+@app.route('/api/change-login-id', methods=['POST'])
+@login_required
+def api_change_login_id():
+    """Let a business change its login User ID (login_id). Keeps the internal
+    business id (PK) stable — login accepts id OR login_id."""
+    import re as _re
+    data = request.get_json(silent=True) or {}
+    new_id = (data.get('login_id') or '').strip()
+    if not _re.match(r'^[A-Za-z0-9_.-]{4,40}$', new_id):
+        return jsonify({'success': False, 'error': 'User ID must be 4–40 chars: letters, numbers, . _ -'}), 400
+    bid = session['business_id']
+    db = get_db()
+    c = db.cursor()
+    # Unique check: no other business uses it as id or login_id
+    clash = c.execute("SELECT id FROM businesses WHERE (id = ? OR login_id = ?) AND id != ?",
+                      (new_id, new_id, bid)).fetchone()
+    if clash:
+        return jsonify({'success': False, 'error': 'That User ID is already taken'}), 400
+    c.execute("UPDATE businesses SET login_id = ? WHERE id = ?", (new_id, bid))
+    db.commit()
+    db.close()
+    return jsonify({'success': True, 'message': f'✅ Your User ID is now: {new_id}'})
 
 
 @app.route('/2fa/setup', methods=['POST'])
@@ -1318,6 +1342,101 @@ def provision_first_number(bid, priority_area=None):
             db.close()
         except Exception:
             pass
+
+
+def send_welcome_credentials(name, email, phone, bid, price, dashboard_url, login_id='', trial=True):
+    """Send welcome credentials via AgentMail (email) + Sent.dm (SMS).
+
+    Returns (email_ok, sms_ok). Never raises — failures are logged.
+    """
+    email_ok = sms_ok = False
+    uid = login_id or bid
+    try:
+        import agentmail_email
+        if trial:
+            subject = f'🎉 Welcome to Diazites, {name}! Your User ID Inside'
+            text = f"""Welcome to Diazites, {name}!
+
+Your AI voice agent is ready to go.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+YOUR LOGIN CREDENTIALS
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+🌐 Website: {dashboard_url}
+🔑 User ID: {uid}
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+Save your User ID — you'll need it to log in.
+
+What's next:
+1. Go to {dashboard_url}
+2. Click "Login"
+3. Enter your User ID: {uid}
+4. Upload leads and start your campaign
+
+Your 3-day free trial has started! You'll be charged ${price}/month after.
+
+Need help? Reply to this email.
+
+— The Diazites Team
+"""
+        else:
+            subject = f'🎉 Welcome to Diazites! Your {name} Account'
+            text = f"""Welcome to Diazites, {name}!
+
+Your {''}plan is now active.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+🔐 YOUR LOGIN
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+Dashboard: {dashboard_url}login
+User ID: {uid}
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 NEXT STEPS
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Login with your User ID
+2. Configure your AI agent's script
+3. Upload leads or share your number
+4. Start receiving calls!
+
+Total: ${price}/mo
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+Diazites Team
+"""
+        html = (f"<div style='font-family:-apple-system,sans-serif;padding:20px'>"
+                f"<h2 style='margin:0 0 12px'>🎉 Welcome to Diazites, {name}!</h2>"
+                f"<p>Your AI voice agent is ready to go.</p>"
+                f"<table cellpadding='8' style='background:#f8f9fd;border-radius:10px;margin:16px 0'>"
+                f"<tr><td style='color:#6b7280'>🌐 Website</td><td style='font-weight:600'>{dashboard_url}</td></tr>"
+                f"<tr><td style='color:#6b7280'>🔑 Your User ID</td><td style='font-weight:600;color:#7c3aed'>{uid}</td></tr>"
+                f"</table>"
+                f"<p>Save your User ID — you'll need it to log in.</p>"
+                f"<p style='color:#6b7280'>Go to <strong>{dashboard_url}</strong>, click Login, and enter your User ID: "
+                f"<strong style='color:#7c3aed'>{uid}</strong></p>"
+                + (f"<p>Your 3-day free trial has started! You'll be charged ${price}/month after.</p>" if trial else
+                   f"<p>Total: ${price}/mo</p>")
+                + f"<p style='color:#9ca3af;font-size:12px'>— The Diazites Team</p></div>")
+        mid, tid = agentmail_email.send_agentmail(email, subject, text, html=html)
+        email_ok = bool(mid)
+        if email_ok:
+            print(f"📧 Welcome email sent to {email} (id {mid})")
+    except Exception as e:
+        print(f"Email send error: {e}")
+    if phone:
+        try:
+            from sentdm_sms import send_welcome_sms
+            if send_welcome_sms(phone, name, uid, dashboard_url):
+                sms_ok = True
+                print(f"📱 Welcome SMS sent to {phone}")
+        except Exception as e:
+            print(f"SMS send error: {e}")
+    return email_ok, sms_ok
 
 
 @app.route('/api/signup', methods=['POST'])
@@ -1685,68 +1804,10 @@ def onboard():
             email = biz['email'] or ''
             phone = biz['phone_number'] or ''
             price = biz['monthly_price'] or 197
+            login_id = biz['login_id'] or '' if 'login_id' in [r[1] for r in db.execute("PRAGMA table_info(businesses)")] else ''
             
-            # Send email
-            if email:
-                try:
-                    from smtplib import SMTP
-                    from email.mime.text import MIMEText
-                    cfg_path = '/root/voice-agent-manager/smtp_config.json'
-                    if os.path.exists(cfg_path):
-                        import json as j2
-                        with open(cfg_path) as f:
-                            cfg = j2.load(f)
-                        if cfg.get('host') and cfg.get('email'):
-                            msg = MIMEText(f"""
-Welcome to Diazites, {name}!
-
-Your AI voice agent is ready to go.
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-YOUR LOGIN CREDENTIALS
-━━━━━━━━━━━━━━━━━━━━━━━━
-
-🌐 Website: {request.host_url}
-🔑 Business ID: {bid}
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-
-Save your Business ID — you'll need it to log in.
-
-What's next:
-1. Go to {request.host_url}
-2. Click "Login"
-3. Enter your Business ID: {bid}
-4. Upload leads and start your campaign
-
-Your 3-day free trial has started! You'll be charged ${price}/month after.
-
-Need help? Reply to this email.
-
-— The Diazites Team
-""")
-                            msg['Subject'] = f'🎉 Welcome to Diazites, {name}! Your Business ID Inside'
-                            msg['From'] = cfg['email']
-                            msg['To'] = email
-                            with SMTP(cfg['host'], int(cfg.get('port', 587))) as server:
-                                if cfg.get('tls') != '0':
-                                    server.starttls()
-                                if cfg.get('password'):
-                                    smtp_user = 'resend' if 'resend' in cfg.get('host','') else cfg['email']
-                                    server.login(smtp_user, cfg['password'])
-                                server.send_message(msg)
-                            print(f"📧 Welcome email sent to {email}")
-                except Exception as e:
-                    print(f"Email send error: {e}")
-            
-            # Send SMS via Sent.dm (replaces Twilio)
-            if phone:
-                try:
-                    from sentdm_sms import send_welcome_sms
-                    if send_welcome_sms(phone, name, bid, request.host_url):
-                        print(f"📱 Welcome SMS sent to {phone}")
-                except Exception as e:
-                    print(f"SMS send error: {e}")
+            send_welcome_credentials(name, email, phone, bid, price,
+                                     request.host_url, login_id=login_id, trial=True)
             
             # Mark as sent
             c.execute("UPDATE businesses SET onboard_email_sent=1 WHERE id=?", (bid,))
@@ -1886,57 +1947,13 @@ def stripe_signup_webhook():
                           (stripe_session_id, biz_id))
                 db.commit()
                 print(f"✅ Number purchase confirmed for business {biz_id}")
-                return 'OK', 200
-                
-                # Try email
+                # Send welcome credentials (AgentMail email + SMS)
                 try:
-                    from smtplib import SMTP
-                    from email.mime.text import MIMEText
-                    cfg_path = '/root/voice-agent-manager/smtp_config.json'
-                    import os as os_mod
-                    if os_mod.path.exists(cfg_path):
-                        with open(cfg_path) as f:
-                            scfg = json_mod.load(f)
-                        if scfg.get('host') and scfg.get('email'):
-                            dashboard_url = request.host_url
-                            msg = MIMEText(f"""
-Welcome to Diazites, {pending['name']}!
-
-Your {pending['plan'].title()} plan is now active.
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-🔐 YOUR LOGIN
-━━━━━━━━━━━━━━━━━━━━━━━━
-
-Dashboard: {dashboard_url}login
-Business ID: {bid}
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-🚀 NEXT STEPS
-━━━━━━━━━━━━━━━━━━━━━━━━
-
-1. Login with your Business ID
-2. Configure your AI agent's script
-3. Upload leads or share your number
-4. Start receiving calls!
-
-Total: ${pending['price']}/mo
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-Diazites Team
-""")
-                            msg['Subject'] = f'🎉 Welcome to Diazites! Your {pending["name"]} Account'
-                            msg['From'] = scfg.get('email', 'noreply@diazites.online')
-                            msg['To'] = pending['email']
-                            with SMTP(scfg['host'], int(scfg.get('port', 587))) as server:
-                                if scfg.get('tls') != '0':
-                                    server.starttls()
-                                if scfg.get('password'):
-                                    smtp_user = 'resend' if 'resend' in scfg.get('host','') else scfg.get('email', '')
-                                    server.login(smtp_user, scfg['password'])
-                                server.send_message(msg)
-                except:
-                    pass  # Email is best-effort
+                    send_welcome_credentials(
+                        pending['name'], pending['email'], pending['phone'] or '',
+                        bid, pending['price'], request.host_url, trial=False)
+                except Exception as e:
+                    print(f"Credentials send error (stripe webhook): {e}")
                 
                 return jsonify({'received': True, 'business_id': bid})
         
