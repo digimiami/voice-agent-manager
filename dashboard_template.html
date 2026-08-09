@@ -1488,15 +1488,45 @@ setTimeout(refreshMonitor, 500);
     <div class="card">
       <h3 class="font-bold mb-3">📞 Call Transfer to Manager</h3>
       <form method="POST" action="/update-forwarding">
-        <p class="text-xs text-[#7a7a8e] mb-3">When a caller asks to speak with a <strong>manager, owner, or supervisor</strong>, the AI says "one moment" and <strong>transfers the call</strong> to the number below.</p>
-        <label class="flex items-center gap-2 cursor-pointer mb-2" style="padding:10px 14px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
+        <p class="text-xs text-[#7a7a8e] mb-3">When a caller asks to speak with a <strong>manager, owner, or supervisor</strong>, the AI says "one moment" and <strong>transfers the call</strong>. Add one or more managers — if the caller asks for someone by name, the call goes to that person.</p>
+        <label class="flex items-center gap-2 cursor-pointer mb-3" style="padding:10px 14px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
           <input type="checkbox" name="forwarding_enabled" value="1" {% if biz_info.call_forwarding %}checked{% endif %} style="width:18px;height:18px;accent-color:#c084fc">
           <span class="text-sm">Enable call transfer</span>
         </label>
-        <input type="text" name="forward_to" placeholder="+1234567890 — manager's phone" value="{{ biz_info.forward_to or '' }}" class="mb-2">
+        <div id="managerRows">
+          {% if transfer_managers %}
+          {% for m in transfer_managers %}
+          <div class="manager-row flex gap-2 mb-2">
+            <input type="text" name="manager_name" placeholder="Manager name (e.g. John)" value="{{ m.name or '' }}" style="flex:1">
+            <input type="text" name="manager_number" placeholder="+1234567890" value="{{ m.number or '' }}" style="flex:1.2">
+            <button type="button" onclick="removeManagerRow(this)" class="btn-secondary" style="padding:6px 10px">✕</button>
+          </div>
+          {% endfor %}
+          {% else %}
+          <div class="manager-row flex gap-2 mb-2">
+            <input type="text" name="manager_name" placeholder="Manager name (e.g. John)" style="flex:1">
+            <input type="text" name="manager_number" placeholder="+1234567890" style="flex:1.2">
+            <button type="button" onclick="removeManagerRow(this)" class="btn-secondary" style="padding:6px 10px">✕</button>
+          </div>
+          {% endif %}
+        </div>
+        <button type="button" onclick="addManagerRow()" class="btn-secondary text-xs mb-2" style="padding:6px 14px">+ Add Manager</button>
         <select name="forward_when" class="mb-2"><option value="always" {% if biz_info.forward_when == 'always' %}selected{% endif %}>Always</option><option value="hours" {% if biz_info.forward_when == 'hours' %}selected{% endif %}>Business Hours</option><option value="after" {% if biz_info.forward_when == 'after' %}selected{% endif %}>After Hours</option></select>
         <button type="submit" class="btn-primary text-xs w-full">💾 Save Transfer Settings</button>
       </form>
+      <script>
+        function addManagerRow(){
+          var rows=document.getElementById('managerRows');
+          var div=document.createElement('div');
+          div.className='manager-row flex gap-2 mb-2';
+          div.innerHTML='<input type="text" name="manager_name" placeholder="Manager name (e.g. John)" style="flex:1"><input type="text" name="manager_number" placeholder="+1234567890" style="flex:1.2"><button type="button" onclick="removeManagerRow(this)" class="btn-secondary" style="padding:6px 10px">✕</button>';
+          rows.appendChild(div);
+        }
+        function removeManagerRow(btn){
+          var rows=document.getElementById('managerRows');
+          if(rows.querySelectorAll('.manager-row').length>1){btn.parentNode.remove();}
+        }
+      </script>
     </div>
     <div class="card">
       <h3 class="font-bold mb-3">🔗 CRM Webhook — AI Instant Callback</h3>

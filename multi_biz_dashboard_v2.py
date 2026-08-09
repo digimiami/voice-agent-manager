@@ -2391,6 +2391,13 @@ def dashboard():
         "WHERE business_id=? ORDER BY created_at DESC", (bid,))
     kb_documents_list = c.fetchall()
 
+    # Transfer-to-manager contacts (multi name/number)
+    try:
+        c.execute("SELECT name, number FROM transfer_managers WHERE business_id=? ORDER BY id", (bid,))
+        transfer_managers = [dict(r) for r in c.fetchall()]
+    except Exception:
+        transfer_managers = []
+
     # Two-factor auth state for the Settings tab
     u2fa_entry = get_user_2fa(bid)
     u2fa = {
@@ -2415,6 +2422,7 @@ def dashboard():
         industry_title=(biz['industry'] or '').title(),
         biz_info=biz, campaign_status=campaign_status,
         webhook_key_id=webhook_key_id,
+        transfer_managers=transfer_managers,
         campaign_data=camp, total_leads=leads_total,
         stats={'calls_made':calls_made,'appointments':appointments,
                'leads_total':leads_total,'total_cost':total_cost,
@@ -6299,7 +6307,8 @@ def fetch_vapi_assistant(aid):
     import urllib.request
     req = urllib.request.Request(
         f"{VAPI_BASE}/assistant/{aid}",
-        headers={"Authorization": f"Bearer {VAPI_API_KEY}"})
+        headers={"Authorization": f"Bearer {VAPI_API_KEY}",
+                 "User-Agent": "curl/8.0"})
     with urllib.request.urlopen(req, timeout=15) as r:
         return json.loads(r.read())
 
@@ -6346,11 +6355,16 @@ def patch_vapi_assistant(aid, payload):
 TRANSFER_TAG = "[TRANSFER-INSTRUCTION]"
 
 
-def add_transfer_to_assistant(aid, forward_to):
+def add_transfer_to_assistant(aid, managers):
     """Add/remove the transferCall tool + transfer instruction on a VAPI assistant.
-    When forward_to is set, the agent transfers callers who ask for a manager/owner.
+    managers: list of {'name': str, 'number': str} — one or MANY manager destinations.
+    When non-empty, the agent transfers callers who ask for a manager/owner,
+    picking the named person when the caller asks by name, else the first manager.
     Preserves the assistant's model provider, voice, transcriber, and analysis plan.
     """
+    if isinstance(managers, str):
+        managers = [{'name': '', 'number': managers}]
+    managers = [m for m in (managers or []) if (m.get('number') or '').strip()]
     try:
         cur = fetch_vapi_assistant(aid)
     except Exception:
@@ -6375,18 +6389,29 @@ def add_transfer_to_assistant(aid, forward_to):
     if TRANSFER_TAG in prompt:
         prompt = prompt.split(TRANSFER_TAG)[0].rstrip()
 
-    if forward_to:
+    if managers:
+        manager_lines = "\n".join(
+            f"- {m['name'] or 'Manager'}: {m['number']}" for m in managers)
         prompt = (prompt.rstrip() + "\n\n" + TRANSFER_TAG +
                   "\nIf the caller asks to speak with a manager, owner, supervisor, or asks to be transferred, "
-                  "say \"Of course, one moment please\" and immediately use the transferCall function to "
-                  f"transfer the call to {forward_to}. Do not transfer for sales calls or wrong numbers.\n").strip()
+                  "say \"Of course, one moment please\" and immediately use the transferCall function to transfer the call.\n"
+                  "Available managers:\n" + manager_lines +
+                  "\nIf the caller asks for a specific person by name, transfer the call to that person. "
+                  "Otherwise transfer to the first available manager. "
+                  "Do not transfer for sales calls or wrong numbers.\n").strip()
     else:
         prompt = prompt.strip()
 
     # ── tools ──
     tools = [t for t in (model.get("tools") or []) if t.get("type") != "transferCall"]
-    if forward_to:
-        tools.append({"type": "transferCall", "destinations": [{"type": "number", "number": forward_to}]})
+    if managers:
+        tools.append({
+            "type": "transferCall",
+            "destinations": [
+                {"type": "number", "number": m["number"], "description": m["name"] or "Manager"}
+                for m in managers
+            ],
+        })
 
     model_patch = {
         "provider": provider,
@@ -6652,27 +6677,75 @@ def update_settings():
 @app.route('/update-forwarding', methods=['POST'])
 @login_required
 def update_forwarding():
+    import re as _re
     bid = session['business_id']
     db = get_db()
     c = db.cursor()
     enabled = 1 if request.form.get('forwarding_enabled') else 0
-    forward_to = request.form.get('forward_to','')
+    forward_when = request.form.get('forward_when', 'after-hours')
+
+    def _clean_num(p):
+        p = _re.sub(r'[\s\-\(\)\.]', '', p or '')
+        if p and not p.startswith('+'):
+            p = '+1' + p
+        return p
+
+    # Multi-manager rows: repeated manager_name / manager_number inputs
+    names = request.form.getlist('manager_name')
+    numbers = request.form.getlist('manager_number')
+    managers = []
+    for i in range(max(len(names), len(numbers))):
+        nm = (names[i] if i < len(names) else '').strip()
+        num = _clean_num(numbers[i] if i < len(numbers) else '')
+        if len(num) >= 10:  # valid number → keep the row
+            managers.append({'name': nm, 'number': num})
+
+    # Legacy single-number fallback (old form still works)
+    if not managers:
+        legacy = _clean_num(request.form.get('forward_to', ''))
+        if len(legacy) >= 10:
+            managers = [{'name': '', 'number': legacy}]
+
+    # Persist manager list
+    c.execute("DELETE FROM transfer_managers WHERE business_id = ?", (bid,))
+    for m in managers:
+        c.execute("INSERT INTO transfer_managers (business_id, name, number) VALUES (?, ?, ?)",
+                  (bid, m['name'], m['number']))
+    forward_to = managers[0]['number'] if managers else ''
     c.execute("UPDATE businesses SET call_forwarding = ?, forward_to = ?, forward_when = ? WHERE id = ?",
-        (enabled, forward_to, request.form.get('forward_when','after-hours'), bid))
+        (enabled, forward_to, forward_when, bid))
     db.commit()
-    # Sync transfer-to-manager tool + instruction to the VAPI assistant
-    c.execute("SELECT vapi_assistant_id FROM businesses WHERE id = ?", (bid,))
-    row = c.fetchone()
+
+    # Sync transfer-to-manager tool + instruction to ALL assistants (main + agents)
+    sync_managers = managers if (enabled and managers) else []
+    assistant_ids = []
+    row = c.execute("SELECT vapi_assistant_id FROM businesses WHERE id = ?", (bid,)).fetchone()
+    if row and row['vapi_assistant_id']:
+        assistant_ids.append(row['vapi_assistant_id'])
+    try:
+        for ar in c.execute("SELECT vapi_assistant_id FROM agents WHERE business_id=? AND vapi_assistant_id IS NOT NULL AND vapi_assistant_id != ''", (bid,)):
+            if ar['vapi_assistant_id'] and ar['vapi_assistant_id'] not in assistant_ids:
+                assistant_ids.append(ar['vapi_assistant_id'])
+    except Exception:
+        pass
     db.close()
-    if row and row['vapi_assistant_id'] and forward_to:
-        result = add_transfer_to_assistant(row['vapi_assistant_id'], forward_to)
+
+    sync_errors = []
+    for aid in assistant_ids:
+        result = add_transfer_to_assistant(aid, sync_managers)
         if result.get('error') or 'statusCode' in result:
-            flash('⚠️ Forwarding saved, but Vapi transfer sync failed: ' + str(result.get('message') or result.get('error')), 'warning')
-        else:
-            flash('✅ Forwarding saved — callers asking for a manager now transfer to ' + forward_to, 'success')
+            sync_errors.append(str(result.get('message') or result.get('error')))
+
+    if sync_errors:
+        flash('⚠️ Transfer settings saved, but Vapi sync failed: ' + '; '.join(sync_errors[:2]), 'warning')
+    elif sync_managers:
+        names_str = ', '.join((m['name'] or 'Manager') for m in sync_managers)
+        flash('✅ Transfer saved — callers asking for a manager now transfer to: ' + names_str, 'success')
+    elif assistant_ids:
+        flash('✅ Transfer disabled — callers will not be transferred.', 'success')
     else:
-        flash('✅ Forwarding updated!', 'success')
-    return redirect('/?tab=forwarding')
+        flash('✅ Transfer settings updated!', 'success')
+    return redirect('/?tab=settings')
 
 @app.route('/update-denoise', methods=['POST'])
 @login_required
@@ -9333,6 +9406,23 @@ def api_me_reactivate_key(key_id):
         return jsonify({'error': 'Key not found'}), 404
     return jsonify({'success': True, 'message': 'Key reactivated'})
 
+def ensure_transfer_managers():
+    """One-time migration: transfer_managers table (multi name/number call transfer)."""
+    try:
+        db = sqlite3.connect(DB_PATH)
+        c = db.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS transfer_managers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            business_id TEXT NOT NULL,
+            name TEXT DEFAULT '',
+            number TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""")
+        db.commit()
+        db.close()
+    except Exception as e:
+        print(f"⚠️ transfer_managers migration skipped: {e}")
+
 def migrate_appointments_source():
     """One-time migration: add source column (ai/manual) to appointments + backfill."""
     try:
@@ -9352,6 +9442,7 @@ def migrate_appointments_source():
         print(f"⚠️ appointments.source migration skipped: {e}")
 
 migrate_appointments_source()
+ensure_transfer_managers()
 
 threading.Thread(target=campaign_scheduler, daemon=True).start()
 
