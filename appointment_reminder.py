@@ -25,6 +25,26 @@ DB = "/root/voice-agent-businesses.db"
 LEAD_HOURS = 12          # send ~12h before the appointment
 WEEKDAYS = {"monday": 0, "tuesday": 1, "wednesday": 2,
             "thursday": 3, "friday": 4, "saturday": 5, "sunday": 6}
+RELATIVE_TOKENS = ("today", "tonight", "tomorrow") + tuple(WEEKDAYS.keys())
+
+
+def normalize_appointment_time(raw, tz_name="America/New_York"):
+    """Resolve a relative/NLP appointment time ('tomorrow at 3 PM', 'friday at 10am')
+    to an absolute 'YYYY-MM-DD at H:MM AM' string so it never drifts with time.
+    Returns the original raw string if it can't be resolved."""
+    if not raw:
+        return raw
+    try:
+        tz = ZoneInfo(tz_name or "America/New_York")
+    except Exception:
+        tz = ZoneInfo("America/New_York")
+    now = datetime.datetime.now(tz)
+    dt = parse_appointment_time(raw, now)
+    if not dt:
+        return raw
+    hour12 = dt.hour % 12 or 12
+    ampm = "AM" if dt.hour < 12 else "PM"
+    return f"{dt.date().isoformat()} at {hour12}:{dt.minute:02d} {ampm}"
 
 
 def parse_appointment_time(text, now):
@@ -104,13 +124,18 @@ def main():
         print(f"📅 Appointment reminders sent: {len(sent)}")
 
 
-def run_reminders(business_id=None):
+def run_reminders(business_id=None, force=False):
     """Scan due appointments and send reminders.
 
     Returns (sent, skipped) where sent is a list of
     (id, phone, appointment_time, biz_name) tuples.
     Optionally restrict to a single business (used by the dashboard's
     "Send Reminders Now" button).
+
+    force=True (dashboard "Send Reminders Now"): send to EVERY upcoming
+    booked appointment immediately, ignoring the 12h window and business
+    hours. force=False (cron): only fire inside the 12h window clamped
+    to business hours.
     """
     now_utc = datetime.datetime.now(datetime.timezone.utc)
     conn = sqlite3.connect(DB)
@@ -126,6 +151,7 @@ def run_reminders(business_id=None):
     if business_id:
         rows = conn.execute(
             "SELECT a.id, a.business_id, a.phone, a.prospect_name, a.appointment_time, "
+            "       a.created_at, "
             "       b.name AS biz_name, b.timezone, b.call_window_start, b.call_window_end "
             "FROM appointments a JOIN businesses b ON a.business_id = b.id "
             "WHERE a.status='booked' AND b.sms_reminders=1 AND a.business_id=? "
@@ -134,6 +160,7 @@ def run_reminders(business_id=None):
     else:
         rows = conn.execute(
             "SELECT a.id, a.business_id, a.phone, a.prospect_name, a.appointment_time, "
+            "       a.created_at, "
             "       b.name AS biz_name, b.timezone, b.call_window_start, b.call_window_end "
             "FROM appointments a JOIN businesses b ON a.business_id = b.id "
             "WHERE a.status='booked' AND b.sms_reminders=1 "
@@ -152,16 +179,38 @@ def run_reminders(business_id=None):
         if not appt_dt:
             skipped.append((r["id"], "unparseable"))
             continue
+
+        # Staleness guard: relative times ("tomorrow", "friday", ...) resolve against
+        # TODAY — a booking from weeks ago must not re-fire as if booked for this week.
+        raw_l = (r["appointment_time"] or "").lower()
+        if not re.search(r"\d{4}-\d{1,2}-\d{1,2}", raw_l) and r["created_at"]:
+            rel = [t for t in RELATIVE_TOKENS if t in raw_l]
+            if rel:
+                try:
+                    created = datetime.datetime.fromisoformat(
+                        str(r["created_at"]).replace("Z", "+00:00"))
+                    if created.tzinfo is None:
+                        created = created.replace(tzinfo=now.tzinfo)
+                    else:
+                        created = created.astimezone(now.tzinfo)
+                    max_days = 2 if any(t in ("today", "tonight", "tomorrow")
+                                        for t in rel) else 8
+                    if (appt_dt.date() - created.date()).days > max_days:
+                        skipped.append((r["id"], "stale"))
+                        continue
+                except Exception:
+                    pass
+
         if appt_dt <= now:
             continue  # already past
 
         open_t, close_t = business_hours(r)
-        send_at = scheduled_send_time(appt_dt, open_t, close_t)
-        if send_at > appt_dt:
-            send_at = appt_dt  # safety: never later than the appointment itself
-
-        if now < send_at:
-            continue  # not yet time — wait for the next tick
+        if not force:
+            send_at = scheduled_send_time(appt_dt, open_t, close_t)
+            if send_at > appt_dt:
+                send_at = appt_dt  # safety: never later than the appointment itself
+            if now < send_at:
+                continue  # not yet time — wait for the next tick
 
         body = (f"Hi {r['prospect_name'] or 'there'}! Reminder: your appointment with "
                 f"{r['biz_name'] or 'us'} is {r['appointment_time']}. "

@@ -7731,14 +7731,16 @@ def api_reminders_send_now():
         return jsonify({'success': False, 'message': 'Reminders are OFF for this business — flip the toggle on first'})
     try:
         import appointment_reminder
-        sent, skipped = appointment_reminder.run_reminders(business_id=bid)
+        sent, skipped = appointment_reminder.run_reminders(business_id=bid, force=True)
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error: {str(e)[:200]}'})
     if sent:
-        return jsonify({'success': True, 'sent': len(sent),
-                        'message': f'✅ Sent {len(sent)} reminder(s)'})
+        msg = f'✅ Sent {len(sent)} reminder(s)'
+        if skipped:
+            msg += f' ({len(skipped)} skipped)'
+        return jsonify({'success': True, 'sent': len(sent), 'message': msg})
     return jsonify({'success': True, 'sent': 0,
-                    'message': 'No reminders due right now (next due appointment must be within the 12h window)'})
+                    'message': 'No upcoming booked appointments to remind — add one in the calendar or wait for the AI agent to book one'})
 
 @app.route('/api/analytics')
 @login_required

@@ -189,6 +189,23 @@ def save_appointment(biz_id, lead_id, sender, appointment_time, notes=""):
     """Insert a booked appointment + mark lead interested. Returns appt id or None."""
     import uuid
     try:
+        # Resolve relative times ("tomorrow at 3 PM") to absolute ISO-ish strings
+        # right now, so the reminder engine never re-interprets them weeks later.
+        try:
+            from appointment_reminder import normalize_appointment_time
+            tz_name = "America/New_York"
+            conn_tz = _get_db()
+            try:
+                row = conn_tz.execute(
+                    "SELECT timezone FROM businesses WHERE id=?", (biz_id,)).fetchone()
+                if row and row[0]:
+                    tz_name = row[0]
+            except Exception:
+                pass
+            conn_tz.close()
+            appointment_time = normalize_appointment_time(appointment_time, tz_name) or appointment_time
+        except Exception as e:
+            print(f"⚠️ normalize_appointment_time failed: {e}")
         conn = _get_db()
         appt_id = str(uuid.uuid4())[:12]
         conn.execute(
