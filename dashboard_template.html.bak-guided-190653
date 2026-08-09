@@ -1377,360 +1377,823 @@ setTimeout(refreshMonitor, 500);
 
   <!-- ======== TAB: SETTINGS ======== -->
   {% elif tab == 'settings' %}
-  <div class="grid md:grid-cols-2 gap-6">
-    <div class="card md:col-span-2" style="border-color:rgba(168,85,247,0.3)">
-      <h3 class="font-bold mb-2">🤖 AI Assistant Generator</h3>
-      <p class="text-xs text-[#7a7a8e] mb-3">Paste your website URL (optional) and let the AI write your scripts &amp; knowledge base with <strong>real facts</strong> about your business.</p>
-      <div class="mb-4" style="padding:12px 14px;border-radius:10px;background:rgba(74,222,128,0.04);border:1px solid rgba(74,222,128,0.15)">
-        <label class="text-xs font-semibold text-[#4ade80] block mb-1">🌐 Business Website URL <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
-        <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Paste your website (e.g. https://www.yourbusiness.com) and the AI reads it to write scripts and knowledge base with REAL facts — hours, services, prices — instead of placeholders. Works best on simple sites; leave empty to use templates.</div>
-        <input type="text" id="genUrlInput" placeholder="e.g. https://www.brucknerautosales.com" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
+<style>
+.step-sec{display:none}
+.step-sec.active{display:block}
+.chip{white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:11px;border:1px solid #252533;color:#7a7a8e;background:#12121a;cursor:pointer}
+.chip.done{border-color:rgba(74,222,128,.4);color:#4ade80}
+.chip.cur{border-color:rgba(168,85,247,.6);color:#c084fc;background:rgba(168,85,247,.08)}
+.chip.todo{opacity:.6}
+.side-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;font-size:12px;color:#7a7a8e;cursor:pointer}
+.side-item:hover{background:#1a1a26}
+.side-item.done{color:#4ade80}
+.side-item.cur{color:#c084fc;background:rgba(168,85,247,.08);font-weight:600}
+.side-item.todo{color:#5c5c70}
+.side-item.adv{color:#a0a0b8}
+.side-item.adv:hover{color:#f1f1f5}
+.infoc{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1px solid #818cf8;color:#818cf8;font-size:10px;cursor:pointer;flex:none;vertical-align:middle;margin-left:4px}
+.tipbox{display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);padding:8px 10px;border-radius:8px;margin:6px 0}
+.reco{font-size:11px;color:#fbbf24;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.22);padding:10px 12px;border-radius:10px;margin:10px 0}
+.reco b{color:#fbbf24}
+.req{font-size:9px;font-weight:700;letter-spacing:.08em;padding:2px 8px;border-radius:999px;background:rgba(239,68,68,.12);color:#f87171;vertical-align:middle;margin-left:6px}
+.opt{font-size:9px;font-weight:700;letter-spacing:.08em;padding:2px 8px;border-radius:999px;background:rgba(129,140,248,.12);color:#818cf8;vertical-align:middle;margin-left:6px}
+.adv{font-size:9px;font-weight:700;letter-spacing:.08em;padding:2px 8px;border-radius:999px;background:rgba(148,163,184,.12);color:#94a3b8;vertical-align:middle;margin-left:6px}
+.rec{font-size:9px;font-weight:700;letter-spacing:.08em;padding:2px 8px;border-radius:999px;background:rgba(74,222,128,.12);color:#4ade80;vertical-align:middle;margin-left:6px}
+.checklist{font-size:12px;color:#4ade80;padding:10px 14px;border-radius:10px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.25);margin:10px 0;display:none}
+</style>
+
+<!-- ===== SETTINGS HEADER ===== -->
+<div class="flex items-start justify-between flex-wrap gap-3 mb-6">
+  <div style="max-width:640px">
+    <h2 class="text-2xl font-bold" style="background:linear-gradient(90deg,#a855f7,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent">🤖 AI Employee Setup</h2>
+    <p class="text-sm mt-1" style="color:#a0a0b8">Give us your website — we'll do the setup for you.</p>
+    <p class="text-xs mt-1" style="color:#5c5c70">Diazites automatically learns about your business, builds your AI's knowledge, and creates your call scripts.</p>
+    <div id="welcomeBack" style="display:none" class="mt-2 text-xs" style="color:#c084fc;background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.25);padding:8px 12px;border-radius:10px">👋 Welcome back. Your setup is <b id="welcomePct">0%</b> complete.</div>
+  </div>
+  <button type="button" onclick="openHelp()" class="btn-secondary text-xs" style="padding:8px 16px">❓ Help</button>
+</div>
+
+<div class="flex gap-6" style="align-items:flex-start">
+  <!-- ===== SIDEBAR ===== -->
+  <div class="hidden lg:block" style="width:220px;flex:none;position:sticky;top:16px">
+    <div class="card p-4">
+      <div class="text-[10px] font-bold tracking-widest mb-2" style="color:#a855f7">PRIMARY SETUP</div>
+      <div id="setupSidebar"></div>
+      <div class="mt-4 pt-3 mb-2" style="border-top:1px solid #252533">
+        <div class="text-[10px] font-bold tracking-widest" style="color:#5c5c70">ADVANCED SETTINGS</div>
+        <div class="text-[10px] mt-1 mb-2" style="color:#3f3f4e">Optional — customize anytime</div>
       </div>
-      <div class="flex gap-2 items-center flex-wrap">
-        <button type="button" onclick="generateKB('outbound')" id="genKBBtn" class="btn-secondary text-xs" style="padding:6px 14px">🤖 AI Generate KB</button><span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8;font-size:11px">❓</span><span class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0;width:100%">Writes your knowledge base automatically using your business type + website URL (if added).</span>
-        <button type="button" onclick="generateScript('inbound')" id="genInboundBtn" class="btn-secondary text-xs" style="padding:6px 14px">📞 AI Generate Inbound Script</button><span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8;font-size:11px">❓</span><span class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0;width:100%">Writes the full inbound call script — how your AI greets, talks, and books appointments.</span>
-        <button type="button" onclick="generateScript('outbound')" id="genOutboundBtn" class="btn-secondary text-xs" style="padding:6px 14px">📢 AI Generate Outbound Script</button><span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8;font-size:11px">❓</span><span class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0;width:100%">Writes the outbound cold-call script for when your AI calls prospects.</span>
-        <button type="button" onclick="document.getElementById('scriptForm').submit()" class="btn-primary text-xs" style="padding:6px 20px">💾 Save All</button><span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8;font-size:11px">❓</span><span class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0;width:100%">Saves the scripts, knowledge base, first messages, address, and speech settings — and updates your live AI agent instantly.</span>
-        <span id="kbGenStatus" class="text-xs"></span>
+      <div id="advSidebar"></div>
+      <div class="mt-4 pt-3" style="border-top:1px solid #252533">
+        <div class="flex justify-between text-xs mb-1"><span style="color:#7a7a8e">SETUP COMPLETION</span><span class="font-bold" id="pctSidebarNum">0%</span></div>
+        <div style="height:8px;background:#1a1a26;border-radius:999px;overflow:hidden"><div id="pctBar" style="height:8px;width:0%;border-radius:999px;background:linear-gradient(90deg,#a855f7,#ec4899);transition:width .3s"></div></div>
       </div>
-      <div id="syncStatus" class="text-xs text-green-400 hidden mt-2">✅ Synced — your changes are live</div>
     </div>
-    <div class="card md:col-span-2">
-      <h3 class="font-bold mb-4">🎙️ Script & Knowledge Base</h3>
-      <form method="POST" action="/update-script" id="scriptForm">
-        <div class="grid md:grid-cols-3 gap-4 mb-4">
-          <div>
-            <label class="text-xs font-semibold text-[#c084fc] block mb-2">📞 Inbound Script <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
-            <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">The main script controlling how your AI answers the phone: greeting, how it collects info, how it books test drives/appointments, and how it handles questions. Saves instantly to your live agent.</div>
-            <textarea name="script" rows="10" class="w-full text-xs" id="scriptTextarea">{{ biz_info.script_template or '' }}</textarea>
-          </div>
-          <div>
-            <label class="text-xs font-semibold text-[#4ade80] block mb-2">📢 Outbound Script <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
-            <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">What the AI says when it CALLS prospects — campaigns, follow-ups, missed-call callbacks. Include your opening pitch, key selling points, and what action you want (book a visit, get info).</div>
-            <textarea name="script_outbound" rows="10" class="w-full text-xs" id="outboundTextarea">{{ biz_info.script_outbound or '' }}</textarea>
-          </div>
-          <div>
-            <label class="text-xs font-semibold text-[#c084fc] block mb-2">📚 Knowledge Base <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
-            <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Facts about your business the AI references during calls: hours, prices, services, location, inventory. The better this is, the smarter and more accurate your AI sounds. Saves automatically.</div>
-            <textarea name="knowledge_base" rows="10" class="w-full text-xs" id="kbTextarea">{{ biz_info.knowledge_base or '' }}</textarea>
-          </div>
+  </div>
+
+  <div class="flex-1" style="min-width:0">
+    <!-- ===== MOBILE CHIPS ===== -->
+    <div class="lg:hidden flex gap-2 overflow-x-auto pb-2 mb-4" id="mobileChips" style="scrollbar-width:none"></div>
+
+    <!-- ===== STEP HEADER ===== -->
+    <div class="card p-4 mb-4">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <div class="text-[10px] font-bold tracking-widest uppercase" id="stepLabel" style="color:#a855f7">Step 1 of 4</div>
+          <h3 class="text-xl font-bold mt-1" id="stepTitle">Tell Us About Your Business</h3>
+          <p class="text-xs mt-1" id="stepDesc" style="color:#7a7a8e;max-width:520px"></p>
         </div>
-        <!-- Call settings row -->
-        <div class="grid md:grid-cols-3 gap-4 mb-4 p-4 rounded-lg" style="background:rgba(168,85,247,0.05);border:1px solid rgba(168,85,247,0.15)">
-          <div>
-            <label class="text-xs font-semibold text-[#c084fc] block mb-1">🗣️ First Message (inbound) <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span> <button type="button" onclick="generateFirstMessage('inbound')" class="text-[10px] px-2 py-0.5 rounded ml-1 align-middle" style="background:#1a1a28;border:1px solid #c084fc55;color:#c084fc" id="genFmInboundBtn">🤖 AI Generate</button></label>
-            <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">The exact first sentence your AI says when it picks up the phone. Keep it friendly and short — the caller then tells you what they need.</div>
-            <p class="text-xs text-[#7a7a8e] mb-1">Greeting the AI says when it answers.</p>
-            <input type="text" name="first_message" id="firstMessageInbound" value="{{ biz_info.first_message or '' }}" placeholder="e.g. Hi, thanks for calling! How can I help?" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
-          </div>
-          <div>
-            <label class="text-xs font-semibold text-[#4ade80] block mb-1">📢 Outbound First Message <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span> <button type="button" onclick="generateFirstMessage('outbound')" class="text-[10px] px-2 py-0.5 rounded ml-1 align-middle" style="background:#1a1a28;border:1px solid #4ade8055;color:#4ade80" id="genFmOutboundBtn">🤖 AI Generate</button></label>
-            <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">The exact first sentence the AI says when it calls a prospect. {{'{{'}}prospect_name{{'}}'}} is replaced with the person's first name automatically — always keep it in.</div>
-            <p class="text-xs text-[#7a7a8e] mb-1">What the AI says when it <strong>calls</strong>. Variables: <code class="text-[#4ade80]">{{'{{'}}prospect_name{{'}}'}}</code> <code class="text-[#4ade80]">{{'{{'}}prospect_business{{'}}'}}</code> <code class="text-[#4ade80]">{{'{{'}}business_name{{'}}'}}</code></p>
-            <input type="text" name="first_message_outbound" id="firstMessageOutbound" value="{{ biz_info.first_message_outbound or '' }}" placeholder="e.g. Hi {{'{{'}}prospect_name{{'}}'}}, this is Mike from Bruckner Auto Sales — how are you?" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
-          </div>
-          <div>
-            <label class="text-xs font-semibold text-[#4ade80] block mb-1">📍 Business Address <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
-            <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Your physical address — shown in every appointment confirmation SMS and email so customers know exactly where to go.</div>
-            <p class="text-xs text-[#7a7a8e] mb-1">Shown in the appointment confirmation SMS + email.</p>
-            <input type="text" name="business_address" value="{{ biz_info.business_address or '' }}" placeholder="e.g. 1480 Bruckner Blvd, Bronx, NY 10473" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
-          </div>
-          <div>
-            <label class="text-xs font-semibold text-[#c084fc] block mb-1">🎤 Assistant Speaks First <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
-            <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">"Assistant Speaks First" = your AI greets the caller the moment the call connects. "Assistant Waits" = it stays silent until the caller speaks first (good for callers who expect a human to say hello).</div>
-            <p class="text-xs text-[#7a7a8e] mb-1">AI speaks immediately or waits for caller.</p>
-            <select name="first_message_mode" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
-              <option value="assistant-speaks-first" {% if biz_info.first_message_mode == 'assistant-speaks-first' or not biz_info.first_message_mode %}selected{% endif %}>✅ Assistant Speaks First</option>
-              <option value="assistant-waits" {% if biz_info.first_message_mode == 'assistant-waits' %}selected{% endif %}>🔇 Assistant Waits for Caller</option>
-            </select>
-          </div>
+        <div style="text-align:right;min-width:110px">
+          <div class="text-2xl font-bold" id="stepPctNum" style="color:#c084fc">25%</div>
+          <div style="height:6px;width:110px;background:#1a1a26;border-radius:999px;overflow:hidden;margin-top:4px"><div id="stepPctBar" style="height:6px;width:25%;border-radius:999px;background:linear-gradient(90deg,#a855f7,#ec4899);transition:width .3s"></div></div>
         </div>
-      </form>
+      </div>
     </div>
-    <div class="card md:col-span-2">
-      <h3 class="font-bold mb-3">📄 Documents &amp; Menus <span class="text-xs font-normal text-[#7a7a8e]">— the AI answers from these</span> <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></h3>
-      <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Upload your menu, inventory, or price list here — the AI reads them to answer callers and texts with real details (e.g. a pizza menu to place orders, a car inventory to search for cars).</div>
-      <p class="text-xs text-[#7a7a8e] mb-3">Upload your <strong>menu</strong>, <strong>inventory</strong>, price list — or add a website URL. The AI reads them to answer callers and texts (e.g. pizza menu to place orders, car inventory to search for cars).</p>
-      <div class="grid md:grid-cols-2 gap-4 mb-4">
-        <div style="padding:14px;border-radius:10px;background:#1a1a26;border:1px solid #252533">
-          <label class="text-xs font-semibold text-[#c084fc] block mb-2">📎 Upload File <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
-          <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Upload a .txt, .md, .csv, .json, or .pdf file with your business info (max 3MB).</div>
-          <p class="text-xs text-[#7a7a8e] mb-2">.txt &nbsp;.md &nbsp;.csv &nbsp;.json &nbsp;.pdf &nbsp;(max 3MB)</p>
+
+    <!-- ═══════════ STEP 1 — BUSINESS ═══════════ -->
+    <section class="step-sec" data-step="1">
+      <div class="card p-5">
+        <p class="text-xs mb-3" style="color:#7a7a8e">Enter your website and Diazites will automatically learn about your business and prepare your AI employee.</p>
+        <div class="reco" id="step1Reco">💡 <b>RECOMMENDED:</b> Start with your website — Diazites fills in everything automatically from it.</div>
+        <div style="padding:16px;border-radius:14px;background:rgba(168,85,247,.05);border:1px solid rgba(168,85,247,.25);margin-bottom:16px">
+          <label class="text-xs font-bold block mb-2" style="color:#c084fc">🌐 BUSINESS WEBSITE</label>
           <div class="flex gap-2">
-            <input type="file" id="kbFileInput" accept=".txt,.md,.csv,.json,.pdf" style="flex:1;font-size:12px;color:#f1f1f5">
-            <button type="button" onclick="uploadKbDoc()" class="btn-primary text-xs" style="padding:6px 16px;white-space:nowrap">⬆️ Upload</button>
+            <input type="text" id="bizSiteInput" placeholder="https://www.yourbusiness.com" class="flex-1" style="padding:12px 14px;border-radius:10px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:14px">
+            <button type="button" onclick="scanOnboard()" id="scanSiteBtn" class="btn-primary" style="padding:12px 22px;font-size:14px;background:linear-gradient(90deg,#a855f7,#ec4899);border:none;white-space:nowrap">🔎 SCAN WEBSITE</button>
+          </div>
+          <div id="scanProgress" style="display:none" class="mt-3 text-xs" style="color:#a5b4fc">
+            <div class="font-bold mb-2" id="scanProgressTitle" style="color:#a855f7">SCANNING YOUR WEBSITE…</div>
+            <div id="scanProgressItems"></div>
+          </div>
+          <div id="scanFailBox" style="display:none" class="mt-3 p-3 rounded-lg" style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.3)">
+            <div class="text-xs font-bold mb-1" style="color:#f87171">We couldn't automatically read this website.</div>
+            <p class="text-[11px] mb-2" style="color:#7a7a8e">No problem — enter your business information manually below, or continue with what you have.</p>
+          </div>
+          <div class="checklist" id="scanResults" style="display:none"></div>
+        </div>
+
+        <!-- Editable extracted fields -->
+        <form method="POST" action="/update-business-info" id="bizInfoForm">
+          <div class="text-[10px] font-bold tracking-widest mb-3" style="color:#7a7a8e">BUSINESS INFORMATION <span id="autoFilledBadge" style="display:none" class="ml-2" style="color:#4ade80">✓ Auto-filled from website — edit if needed</span></div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="text-xs font-semibold block mb-1" style="color:#4ade80">🏢 Business Name <span class="req">REQUIRED</span></label>
+              <input type="text" name="name" id="bizNameInput" value="{{ biz_info.name or '' }}" placeholder="e.g. ABC Motors" class="w-full text-xs">
+              <p class="text-[10px] mt-1" id="nameHint" style="color:#f59e0b;display:none">Not found — you can add this manually.</p>
+            </div>
+            <div>
+              <label class="text-xs font-semibold block mb-1" style="color:#4ade80">🏷️ Industry <span class="opt">OPTIONAL</span></label>
+              <input type="text" name="industry" id="bizIndustryInput" value="{{ biz_info.industry or '' }}" placeholder="e.g. Car Dealership, Electrician, Restaurant" class="w-full text-xs">
+              <p class="text-[10px] mt-1" id="industryHint" style="color:#f59e0b;display:none">Not found — you can add this manually.</p>
+            </div>
+            <div>
+              <label class="text-xs font-semibold block mb-1" style="color:#4ade80">📞 Business Phone <span class="opt">OPTIONAL</span></label>
+              <input type="text" name="phone_number" id="bizPhoneInput" value="{{ biz_info.phone_number or '' }}" placeholder="+1 (555) 123-4567" class="w-full text-xs">
+              <p class="text-[10px] mt-1" id="phoneHint" style="color:#f59e0b;display:none">Not found — you can add this manually.</p>
+            </div>
+            <div>
+              <label class="text-xs font-semibold block mb-1" style="color:#4ade80">📍 Business Address <span class="opt">OPTIONAL</span></label>
+              <input type="text" name="business_address" id="bizAddressInput" value="{{ biz_info.business_address or '' }}" placeholder="e.g. 1480 Bruckner Blvd, Bronx, NY 10473" class="w-full text-xs">
+              <p class="text-[10px] mt-1" id="addressHint" style="color:#f59e0b;display:none">Not found — you can add this manually.</p>
+            </div>
+            <div>
+              <label class="text-xs font-semibold block mb-1" style="color:#4ade80">🕐 Business Hours <span class="opt">OPTIONAL</span></label>
+              <input type="text" name="business_hours" id="bizHoursInput" value="{{ biz_info.business_hours or '' }}" placeholder="e.g. Mon–Sat 9am–7pm" class="w-full text-xs">
+              <p class="text-[10px] mt-1" id="hoursHint" style="color:#f59e0b;display:none">Not found — you can add this manually.</p>
+            </div>
+            <div>
+              <label class="text-xs font-semibold block mb-1" style="color:#4ade80">🕑 Timezone</label>
+              <select name="timezone" id="bizTzInput" class="w-full text-xs"><option value="America/New_York" {% if (biz_info.timezone or 'America/New_York') == 'America/New_York' %}selected{% endif %}>Eastern (ET)</option><option value="America/Chicago" {% if biz_info.timezone == 'America/Chicago' %}selected{% endif %}>Central (CT)</option><option value="America/Denver" {% if biz_info.timezone == 'America/Denver' %}selected{% endif %}>Mountain (MT)</option><option value="America/Los_Angeles" {% if biz_info.timezone == 'America/Los_Angeles' %}selected{% endif %}>Pacific (PT)</option></select>
+            </div>
+            <div class="md:col-span-2">
+              <label class="text-xs font-semibold block mb-1" style="color:#4ade80">👤 Primary Contact <span class="opt">OPTIONAL</span></label>
+              <input type="text" name="primary_contact" id="bizContactInput" value="{{ biz_info.primary_contact or '' }}" placeholder="Who should the AI transfer calls to? (e.g. Ramon — Manager)" class="w-full text-xs">
+              <p class="text-[10px] mt-1" id="contactHint" style="color:#f59e0b;display:none">Not found — you can add this manually.</p>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-3 mt-5">
+            <button type="button" onclick="saveBizInfo()" class="btn-secondary text-sm" style="padding:10px 20px">💾 Save Business Info</button>
+            <button type="button" onclick="setupNav(1)" class="btn-primary text-sm" style="padding:10px 24px;background:linear-gradient(90deg,#a855f7,#ec4899);border:none">Continue →</button>
+          </div>
+          <div id="bizSaveStatus" class="text-xs mt-2" style="color:#4ade80"></div>
+        </form>
+        <div id="kbBuilding" style="display:none" class="mt-4 p-4 rounded-xl" style="background:rgba(168,85,247,.06);border:1px solid rgba(168,85,247,.25)">
+          <div class="text-xs font-bold mb-2" style="color:#a855f7">BUILDING YOUR AI KNOWLEDGE…</div>
+          <div id="kbBuildingItems" class="text-xs" style="color:#4ade80"></div>
+          <div class="mt-2 text-xs font-bold" id="kbBuiltMsg" style="display:none;color:#4ade80">✓ KNOWLEDGE BASE CREATED</div>
+          <p class="text-[11px] mt-1" style="color:#7a7a8e;display:none" id="kbBuiltSub">Your AI now has the information it needs to answer customer questions.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ STEP 2 — KNOWLEDGE REVIEW ═══════════ -->
+    <section class="step-sec" data-step="2">
+      <div class="card p-5">
+        <p class="text-xs mb-3" style="color:#7a7a8e">Diazites uses this information to answer customer questions accurately during calls and text conversations.</p>
+        <div class="p-4 rounded-xl mb-4" style="background:rgba(74,222,128,.05);border:1px solid rgba(74,222,128,.25)">
+          <div class="text-[10px] font-bold tracking-widest mb-2" style="color:#7a7a8e">YOUR AI KNOWLEDGE</div>
+          <div id="kbChecklist" class="text-xs" style="color:#4ade80"></div>
+          <div class="mt-3 pt-3" style="border-top:1px solid rgba(74,222,128,.15)">
+            <span class="text-xs font-bold" style="color:#4ade80">🟢 READY</span>
+            <span class="text-[11px] ml-2" style="color:#7a7a8e">Your AI has enough information to begin handling customer conversations.</span>
+          </div>
+          <div class="flex gap-2 mt-3 flex-wrap">
+            <button type="button" onclick="toggleKbView()" class="btn-secondary text-xs" style="padding:7px 16px">📖 View Knowledge Base</button>
+            <button type="button" onclick="toggleKbEdit()" class="btn-secondary text-xs" style="padding:7px 16px">✍️ Add More Information</button>
           </div>
         </div>
-        <div style="padding:14px;border-radius:10px;background:#1a1a26;border:1px solid #252533">
-          <label class="text-xs font-semibold text-[#c084fc] block mb-2">🌐 Add Website URL <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
-          <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Add a page URL (menu site, inventory page, catalog) and the AI reads that page's text into its knowledge.</div>
-          <p class="text-xs text-[#7a7a8e] mb-2">Fetches the page text (menu site, inventory page, catalog)</p>
-          <div class="flex gap-2">
-            <input type="text" id="kbUrlInput" placeholder="https://yourmenu.com/menu" style="flex:1;font-size:12px;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5">
-            <button type="button" onclick="addKbUrl()" class="btn-primary text-xs" style="padding:6px 16px;white-space:nowrap">➕ Add</button>
+        <div id="kbViewWrap" style="display:none" class="mb-4">
+          <label class="text-xs font-semibold block mb-1" style="color:#c084fc">📚 Knowledge Base</label>
+          <textarea rows="8" class="w-full text-xs" id="kbTextarea">{{ biz_info.knowledge_base or '' }}</textarea>
+          <button type="button" onclick="saveKbOnly()" class="btn-primary text-xs mt-2" style="padding:7px 16px">💾 Save Knowledge</button>
+        </div>
+        <div class="p-4 rounded-xl mb-4" style="background:#12121a;border:1px solid #252533">
+          <div class="text-xs font-bold mb-1">📄 Add Documents <span class="opt">OPTIONAL</span></div>
+          <p class="text-[11px] mb-2" style="color:#7a7a8e">Have menus, price lists, catalogs, PDFs, inventory lists, or other business documents?</p>
+          <div class="flex gap-2 flex-wrap mb-2">
+            <input type="file" id="kbFileInput" accept=".txt,.md,.csv,.json,.pdf" class="text-xs" style="color:#f1f1f5;flex:1;min-width:180px">
+            <button type="button" onclick="uploadKbDoc()" class="btn-primary text-xs" style="padding:6px 14px">⬆️ Upload</button>
+          </div>
+          <div class="flex gap-2 flex-wrap mb-2">
+            <input type="text" id="kbUrlInput" placeholder="https://yourmenu.com" class="flex-1 text-xs" style="min-width:180px">
+            <button type="button" onclick="addKbUrl()" class="btn-primary text-xs" style="padding:6px 14px">➕ Add URL</button>
+          </div>
+          <div id="kbDocStatus" class="text-xs mb-2"></div>
+          <div class="flex flex-wrap gap-2">
+            {% for d in kb_documents %}
+            <div class="flex items-center gap-2" style="padding:5px 10px;border-radius:8px;background:#1a1a26;border:1px solid #252533;font-size:11px">
+              <span>{{ '📄' if d['doc_type']=='file' else '🌐' }}</span><span class="max-w-[200px] truncate">{{ d['name'] }}</span>
+              <button type="button" onclick="deleteKbDoc('{{ d['id'] }}')" class="text-red-400" title="Delete">✕</button>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <button type="button" onclick="setupNav(-1)" class="btn-secondary text-xs" style="padding:9px 18px">← Back</button>
+          <button type="button" onclick="setupNav(1)" class="btn-primary text-xs" style="padding:9px 24px;background:linear-gradient(90deg,#a855f7,#ec4899);border:none">Continue →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ STEP 3 — SCRIPTS ═══════════ -->
+    <section class="step-sec" data-step="3">
+      <div class="card p-5">
+        <p class="text-xs mb-3" style="color:#7a7a8e">Diazites automatically creates your inbound and outbound call scripts using your business information and knowledge base. Review and edit them anytime.</p>
+        <div id="scriptsBuilding" style="display:none" class="p-4 rounded-xl mb-4" style="background:rgba(168,85,247,.06);border:1px solid rgba(168,85,247,.25)">
+          <div class="text-xs font-bold mb-2" style="color:#a855f7">CREATING YOUR AI SCRIPTS…</div>
+          <div id="scriptsBuildingItems" class="text-xs" style="color:#4ade80"></div>
+        </div>
+        <form method="POST" action="/update-script" id="scriptFormWiz" onsubmit="syncScriptForm()">
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="p-4 rounded-xl" style="background:#1a1a26;border:1px solid #252533">
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-xs font-semibold" style="color:#c084fc">📞 Inbound Call Script</label>
+                <span class="badge badge-success" id="inbReadyBadge" style="display:none">✓ Ready</span>
+              </div>
+              <textarea name="script" rows="11" class="w-full text-xs" id="scriptTextarea">{{ biz_info.script_template or '' }}</textarea>
+              <div class="text-[10px] mt-1" style="color:#5c5c70">How your AI answers customers who call you.</div>
+            </div>
+            <div class="p-4 rounded-xl" style="background:#1a1a26;border:1px solid #252533">
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-xs font-semibold" style="color:#4ade80">📤 Outbound Call Script</label>
+                <span class="badge badge-success" id="outbReadyBadge" style="display:none">✓ Ready</span>
+              </div>
+              <textarea name="script_outbound" rows="11" class="w-full text-xs" id="outboundTextarea">{{ biz_info.script_outbound or '' }}</textarea>
+              <div class="text-[10px] mt-1" style="color:#5c5c70">How your AI speaks when it calls prospects. {{'{{'}}prospect_name{{'}}'}} is filled in automatically.</div>
+            </div>
+          </div>
+          <div class="mt-3 text-[11px]" style="color:#5c5c70">These scripts are automatically optimized for natural, conversational customer interactions. The AI sounds like a professional employee — it never mentions being AI, a robot, or software unless directly asked.</div>
+          <input type="hidden" name="knowledge_base" id="kbHiddenInStep3">
+          <input type="hidden" name="first_message" value="{{ biz_info.first_message or '' }}">
+          <input type="hidden" name="first_message_outbound" value="{{ biz_info.first_message_outbound or '' }}">
+          <input type="hidden" name="first_message_mode" value="{{ biz_info.first_message_mode or 'assistant-speaks-first' }}">
+          <input type="hidden" name="business_address" value="{{ biz_info.business_address or '' }}">
+          <input type="hidden" name="agent_tone" value="{{ biz_info.agent_tone or 'conversational' }}">
+          <input type="hidden" name="agent_honesty" value="{% if biz_info.agent_honesty != 0 %}1{% else %}0{% endif %}">
+          <div class="flex gap-3 mt-4">
+            <button type="button" onclick="setupNav(-1)" class="btn-secondary text-xs" style="padding:9px 18px">← Back</button>
+            <button type="submit" class="btn-primary text-xs" style="padding:9px 24px;background:linear-gradient(90deg,#a855f7,#ec4899);border:none">Save & Finish →</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ═══════════ STEP 4 — READY ═══════════ -->
+    <section class="step-sec" data-step="4">
+      <div class="card p-8 text-center" style="border:1px solid rgba(74,222,128,.35)">
+        <div style="font-size:44px;margin-bottom:8px">🎉</div>
+        <h3 class="text-2xl font-bold mb-2" style="background:linear-gradient(90deg,#4ade80,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent">YOUR AI EMPLOYEE IS READY</h3>
+        <p class="text-sm mb-4" style="color:#7a7a8e">Diazites has learned about your business and created your inbound and outbound call workflows.</p>
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-5" style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.4)">
+          <span class="w-2.5 h-2.5 rounded-full" style="background:#4ade80;box-shadow:0 0 8px #4ade80;display:inline-block"></span>
+          <span class="text-sm font-bold" style="color:#4ade80">READY</span>
+        </div>
+        <div class="grid md:grid-cols-2 gap-2 max-w-md mx-auto text-left mb-5" style="font-size:12px;color:#4ade80">
+          <div>✓ Business Information</div>
+          <div>✓ Knowledge Base</div>
+          <div>✓ Inbound Script</div>
+          <div>✓ Outbound Script</div>
+        </div>
+        <p class="text-xs mb-6" style="color:#7a7a8e">Your AI employee is ready to handle customer conversations. You can customize voice, booking, SMS, integrations, and other settings anytime under <b style="color:#94a3b8">Advanced Settings</b>.</p>
+        <div class="grid md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+          <div class="p-5 rounded-xl text-left" style="background:linear-gradient(135deg,rgba(168,85,247,.12),rgba(236,72,153,.08));border:1px solid rgba(168,85,247,.35)">
+            <div class="text-base font-bold mb-1">📤 Upload Leads &amp; Start Calling</div>
+            <p class="text-[11px] mb-3" style="color:#7a7a8e">Upload your leads and create your first outbound calling campaign.</p>
+            <a href="/?tab=leads" class="btn-primary text-sm" style="padding:10px 22px;display:inline-block;text-decoration:none">Upload Leads →</a>
+          </div>
+          <div class="p-5 rounded-xl text-left" style="background:#12121a;border:1px solid #252533">
+            <div class="text-base font-bold mb-1">📊 Go to Overview</div>
+            <p class="text-[11px] mb-3" style="color:#7a7a8e">View your dashboard, calls, appointments, leads, and campaign activity.</p>
+            <a href="/" class="btn-secondary text-sm" style="padding:10px 22px;display:inline-block;text-decoration:none">Go to Overview →</a>
           </div>
         </div>
       </div>
-      <div id="kbDocStatus" class="text-xs mb-2"></div>
-      <div class="flex flex-wrap gap-2">
-        {% for d in kb_documents %}
-        <div class="flex items-center gap-2" style="padding:6px 12px;border-radius:8px;background:#1a1a26;border:1px solid #252533;font-size:12px">
-          <span>{{ '📄' if d['doc_type']=='file' else '🌐' }}</span>
-          <span class="max-w-[220px] truncate" title="{{ d['name'] }}">{{ d['name'] }}</span>
-          <span class="text-[#7a7a8e]">({{ ((d['size'] or 0)/1024)|round(1) }} KB)</span>
-          <button onclick="deleteKbDoc('{{ d['id'] }}')" class="text-red-400 hover:text-red-300" title="Delete">✕</button>
-        </div>
-        {% else %}
-        <p class="text-xs text-[#7a7a8e]">No documents yet — upload a menu or add a URL to get started.</p>
-        {% endfor %}
-      </div>
+    </section>
+
+    <!-- ===== NAV FOOTER (steps 1-3) ===== -->
+    <div class="flex justify-between items-center mt-4" id="stepNavFooter">
+      <button type="button" onclick="setupNav(-1)" class="btn-secondary text-xs" style="padding:8px 18px" id="backBtn">← Back</button>
+      <button type="button" onclick="setupNav(1)" class="btn-primary text-xs" style="padding:8px 18px" id="nextBtn">Continue →</button>
     </div>
-    <div class="card">
-      <h3 class="font-bold mb-3">📞 Call Forwarding <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></h3>
-      <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">When a caller asks for a manager, owner, or a specific person, your AI says "one moment" and forwards the call to the number(s) you add. Add as many people as you want (Manager, Sales, Support…).</div>
-      <form method="POST" action="/update-forwarding" onsubmit="collectForwardDestinations()">
-        <p class="text-xs text-[#7a7a8e] mb-3">Add the people your AI agent can <strong>transfer calls to</strong>. When a caller asks for a manager, sales, support, or anyone specific, the AI picks the right person and forwards the call.</p>
-        <label class="flex items-center gap-2 cursor-pointer mb-2" style="padding:10px 14px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
-          <input type="checkbox" name="forwarding_enabled" value="1" {% if biz_info.call_forwarding %}checked{% endif %} style="width:18px;height:18px;accent-color:#c084fc">
-          <span class="text-sm">Enable call forwarding</span>
-        </label>
-        <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8;font-size:11px;margin-bottom:8px;display:inline-block">❓ What does this do?</span>
-        <span class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0;width:100%;display:none">Turns the transfer feature on/off. Off = your AI handles the whole call itself.</span>
-        <div id="forwardRows" class="space-y-2 mb-2"></div>
-        <button type="button" onclick="addForwardRow()" class="btn-secondary text-xs" style="padding:5px 14px">➕ Add another person</button>
-        <input type="hidden" name="destinations" id="forwardDestinations" value="">
-        <div class="mt-3"><button type="submit" class="btn-primary text-xs w-full">💾 Save Forwarding</button></div>
-      </form>
-    </div>
-    <script>
-    var _forwardDests = {{ (biz_info.forward_destinations or '[]') | safe }};
-    if (!_forwardDests || !_forwardDests.length) {
-      _forwardDests = [{'label': 'Manager', 'number': '{{ biz_info.forward_to or '' }}'}];
-    }
-    function addForwardRow(d){
-      d = d || {label:'', number:''};
-      var row = document.createElement('div');
-      row.className = 'flex gap-2 items-center';
-      row.innerHTML = '<input type="text" placeholder="Who? (e.g. Manager, Sales, Support)" value="' + (d.label||'').replace(/"/g,'&quot;') + '" style="flex:0 0 38%;font-size:12px;padding:8px 10px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5" class="fd-label">' +
-        '<input type="text" placeholder="+1234567890" value="' + (d.number||'').replace(/"/g,'&quot;') + '" style="flex:1;font-size:12px;padding:8px 10px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5" class="fd-number">' +
-        '<button type="button" onclick="this.parentNode.remove()" style="background:none;border:none;color:#f87171;font-size:16px;cursor:pointer;padding:0 4px" title="Remove">✕</button>';
-      document.getElementById('forwardRows').appendChild(row);
-    }
-    function collectForwardDestinations(){
-      var out = [];
-      document.querySelectorAll('#forwardRows .fd-number').forEach(function(inp){
-        var num = inp.value.trim();
-        if (!num) return;
-        var row = inp.closest('div');
-        out.push({label: row.querySelector('.fd-label').value.trim() || 'Manager', number: num});
-      });
-      document.getElementById('forwardDestinations').value = JSON.stringify(out);
-    }
-    _forwardDests.forEach(function(d){ addForwardRow(d); });
-    </script>
-    <div class="card">
-      <h3 class="font-bold mb-3">🤖 AI SMS Replies <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></h3>
-      <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">When a customer texts your number, the AI replies automatically using your knowledge base — answers questions, schedules appointments, and sends confirmations. You don't have to lift a finger.</div>
-      <form method="POST" action="/update-sms-ai">
-        <p class="text-xs text-[#7a7a8e] mb-3">When a customer texts this number, the AI replies automatically using your knowledge base — answers questions, schedules appointments, and sends confirmations.</p>
-        <label class="flex items-center gap-2 cursor-pointer" style="padding:10px 14px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
-          <input type="checkbox" name="sms_ai_enabled" value="1" {% if biz_info.sms_ai_enabled %}checked{% endif %} style="width:18px;height:18px;accent-color:#c084fc">
-          <span class="text-sm">Enable AI auto-replies to SMS</span>
-        </label>
-        <button type="submit" class="btn-primary text-xs mt-3" style="padding:6px 20px">💾 Save</button>
-      </form>
-    </div>
-    <div class="card">
-      <h3 class="font-bold mb-3">👤 Your User ID <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></h3>
-      <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">The ID you type on the login page. You can change it to anything you like (4–40 characters) — your old ID keeps working too.</div>
-      <p class="text-xs text-[#7a7a8e] mb-2">This is what you type on the login page. Your current User ID:</p>
-      <div class="mb-3" style="padding:10px 14px;border-radius:8px;background:#1a1a26;border:1px solid #252533;font-family:monospace;font-size:13px;color:#a5b4fc">{{ biz_info.login_id or biz_info.id }}</div>
-      <input type="text" id="newLoginId" placeholder="New User ID (4-40 chars: letters, numbers, . _ -)" style="width:100%;font-size:12px;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;margin-bottom:8px">
-      <button type="button" onclick="changeLoginId()" class="btn-primary text-xs" style="padding:6px 20px">🔑 Change User ID</button>
-      <div id="loginIdStatus" class="text-xs mt-2"></div>
-    </div>
-    <div class="card">
-      <h3 class="font-bold mb-3">🗣️ AI Voice <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></h3>
-      <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Choose the voice your AI uses on calls, the language it speaks, and how fast it talks. Click ▶️ to preview each voice.</div>
+  </div>
+</div>
+
+<!-- ═══════════ ADVANCED SETTINGS ═══════════ -->
+<div class="mt-8">
+  <div class="flex items-center gap-3 mb-4">
+    <h3 class="text-lg font-bold">⚙️ Advanced Settings</h3>
+    <span class="text-[11px]" style="color:#5c5c70">Customize how your AI employee works. These settings are optional and can be changed at any time.</span>
+  </div>
+  <div class="space-y-4">
+    <!-- 🎙 VOICE -->
+    <div class="card p-5" id="adv-voice">
+      <h3 class="font-bold mb-1">🎙 AI Voice</h3>
+      <p class="text-[11px] mb-3" style="color:#7a7a8e">Choose how your AI employee sounds to customers. <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">ⓘ</span></p>
+      <div class="tipbox">Controls the voice, language, and speaking speed of your AI employee.</div>
+      <div class="reco">💡 <b>RECOMMENDED:</b> Start with a warm, conversational voice at normal speed (1.0x). You can change this anytime.</div>
       <form method="POST" action="/update-voice">
-        <p class="text-xs text-[#7a7a8e] mb-3">Click ▶️ to preview. Select active voice, language, and speed.</p>
         {% set voice_icons = {'burt':'👨‍💼','indy':'👩','michael':'🧔','emma':'👩‍🦰','antoni':'🧑'} %}
-        <div class="space-y-2 mb-4">
+        {% set voice_personas = {'burt':('Male','Confident'),'indy':('Female','Warm'),'michael':('Male','Professional'),'emma':('Female','Friendly'),'antoni':('Male','Conversational')} %}
+        <div class="grid md:grid-cols-2 gap-3 mb-4">
         {% for v in voices %}
         {% set is_active = biz_info.voice_id == v.id %}
-        <label class="flex items-center gap-3 p-3 rounded-lg cursor-pointer" style="background:{% if is_active %}rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.5){% else %}#1a1a26;border:1px solid #252533{% endif %}" onclick="document.getElementById('voice_id').value='{{ v.id }}'">
-          <span style="font-size:24px">{{ voice_icons.get(v.id, '🤖') }}</span>
-          <div class="flex-1"><div class="font-medium text-sm" style="color:{% if is_active %}#c084fc{% endif %}">{{ v.name }}</div><div class="text-xs text-[#5c5c70]">{{ v.provider }}</div></div>
-          <button type="button" onclick="event.stopPropagation();playVoice('{{ v.id }}')" class="btn-secondary" style="padding:4px 10px;font-size:12px">▶️ Play</button>
-          {% if is_active %}<span class="badge badge-success">Active</span>{% endif %}
+        {% set persona = voice_personas.get(v.id, ('AI','Natural')) %}
+        <label class="flex items-center gap-3 p-3 rounded-xl cursor-pointer" style="background:{% if is_active %}rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.5){% else %}#1a1a26;border:1px solid #252533{% endif %}" onclick="document.getElementById('voice_id').value='{{ v.id }}'">
+          <span style="font-size:26px">{{ voice_icons.get(v.id, '🤖') }}</span>
+          <div class="flex-1">
+            <div class="font-semibold text-sm" style="color:{% if is_active %}#c084fc{% endif %}">{{ v.name }} <span class="text-[10px] font-normal" style="color:#7a7a8e">{{ persona[0] }} • {{ persona[1] }}</span></div>
+            {% if v.id == 'indy' %}<span class="text-[9px]" style="color:#fbbf24">⭐ MOST POPULAR</span>{% endif %}
+            {% if is_active %}<span class="badge badge-success" style="margin-left:6px">Active</span>{% endif %}
+          </div>
+          <button type="button" onclick="event.stopPropagation();playVoice('{{ v.id }}')" class="btn-secondary" style="padding:6px 14px;font-size:12px">▶️ Preview</button>
         </label>
         {% endfor %}
         </div>
         <input type="hidden" name="voice_id" id="voice_id" value="{{ biz_info.voice_id or 'burt' }}">
-        <div class="grid grid-cols-2 gap-3 mb-3">
-          <div><label class="text-xs text-[#7a7a8e] block mb-1">🌐 Language <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label><div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">The language your AI speaks on calls.</div><select name="language">{% for lang_id, lang_name in languages.items() %}<option value="{{ lang_id }}" {% if biz_info.language == lang_id %}selected{% endif %}>{{ lang_name }}</option>{% endfor %}</select></div>
-          <div><label class="text-xs text-[#7a7a8e] block mb-1">⚡ Speed <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label><div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">How fast the AI talks. 1.0 = normal, higher = faster, lower = slower and more relaxed.</div><div class="flex items-center gap-2"><input type="range" name="voice_speed" min="0.7" max="2.0" step="0.05" value="{{ biz_info.voice_speed or 1.15 }}" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)+'x'" class="flex-1"><output class="text-sm font-bold text-[#4ade80]" style="width:48px;text-align:center">{{ '%.2f'|format(biz_info.voice_speed|float if biz_info.voice_speed else 1.15) }}x</output></div></div>
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div><label class="text-xs block mb-1" style="color:#7a7a8e">🌐 Language</label><select name="language">{% for lang_id, lang_name in languages.items() %}<option value="{{ lang_id }}" {% if biz_info.language == lang_id %}selected{% endif %}>{{ lang_name }}</option>{% endfor %}</select></div>
+          <div><label class="text-xs block mb-1" style="color:#7a7a8e">⚡ Speaking Speed</label><div class="flex items-center gap-2"><input type="range" name="voice_speed" min="0.7" max="2.0" step="0.05" value="{{ biz_info.voice_speed or 1.0 }}" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)+'x'" class="flex-1"><output class="text-sm font-bold" style="color:#4ade80;width:48px;text-align:center">{{ '%.2f'|format(biz_info.voice_speed|float if biz_info.voice_speed else 1.0) }}x</output></div></div>
         </div>
-        <button type="submit" class="btn-primary text-xs w-full">💾 Save Voice Settings</button>
+        <button type="submit" class="btn-primary text-xs" style="padding:8px 20px">💾 Save Voice</button>
       </form>
     </div>
-    <div class="card">
-      <h3 class="font-bold mb-3">🔗 CRM Webhook — AI Instant Callback <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></h3>
-      <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Connect this to your website forms, Facebook leads, or CRM — when a new lead comes in, your AI calls them back within seconds. Copy the URL and paste it into your form tool as a webhook.</div>
-      <p class="text-xs text-[#7a7a8e] mb-3">When a lead comes in (your website form, Facebook lead, or CRM), send it here and the AI agent <strong>calls them back within seconds</strong>.</p>
-      <div class="mb-3" style="padding:10px 12px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
-        <div class="text-[10px] text-[#7a7a8e] mb-1">WEBHOOK URL</div>
-        <div class="flex items-center gap-2">
-          <code class="text-[11px] flex-1 break-all">https://diazites.online/api/lead-received</code>
-          <button type="button" onclick="copyText('https://diazites.online/api/lead-received',this)" class="btn-secondary text-xs" style="padding:3px 8px">📋 Copy</button>
+
+    <!-- 📞 CALLS & SMS -->
+    <div class="card p-5" id="adv-calls">
+      <h3 class="font-bold mb-1">📞 Calls &amp; SMS</h3>
+      <p class="text-[11px] mb-3" style="color:#7a7a8e">Control how Diazites handles calls, transfers, voicemail, and customer text messages.</p>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 rounded-xl" style="background:#12121a;border:1px solid #252533">
+          <div class="text-xs font-bold mb-2">📞 Call Forwarding <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">ⓘ</span></div>
+          <div class="tipbox">When a caller asks for a manager, owner, or a specific person, your AI forwards the call to the number(s) you add.</div>
+          <form method="POST" action="/update-forwarding" onsubmit="collectForwardDestinations()">
+            <label class="flex items-center gap-2 cursor-pointer mb-3" style="padding:9px 12px;border-radius:8px;background:#0c0c18;border:1px solid #252533">
+              <input type="checkbox" name="forwarding_enabled" value="1" {% if biz_info.call_forwarding %}checked{% endif %} style="width:17px;height:17px;accent-color:#c084fc">
+              <span class="text-sm">Enable Call Forwarding</span>
+            </label>
+            <div id="forwardRows" class="space-y-2 mb-2"></div>
+            <button type="button" onclick="addForwardRow()" class="btn-secondary text-xs" style="padding:5px 14px">➕ Add Another Person</button>
+            <input type="hidden" name="destinations" id="forwardDestinations" value="">
+            <div class="reco">💡 <b>RECOMMENDED:</b> Add a manager or sales representative as the primary transfer contact.</div>
+            <button type="submit" class="btn-primary text-xs w-full mt-2" style="padding:7px">💾 Save Forwarding</button>
+          </form>
         </div>
-      </div>
-      <div class="mb-3" style="padding:10px 12px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
-        <div class="text-[10px] text-[#7a7a8e] mb-1">YOUR API KEY (X-Outbound-Key header)</div>
-        {% if webhook_key_id %}
-        <div class="flex items-center gap-2">
-          <code class="text-[11px] flex-1">{{ webhook_key_id }} ·•••••••</code>
-          <button type="button" onclick="genKey(this)" class="btn-secondary text-xs" style="padding:3px 8px">🔄 Regenerate</button>
-        </div>
-        {% else %}
-        <button type="button" onclick="genKey(this)" class="btn-primary text-xs w-full">🔑 Generate Webhook Key</button>
-        {% endif %}
-        <div id="newkeybox" style="display:none;margin-top:10px;padding:10px;border-radius:8px;background:#0c0c18;border:1px solid #38bdf8">
-          <div class="text-[10px] text-[#38bdf8] mb-1">⚠️ COPY THIS NOW — shown only once</div>
-          <div class="flex items-center gap-2">
-            <code id="newkey" class="text-[11px] flex-1 break-all"></code>
-            <button type="button" onclick="copyText(document.getElementById('newkey').textContent,this)" class="btn-secondary text-xs" style="padding:3px 8px">📋 Copy</button>
+        <div class="p-4 rounded-xl" style="background:#12121a;border:1px solid #252533">
+          <div class="text-xs font-bold mb-2">💬 AI SMS Replies <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">ⓘ</span></div>
+          <div class="tipbox">Diazites automatically answers customer texts using your business knowledge — questions, info, appointment confirmations.</div>
+          <form method="POST" action="/update-sms-ai">
+            <label class="flex items-center gap-2 cursor-pointer mb-3" style="padding:9px 12px;border-radius:8px;background:#0c0c18;border:1px solid #252533">
+              <input type="checkbox" name="sms_ai_enabled" value="1" {% if biz_info.sms_ai_enabled %}checked{% endif %} style="width:17px;height:17px;accent-color:#c084fc">
+              <span class="text-sm">Enable AI SMS Replies</span>
+            </label>
+            <button type="submit" class="btn-primary text-xs w-full" style="padding:7px">💾 Save SMS Settings</button>
+          </form>
+          <div class="mt-3 pt-3" style="border-top:1px solid #252533">
+            <div class="text-xs font-bold mb-2">🔇 Background Noise Reduction</div>
+            <form method="POST" action="/update-denoise">
+              <label class="flex items-center gap-2 cursor-pointer mb-2" style="padding:9px 12px;border-radius:8px;background:#0c0c18;border:1px solid #252533">
+                <input type="checkbox" name="denoise_enabled" value="1" {% if biz_info.denoise_enabled != 0 %}checked{% endif %} style="width:17px;height:17px;accent-color:#c084fc">
+                <span class="text-sm">Noise reduction ON <span class="rec">RECOMMENDED</span></span>
+              </label>
+              <button type="submit" class="btn-secondary text-xs w-full" style="padding:6px">💾 Save</button>
+            </form>
           </div>
         </div>
+        <div class="p-4 rounded-xl md:col-span-2" style="background:#12121a;border:1px solid #252533">
+          <div class="text-xs font-bold mb-2">📠 Voicemail Detection <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">ⓘ</span></div>
+          <div class="tipbox">When the AI calls a prospect and gets voicemail, it can hang up or leave a message with your callback number.</div>
+          <form method="POST" action="/update-voicemail-settings" class="grid md:grid-cols-3 gap-3 items-end">
+            <div><label class="block text-[10px] mb-1" style="color:#a0a0b8">Detection</label><select name="voicemail_detection" class="w-full"><option value="google" {% if biz_info.voicemail_detection == 'google' %}selected{% endif %}>Google</option><option value="twilio" {% if biz_info.voicemail_detection == 'twilio' %}selected{% endif %}>Twilio</option><option value="off" {% if biz_info.voicemail_detection == 'off' or not biz_info.voicemail_detection %}selected{% endif %}>Off</option></select></div>
+            <div><label class="block text-[10px] mb-1" style="color:#a0a0b8">When voicemail is detected</label><select name="voicemail_action" class="w-full" onchange="document.getElementById('vmMsgWrap').style.display=this.value=='leave_message'?'block':'none'"><option value="hangup" {% if biz_info.voicemail_action == 'hangup' or not biz_info.voicemail_action %}selected{% endif %}>Hang up</option><option value="leave_message" {% if biz_info.voicemail_action == 'leave_message' %}selected{% endif %}>Leave message</option></select></div>
+            <button type="submit" class="btn-primary text-xs" style="padding:8px 18px">💾 Save Voicemail</button>
+            <div class="md:col-span-3" id="vmMsgWrap" {% if biz_info.voicemail_action != 'leave_message' %}style="display:none"{% endif %}><label class="text-xs block mb-1" style="color:#a0a0b8">📝 Message</label><textarea name="voicemail_message" rows="2" class="w-full text-xs">{{ biz_info.voicemail_message or '' }}</textarea></div>
+          </form>
+        </div>
+        <details class="md:col-span-2" style="font-size:12px">
+          <summary class="cursor-pointer text-xs" style="color:#818cf8">🖥️ Advanced call settings <span class="adv">ADVANCED</span></summary>
+          <div class="grid grid-cols-2 gap-4 p-3 mt-2 rounded-lg" style="background:#0c0c18;border:1px solid #252533">
+            <div>
+              <div class="text-[11px] mb-1" style="color:#7a7a8e">Max tokens per response</div>
+              <input type="range" min="100" max="1000" step="50" value="{{ biz_info.max_tokens or 200 }}" oninput="document.getElementById('mtVal').textContent=this.value" class="w-full" id="mtRange"><output id="mtVal" class="text-xs font-bold" style="color:#4ade80">{{ biz_info.max_tokens or 200 }}</output>
+            </div>
+            <div>
+              <div class="text-[11px] mb-1" style="color:#7a7a8e">Silence timeout (seconds before hanging up)</div>
+              <input type="range" min="3" max="30" step="1" value="{{ biz_info.silence_timeout or 10 }}" oninput="document.getElementById('stVal').textContent=this.value+'s'" class="w-full" id="stRange"><output id="stVal" class="text-xs font-bold" style="color:#4ade80">{{ biz_info.silence_timeout or 10 }}s</output>
+            </div>
+            <div class="col-span-2"><form method="POST" action="/update-call-settings"><input type="hidden" name="max_tokens" id="mtHidden" value="{{ biz_info.max_tokens or 200 }}"><input type="hidden" name="silence_timeout" id="stHidden" value="{{ biz_info.silence_timeout or 10 }}"><input type="hidden" name="max_duration" value="{{ biz_info.max_duration_seconds or 300 }}"><button type="submit" class="btn-primary text-xs" style="padding:6px 16px" onclick="document.getElementById('mtHidden').value=document.getElementById('mtRange').value;document.getElementById('stHidden').value=document.getElementById('stRange').value">💾 Save Advanced Call Settings</button></form></div>
+          </div>
+        </details>
       </div>
-      <div class="mb-3" style="padding:10px 12px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
-        <div class="text-[10px] text-[#7a7a8e] mb-1">EXAMPLE — point your form/CRM at this</div>
-        <pre style="font-size:10px;overflow-x:auto;color:#a5b4fc;margin:0">curl -X POST https://diazites.online/api/lead-received \
+    </div>
+
+    <!-- 🔗 INTEGRATIONS -->
+    <div class="card p-5" id="adv-integrations">
+      <h3 class="font-bold mb-1">🔗 Integrations</h3>
+      <p class="text-[11px] mb-3" style="color:#7a7a8e">Connect Diazites to your CRM and other business systems. <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">ⓘ</span></p>
+      <div class="tipbox">Paste this URL into your form tool or CRM as a webhook. When a lead comes in, your AI calls them back within seconds.</div>
+      <div class="flex items-center gap-2 mb-3">
+        <code class="text-[11px] flex-1 break-all">https://diazites.online/api/lead-received</code>
+        <button type="button" onclick="copyText('https://diazites.online/api/lead-received',this)" class="btn-secondary text-xs" style="padding:3px 8px">📋 Copy</button>
+      </div>
+      <div class="flex items-center gap-2 mb-3">
+        {% if webhook_key_id %}
+        <div class="flex items-center gap-2 flex-1"><code class="text-[11px]">{{ webhook_key_id }} ·•••••••</code><button type="button" onclick="genKey(this)" class="btn-secondary text-xs" style="padding:3px 8px">🔄 Regenerate</button><span class="badge badge-success">✓ Working</span></div>
+        {% else %}
+        <button type="button" onclick="genKey(this)" class="btn-primary text-xs" style="padding:8px 16px">🔑 Generate CRM Webhook Key</button>
+        {% endif %}
+      </div>
+      <div id="newkeybox" style="display:none;margin-bottom:10px;padding:10px;border-radius:8px;background:#0c0c18;border:1px solid #38bdf8">
+        <div class="text-[10px] mb-1" style="color:#38bdf8">⚠️ COPY THIS NOW — shown only once</div>
+        <div class="flex items-center gap-2"><code id="newkey" class="text-[11px] flex-1 break-all"></code><button type="button" onclick="copyText(document.getElementById('newkey').textContent,this)" class="btn-secondary text-xs" style="padding:3px 8px">📋 Copy</button></div>
+      </div>
+      <div class="mb-3">
+        <div class="text-[11px] mb-1" style="color:#7a7a8e">📞 Test it — the agent will call this number:</div>
+        <div class="flex gap-2">
+          <input type="tel" id="whtest" placeholder="+1XXXXXXXXXX" class="flex-1" style="padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
+          <button type="button" onclick="webhookTest()" class="btn-primary text-xs" style="padding:6px 12px">Send Test Lead</button>
+        </div>
+        <div id="whteststatus" class="text-xs mt-2" style="display:none"></div>
+      </div>
+      <details style="font-size:12px">
+        <summary class="cursor-pointer text-xs" style="color:#818cf8">⚙️ Advanced developer options <span class="adv">ADVANCED</span></summary>
+        <div class="p-3 mt-2 rounded-lg" style="background:#0c0c18;border:1px solid #252533">
+          <div class="text-[10px] mb-1" style="color:#7a7a8e">EXAMPLE — point your form/CRM at this</div>
+          <pre style="font-size:10px;overflow-x:auto;color:#a5b4fc;margin:0">curl -X POST https://diazites.online/api/lead-received \
   -H "Content-Type: application/json" \
   -H "X-Outbound-Key: YOUR_API_KEY" \
   -d '{"phone":"+1XXXXXXXXXX","name":"John","business_id":"{{ biz_info.id }}","source":"website form"}'</pre>
-      </div>
-      <div class="mb-2 text-xs text-[#7a7a8e]">📞 Test it — the agent will call this number:</div>
-      <div class="flex gap-2">
-        <input type="tel" id="whtest" placeholder="+1XXXXXXXXXX" class="flex-1">
-        <button type="button" onclick="webhookTest()" class="btn-primary text-xs" style="padding:6px 12px">Send Test Lead</button>
-      </div>
-      <div id="whteststatus" class="text-xs mt-2" style="display:none"></div>
-    </div>
-    <div class="card">
-      <h3 class="font-bold mb-3">🔇 Background Noise Reduction</h3>
-      <form method="POST" action="/update-denoise">
-        <p class="text-xs text-[#7a7a8e] mb-3">Filters out background noise and background speech while the caller talks (Krisp smart denoising) — clearer calls, better transcripts.</p>
-        <label class="flex items-center gap-2 cursor-pointer mb-3" style="padding:10px 14px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
-          <input type="checkbox" name="denoise_enabled" value="1" {% if biz_info.denoise_enabled != 0 %}checked{% endif %} style="width:18px;height:18px;accent-color:#c084fc">
-          <span class="text-sm">Noise reduction ON (recommended)</span>
-        </label>
-        <button type="submit" class="btn-primary text-xs w-full">💾 Save Noise Setting</button>
-      </form>
-    </div>
-    <div class="card">
-      <h3 class="font-bold mb-3">📠 Voicemail Detection</h3>
-      <p class="text-xs text-[#7a7a8e] mb-2">Detect voicemail and leave a message with callback number.</p>
-      <form method="POST" action="/update-voicemail-settings">
-        <select name="voicemail_detection" class="mb-2"><option value="google" {% if biz_info.voicemail_detection == 'google' %}selected{% endif %}>Google</option><option value="twilio" {% if biz_info.voicemail_detection == 'twilio' %}selected{% endif %}>Twilio</option><option value="off" {% if biz_info.voicemail_detection == 'off' or not biz_info.voicemail_detection %}selected{% endif %}>Off</option></select>
-        <select name="voicemail_action" class="mb-2" onchange="document.getElementById('vmMsgWrap').style.display=this.value=='leave_message'?'block':'none'"><option value="hangup" {% if biz_info.voicemail_action == 'hangup' or not biz_info.voicemail_action %}selected{% endif %}>Hang up</option><option value="leave_message" {% if biz_info.voicemail_action == 'leave_message' %}selected{% endif %}>Leave message</option></select>
-        <div id="vmMsgWrap" {% if biz_info.voicemail_action != 'leave_message' %}style="display:none"{% endif %}><label class="text-xs text-[#7a7a8e] block mb-1">📝 Message</label><textarea name="voicemail_message" rows="3" class="w-full text-xs">{{ biz_info.voicemail_message or '' }}</textarea></div>
-        <button type="submit" class="btn-primary text-xs w-full mt-2">💾 Save Voicemail</button>
-        </form>
         </div>
-        <div class="card">
-        <h3 class="font-bold mb-3">📅 Booking (Cal.com)</h3>
-        <p class="text-xs text-[#5c5c70] mb-2">Connect Cal.com for appointment booking.</p>
-        <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Cal.com Username</label>
-        <input type="text" id="calUsernameInput" value="{{ landing_page.get('cal_username','') if landing_page else '' }}" placeholder="your-username" class="w-full bg-[#1a1a28] border border-[#252533] rounded-lg px-3 py-2 text-white text-sm mb-3">
-        <label class="block text-xs font-medium text-[#a0a0b8] mb-1">Event Type</label>
-        <select id="calEventSlugInput" class="w-full bg-[#1a1a28] border border-[#252533] rounded-lg px-3 py-2 text-white text-sm mb-3">
-        <option value="30min" {% if landing_page and landing_page.get('cal_event_slug') == '30min' %}selected{% endif %}>30 min meeting</option>
-        <option value="15min" {% if landing_page and landing_page.get('cal_event_slug') == '15min' %}selected{% endif %}>15 min meeting</option>
+      </details>
+    </div>
+
+    <!-- 📅 BOOKING -->
+    <div class="card p-5" id="adv-booking">
+      <h3 class="font-bold mb-1">📅 Booking</h3>
+      <p class="text-[11px] mb-3" style="color:#7a7a8e">Allow Diazites to schedule appointments for your customers. <b style="color:#818cf8">Appointment booking is optional</b> — you can connect your calendar anytime.</p>
+      <div class="reco">💡 <b>RECOMMENDED:</b> Enable appointment booking if your business relies on scheduled appointments (test drives, consultations, visits).</div>
+      <div class="p-4 rounded-xl" style="background:#12121a;border:1px solid #252533">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-lg">📅</span>
+          <div><div class="text-sm font-bold">Cal.com</div><div class="text-[10px]" style="color:#7a7a8e">Free scheduling calendar — create one at cal.com</div></div>
+          {% if landing_page and landing_page.get('cal_username') %}<span class="badge badge-success" style="margin-left:auto">✓ Calendar Connected</span>{% endif %}
+        </div>
+        <label class="block text-xs font-medium mb-1" style="color:#a0a0b8">Cal.com Username</label>
+        <input type="text" id="calUsernameInput" value="{{ landing_page.get('cal_username','') if landing_page else '' }}" placeholder="your-username" class="w-full mb-3" style="padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
+        <label class="block text-xs font-medium mb-1" style="color:#a0a0b8">Event Type</label>
+        <select id="calEventSlugInput" class="w-full mb-3">
+          <option value="30min" {% if landing_page and landing_page.get('cal_event_slug') == '30min' %}selected{% endif %}>30 min meeting</option>
+          <option value="15min" {% if landing_page and landing_page.get('cal_event_slug') == '15min' %}selected{% endif %}>15 min meeting</option>
         </select>
-        <button onclick="saveCalcomSettings()" class="btn-primary text-xs w-full">💾 Save Booking Settings</button>
+        <div class="flex gap-2 flex-wrap">
+          <button onclick="saveCalcomSettings()" class="btn-primary text-xs" style="padding:8px 18px">🔗 Connect Calendar</button>
+          <button type="button" onclick="testBooking()" class="btn-secondary text-xs" style="padding:8px 14px">📅 Test Booking</button>
+        </div>
         <div id="calcomStatus" class="text-xs text-green-400 hidden mt-2"></div>
-        <div class="mt-2 text-[10px] text-[#5c5c70]">
-        Your page: <a href="https://cal.com/{{ landing_page.get('cal_username','pablo-d-i2xmhr') if landing_page else 'pablo-d-i2xmhr' }}/{{ landing_page.get('cal_event_slug','30min') if landing_page else '30min' }}" target="_blank" id="calcomUrlDisplay" class="text-[#a855f7]">https://cal.com/{{ landing_page.get('cal_username','pablo-d-i2xmhr') if landing_page else 'pablo-d-i2xmhr' }}/{{ landing_page.get('cal_event_slug','30min') if landing_page else '30min' }}</a>
-        </div>
-        </div>
-        </div>
-
-        <script>
-        function saveCalcomSettings() {
-          var username = document.getElementById('calUsernameInput').value.trim();
-          var slug = document.getElementById('calEventSlugInput').value;
-          var status = document.getElementById('calcomStatus');
-          var fd = new FormData();
-          fd.append('username', username || 'pablo-d-i2xmhr');
-          fd.append('event_slug', slug);
-          status.classList.remove('hidden');
-          status.textContent = '⏳ Saving...';
-          status.style.color = '#c084fc';
-          fetch('/api/calcom/save-settings', { method: 'POST', body: fd })
-            .then(function(r){ return r.json(); })
-            .then(function(d){
-              if (d.success) {
-                status.textContent = '✅ ' + d.message;
-                status.style.color = '#4ade80';
-                var urlEl = document.getElementById('calcomUrlDisplay');
-                if (urlEl) urlEl.href = 'https://cal.com/' + (username || 'pablo-d-i2xmhr') + '/' + slug;
-                if (urlEl) urlEl.textContent = 'https://cal.com/' + (username || 'pablo-d-i2xmhr') + '/' + slug;
-              } else {
-                status.textContent = '❌ ' + (d.message || 'Save failed');
-                status.style.color = '#ef4444';
-              }
-            })
-            .catch(function(){
-              status.textContent = '❌ Network error';
-              status.style.color = '#ef4444';
-            });
-        }
-        </script>
-
-  <!-- Two-Factor Authentication (user TOTP) -->
-  <div class="card mt-6">
-    <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
-      <h3 class="font-bold">🔐 Two-Factor Authentication</h3>
-      {% if user_2fa.enabled %}
-      <span class="badge badge-success">✅ Enabled</span>
-      {% else %}
-      <span class="badge badge-inactive">Off</span>
-      {% endif %}
-    </div>
-    <p class="text-xs text-[#7a7a8e] mb-3">Protect your dashboard: after enabling, a 6-digit code from your authenticator app (Google Authenticator / Authy) is required at every login.</p>
-
-    {% if user_2fa.enabled %}
-    <div class="flex gap-2 flex-wrap">
-      <form method="POST" action="/2fa/backup-codes"><button type="submit" class="btn-secondary text-xs" style="padding:8px 16px">🔄 Regenerate Backup Codes</button></form>
-      <form method="POST" action="/2fa/disable" onsubmit="return confirm('Disable 2FA for this account?')"><button type="submit" class="btn-danger text-xs" style="padding:8px 16px">Disable 2FA</button></form>
-    </div>
-    {% elif user_2fa.qr %}
-    <div class="bg-[#12121a] rounded-lg p-4 mb-3 text-center">
-      <img src="{{ user_2fa.qr }}" alt="2FA QR" class="mx-auto w-48 h-48">
-      <p class="text-xs text-[#5c5c70] mt-2">Scan with Google Authenticator / Authy, then enter the 6-digit code.</p>
-    </div>
-    <form method="POST" action="/2fa/verify" class="flex gap-2 max-w-sm">
-      <input type="text" name="code" placeholder="6-digit code" maxlength="6" class="text-center font-mono" autocomplete="one-time-code">
-      <button type="submit" class="btn-primary text-xs">Verify & Enable</button>
-    </form>
-    {% else %}
-    <form method="POST" action="/2fa/setup"><button type="submit" class="btn-primary text-xs" style="padding:8px 18px"><i class="fas fa-qrcode mr-1"></i> Enable 2FA</button></form>
-    {% endif %}
-
-    {% if user_2fa.new_codes %}
-    <div class="bg-[#12121a] border border-yellow-500/30 rounded-lg p-4 mt-4">
-      <p class="text-xs text-yellow-400 font-semibold mb-2">⚠️ Save these backup codes somewhere safe. Each one works <strong>once</strong> at login if you lose your phone.</p>
-      <div class="grid grid-cols-2 gap-2 font-mono text-sm">
-        {% for c in user_2fa.new_codes %}<span class="bg-[#1a1a26] rounded px-3 py-2 text-center">{{ c }}</span>{% endfor %}
       </div>
-      <form method="POST" action="/2fa/dismiss-codes" class="mt-3"><button type="submit" class="btn-primary text-xs">I saved them</button></form>
     </div>
-    {% endif %}
-    {% if user_2fa.backup_count and not user_2fa.new_codes %}
-    <p class="text-xs text-[#5c5c70] mt-3">Remaining unused backup codes: <span class="font-bold text-[#f1f1f5]">{{ user_2fa.backup_count }}</span></p>
-    {% endif %}
+
+    <!-- 🔐 SECURITY -->
+    <div class="card p-5" id="adv-security">
+      <h3 class="font-bold mb-1">🔐 Security</h3>
+      <p class="text-[11px] mb-3" style="color:#7a7a8e">Protect your Diazites account and manage security settings.</p>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 rounded-xl" style="background:#12121a;border:1px solid #252533">
+          <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+            <div class="text-xs font-bold">Two-Factor Authentication <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">ⓘ</span></div>
+            <div class="tipbox">Add an additional security layer — a 6-digit code from your authenticator app is required at every login.</div>
+            {% if user_2fa.enabled %}<span class="badge badge-success">✅ Enabled</span>{% else %}<span class="badge badge-inactive">Off</span>{% endif %}
+          </div>
+          {% if user_2fa.enabled %}
+          <div class="flex gap-2 flex-wrap">
+            <form method="POST" action="/2fa/backup-codes"><button type="submit" class="btn-secondary text-xs" style="padding:6px 14px">🔄 Regenerate Backup Codes</button></form>
+            <form method="POST" action="/2fa/disable" onsubmit="return confirm('Disable 2FA for this account?')"><button type="submit" class="btn-danger text-xs" style="padding:6px 14px">Disable 2FA</button></form>
+          </div>
+          {% elif user_2fa.qr %}
+          <div class="bg-[#0c0c18] rounded-lg p-3 mb-2 text-center">
+            <img src="{{ user_2fa.qr }}" alt="2FA QR" class="mx-auto w-40 h-40">
+            <p class="text-[10px] mt-1" style="color:#5c5c70">Scan with Google Authenticator / Authy, then enter the 6-digit code.</p>
+          </div>
+          <form method="POST" action="/2fa/verify" class="flex gap-2">
+            <input type="text" name="code" placeholder="6-digit code" maxlength="6" class="text-center font-mono">
+            <button type="submit" class="btn-primary text-xs">Verify & Enable</button>
+          </form>
+          {% else %}
+          <form method="POST" action="/2fa/setup"><button type="submit" class="btn-primary text-xs" style="padding:7px 16px"><i class="fas fa-qrcode mr-1"></i> Enable 2FA</button></form>
+          {% endif %}
+          {% if user_2fa.new_codes %}
+          <div class="bg-[#0c0c18] border border-yellow-500/30 rounded-lg p-3 mt-3">
+            <p class="text-[10px] text-yellow-400 font-semibold mb-1">⚠️ Save these backup codes somewhere safe. Each works <strong>once</strong>.</p>
+            <div class="grid grid-cols-2 gap-1 font-mono text-xs">
+              {% for c in user_2fa.new_codes %}<span class="bg-[#1a1a26] rounded px-2 py-1 text-center">{{ c }}</span>{% endfor %}
+            </div>
+            <form method="POST" action="/2fa/dismiss-codes" class="mt-2"><button type="submit" class="btn-primary text-xs">I saved them</button></form>
+          </div>
+          {% endif %}
+          {% if user_2fa.backup_count and not user_2fa.new_codes %}
+          <p class="text-[10px] mt-2" style="color:#5c5c70">Remaining unused backup codes: <span class="font-bold">{{ user_2fa.backup_count }}</span></p>
+          {% endif %}
+        </div>
+        <div class="p-4 rounded-xl" style="background:#12121a;border:1px solid #252533">
+          <div class="text-xs font-bold mb-1">👤 Account User ID <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">ⓘ</span></div>
+          <div class="tipbox">Your unique Diazites account identifier — what you type on the login page. You normally don't need to change this.</div>
+          <div class="mb-2 text-xs font-mono" style="color:#a5b4fc;padding:7px 10px;border-radius:8px;background:#0c0c18;border:1px solid #252533">{{ biz_info.login_id or biz_info.id }}</div>
+          <input type="text" id="newLoginId" placeholder="New User ID (4-40 chars)" class="w-full text-xs mb-2">
+          <button type="button" onclick="changeLoginId()" class="btn-primary text-xs" style="padding:6px 16px">🔑 Change User ID</button>
+          <div id="loginIdStatus" class="text-xs mt-2"></div>
+        </div>
+      </div>
+    </div>
   </div>
+</div>
+
+<!-- ===== HELP MODAL ===== -->
+<div id="helpModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;padding:20px" onclick="if(event.target===this)closeHelp()">
+  <div class="card" style="max-width:560px;margin:30px auto;max-height:82vh;overflow-y:auto;padding:24px">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-bold">❓ How can we help?</h3>
+      <button type="button" onclick="closeHelp()" style="background:none;border:none;color:#7a7a8e;font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <input type="text" id="helpSearch" placeholder="Search settings..." class="w-full mb-4" style="padding:10px 14px;border-radius:10px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px" oninput="filterHelp(this.value)">
+    <div id="helpTopics"></div>
+    <div id="helpArticle" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+var DZ_STEPDATA={
+ s1:{name:{{ '1' if biz_info.name else '0' }},addr:{{ '1' if biz_info.business_address else '0' }},web:{{ '1' if biz_info.website else '0' }}},
+ s2:{kb:{{ '1' if biz_info.knowledge_base else '0' }},docs:{{ kb_documents|length }}},
+ s3:{inb:{{ '1' if biz_info.script_template else '0' }},out:{{ '1' if biz_info.script_outbound else '0' }}},
+ s7:{key:{{ '1' if webhook_key_id else '0' }}},
+ s8:{fwd:{{ '1' if biz_info.call_forwarding else '0' }},sms:{{ '1' if biz_info.sms_ai_enabled else '0' }},cal:{{ '1' if landing_page and landing_page.get('cal_username') else '0' }},denoise:{{ '1' if biz_info.denoise_enabled != 0 else '0' }},twofa:{{ '1' if user_2fa.enabled else '0' }}}
+};
+var ONB={kb:'',script_in:'',script_out:'',info:null,ran:false};
+var STEPS4=[
+ {n:1,t:'Tell Us About Your Business',d:'Enter your website and Diazites will automatically learn about your business and prepare your AI employee.',icon:'🏢'},
+ {n:2,t:'Review Your AI Knowledge',d:'Diazites uses this information to answer customer questions accurately during calls and text conversations.',icon:'📚'},
+ {n:3,t:'Your AI Call Scripts',d:'Diazites automatically creates your inbound and outbound call scripts using your business information and knowledge base.',icon:'🎙️'},
+ {n:4,t:'Your AI Employee Is Ready',d:'Diazites has learned about your business and created your inbound and outbound call workflows.',icon:'🎉'}
+];
+var ADV_ITEMS=[['adv-voice','🎙 Voice'],['adv-calls','📞 Calls & SMS'],['adv-integrations','🔗 Integrations'],['adv-booking','📅 Booking'],['adv-security','🔐 Security']];
+var ST=null;
+function loadSetupState(){
+  try{ST=JSON.parse(localStorage.getItem('dz_setup4')||'null')}catch(e){ST=null}
+  if(!ST)ST={step:1,done:{}};
+  if(!ST.done)ST.done={};
+  if(ST.step<1||ST.step>4)ST.step=1;
+  saveSetupState();
+}
+function saveSetupState(){try{localStorage.setItem('dz_setup4',JSON.stringify(ST))}catch(e){}}
+function stepDone(n){
+  if(ST.done[n])return true;
+  if(n===1)return DZ_STEPDATA.s1.name||DZ_STEPDATA.s1.addr||DZ_STEPDATA.s1.web;
+  if(n===2)return DZ_STEPDATA.s2.kb||DZ_STEPDATA.s2.docs>0;
+  if(n===3)return DZ_STEPDATA.s3.inb||DZ_STEPDATA.s3.out;
+  return false;
+}
+function allPrimary(){return stepDone(1)&&stepDone(2)&&stepDone(3)}
+function setupPct(){var c=0;for(var i=1;i<=3;i++){if(stepDone(i))c++}return c*25}
+function renderSetup(){
+  var sidebar=document.getElementById('setupSidebar'),adv=document.getElementById('advSidebar'),chips=document.getElementById('mobileChips');
+  sidebar.innerHTML='';adv.innerHTML='';chips.innerHTML='';
+  for(var i=1;i<=4;i++){
+    var s=STEPS4[i-1],done=stepDone(i),cur=ST.step===i;
+    var mark=done?'✓':(cur?'●':'○');
+    sidebar.innerHTML+='<div class="side-item '+(done?'done':(cur?'cur':'todo'))+'" onclick="gotoStep('+i+')"><span style="width:16px;text-align:center">'+mark+'</span><span>'+i+' '+s.t.replace('Tell Us About Your Business','Business').replace('Review Your AI Knowledge','Knowledge').replace('Your AI Call Scripts','Scripts').replace('Your AI Employee Is Ready','Ready')+'</span></div>';
+    chips.innerHTML+='<div class="chip '+(done?'done':'')+(cur?' cur':' todo')+'" onclick="gotoStep('+i+')">'+mark+' '+s.t.replace('Tell Us About Your Business','Business').replace('Review Your AI Knowledge','Knowledge').replace('Your AI Call Scripts','Scripts').replace('Your AI Employee Is Ready','Ready')+'</div>';
+  }
+  chips.innerHTML+='<div class="chip todo" style="opacity:1;border-color:#252533;color:#5c5c70">⚙️ Advanced</div>';
+  ADV_ITEMS.forEach(function(a){
+    adv.innerHTML+='<div class="side-item adv" onclick="scrollToAdv(\''+a[0]+'\')">'+a[1]+'</div>';
+    chips.innerHTML+='<div class="chip todo" style="opacity:1" onclick="scrollToAdv(\''+a[0]+'\')">'+a[1]+'</div>';
+  });
+  var pct=setupPct();
+  document.getElementById('pctSidebarNum').textContent=pct+'%';
+  document.getElementById('pctBar').style.width=pct+'%';
+  document.getElementById('stepPctNum').textContent=(pct===100?'🟢 ':'')+pct+'%';
+  document.getElementById('stepPctBar').style.width=pct+'%';
+  var wb=document.getElementById('welcomeBack');
+  if(pct>0&&pct<100){wb.style.display='block';document.getElementById('welcomePct').textContent=pct+'%'}
+  else{wb.style.display='none'}
+  document.querySelectorAll('.step-sec').forEach(function(s){s.classList.remove('active')});
+  var sec=document.querySelector('.step-sec[data-step="'+ST.step+'"]');if(sec)sec.classList.add('active');
+  var s=STEPS4[ST.step-1];
+  document.getElementById('stepLabel').textContent='Step '+ST.step+' of 4';
+  document.getElementById('stepTitle').textContent=s.icon+' '+s.t;
+  document.getElementById('stepDesc').textContent=s.d;
+  document.getElementById('backBtn').style.visibility=ST.step>1?'visible':'hidden';
+  document.getElementById('stepNavFooter').style.display=ST.step===4?'none':'flex';
+  if(ST.step===3)ensureScripts();
+  if(ST.step===2)renderKbChecklist();
+}
+function gotoStep(n){ST.step=n;saveSetupState();renderSetup();window.scrollTo({top:0,behavior:'smooth'})}
+function setupNav(dir){
+  var to=ST.step+dir;
+  if(to<1)return;
+  if(dir>0&&ST.step<=3)ST.done[ST.step]=true;
+  if(to>4){location.href='/';return}
+  gotoStep(to);
+}
+function scrollToAdv(id){var el=document.getElementById(id);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-10)}}
+
+/* ── Step 1: scan → auto-fill → auto-KB ── */
+function scanOnboard(){
+  var url=document.getElementById('bizSiteInput').value.trim();
+  var btn=document.getElementById('scanSiteBtn');
+  if(!url){alert('Enter your website URL first.');return}
+  btn.disabled=true;btn.textContent='⏳ Scanning…';
+  document.getElementById('scanProgress').style.display='block';
+  document.getElementById('scanFailBox').style.display='none';
+  document.getElementById('scanResults').style.display='none';
+  var items=['✓ Reading website content','✓ Extracting business information','✓ Building knowledge base','✓ Creating call scripts'];
+  var box=document.getElementById('scanProgressItems');box.innerHTML='';
+  var i=0;var timer=setInterval(function(){
+    if(i<items.length){box.innerHTML+='<div>'+items[i]+'</div>';i++}
+  },650);
+  fetch('/api/onboard-run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url})})
+   .then(function(r){return r.json()})
+   .then(function(d){
+    clearInterval(timer);
+    btn.disabled=false;btn.textContent='🔎 SCAN WEBSITE';
+    document.getElementById('scanProgress').style.display='none';
+    if(d.success){
+      ONB={kb:d.kb||'',script_in:d.script_in||'',script_out:d.script_out||'',info:d.info||null,ran:true};
+      fillBizInfo(d);
+      document.getElementById('scanResults').style.display='block';
+      document.getElementById('scanResults').innerHTML=(d.fetched?'✓ Website scanned successfully':'✓ Business info saved — website could not be read, edit fields below');
+      if(d.fetched)showKbBuilding();
+      ST.done[1]=true;saveSetupState();renderSetup();
+    }else{
+      document.getElementById('scanFailBox').style.display='block';
+    }
+   })
+   .catch(function(){
+    clearInterval(timer);btn.disabled=false;btn.textContent='🔎 SCAN WEBSITE';
+    document.getElementById('scanFailBox').style.display='block';
+   });
+}
+function fillBizInfo(d){
+  var f={name:d.info.name,industry:d.info.industry,phone:d.info.phone,address:d.info.address,hours:d.info.hours,tz:d.info.timezone,contact:d.info.primary_contact};
+  var map={name:'bizNameInput',industry:'bizIndustryInput',phone:'bizPhoneInput',address:'bizAddressInput',hours:'bizHoursInput',tz:'bizTzInput',contact:'bizContactInput'};
+  Object.keys(map).forEach(function(k){
+    var el=document.getElementById(map[k]);
+    if(el&&f[k])el.value=f[k];
+  });
+  ['name','industry','phone','address','hours','contact'].forEach(function(k){
+    var hint=document.getElementById(k+'Hint');
+    if(hint)hint.style.display=(d.fetched&&!f[k])?'block':'none';
+  });
+  var badge=document.getElementById('autoFilledBadge');
+  if(d.fetched)badge.style.display='inline';
+  document.getElementById('bizSaveStatus').textContent='';
+}
+function saveBizInfo(){
+  var form=document.getElementById('bizInfoForm');
+  var fd=new FormData(form);
+  fetch('/update-business-info',{method:'POST',body:fd}).then(function(r){
+    document.getElementById('bizSaveStatus').textContent='✓ Saved';
+    setTimeout(function(){document.getElementById('bizSaveStatus').textContent=''},2500);
+  }).catch(function(){document.getElementById('bizSaveStatus').textContent='❌ Save failed';document.getElementById('bizSaveStatus').style.color='#ef4444'});
+}
+function showKbBuilding(){
+  var w=document.getElementById('kbBuilding');w.style.display='block';
+  var items=['✓ Business information','✓ Services','✓ Products','✓ FAQs','✓ Hours','✓ Contact information'];
+  var box=document.getElementById('kbBuildingItems');box.innerHTML='';
+  var i=0;var timer=setInterval(function(){
+    if(i<items.length){box.innerHTML+='<div>'+items[i]+'</div>';i++}
+    else{clearInterval(timer);document.getElementById('kbBuiltMsg').style.display='block';document.getElementById('kbBuiltSub').style.display='block'}
+  },420);
+}
+
+/* ── Step 2: KB review ── */
+function renderKbChecklist(){
+  var el=document.getElementById('kbChecklist');
+  if(!el)return;
+  var hasKb=(document.getElementById('kbTextarea')&&document.getElementById('kbTextarea').value.trim())||ONB.kb||DZ_STEPDATA.s2.kb;
+  el.innerHTML=(hasKb?'✓':'○')+' Business Information<br>'+(hasKb?'✓':'○')+' Services<br>'+(hasKb?'✓':'○')+' Products<br>'+(hasKb?'✓':'○')+' Pricing information<br>'+(hasKb?'✓':'○')+' Business Hours<br>'+(hasKb?'✓':'○')+' FAQs<br>'+(hasKb?'✓':'○')+' Contact Information';
+}
+function toggleKbView(){var w=document.getElementById('kbViewWrap');w.style.display=w.style.display==='none'?'block':'none';if(w.style.display==='block'&&ONB.kb&&!document.getElementById('kbTextarea').value)document.getElementById('kbTextarea').value=ONB.kb}
+function toggleKbEdit(){toggleKbView()}
+function saveKbOnly(){
+  var kb=document.getElementById('kbTextarea').value;
+  var fd=new FormData();
+  fd.append('script','{{ biz_info.script_template or "" }}');
+  fd.append('script_outbound','{{ biz_info.script_outbound or "" }}');
+  fd.append('knowledge_base',kb);
+  fd.append('first_message','{{ biz_info.first_message or "" }}');
+  fd.append('first_message_outbound','{{ biz_info.first_message_outbound or "" }}');
+  fd.append('first_message_mode','{{ biz_info.first_message_mode or "assistant-speaks-first" }}');
+  fd.append('business_address','{{ biz_info.business_address or "" }}');
+  fd.append('agent_tone','{{ biz_info.agent_tone or "conversational" }}');
+  fd.append('agent_honesty','{% if biz_info.agent_honesty != 0 %}1{% else %}0{% endif %}');
+  fetch('/update-script',{method:'POST',body:fd}).then(function(r){ST.done[2]=true;saveSetupState();renderSetup();alert('✅ Knowledge base saved')}).catch(function(){alert('❌ Save failed')});
+}
+
+/* ── Step 3: scripts ── */
+function ensureScripts(){
+  var ta=document.getElementById('scriptTextarea'),to=document.getElementById('outboundTextarea');
+  if(!ta||!to)return;
+  if(ONB.script_in&&!ta.value){ta.value=ONB.script_in;to.value=ONB.script_out||to.value}
+  if((ta.value.trim()||to.value.trim())&&!ONB.ran){
+    document.getElementById('inbReadyBadge').style.display='inline-block';
+    document.getElementById('outbReadyBadge').style.display='inline-block';
+    return;
+  }
+  if((ta.value.trim()||to.value.trim())){
+    document.getElementById('inbReadyBadge').style.display='inline-block';
+    document.getElementById('outbReadyBadge').style.display='inline-block';
+    return;
+  }
+  // no scripts yet -> auto-generate (uses saved business info from DB)
+  var w=document.getElementById('scriptsBuilding');w.style.display='block';
+  var items=['✓ Understanding your business','✓ Learning your services','✓ Creating customer responses','✓ Creating inbound call flow','✓ Creating outbound call flow'];
+  var box=document.getElementById('scriptsBuildingItems');box.innerHTML='';
+  var i=0;var timer=setInterval(function(){if(i<items.length){box.innerHTML+='<div>'+items[i]+'</div>';i++}else{clearInterval(timer)}},450);
+  fetch('/api/onboard-run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:document.getElementById('bizSiteInput')?document.getElementById('bizSiteInput').value.trim():''})})
+   .then(function(r){return r.json()}).then(function(d){
+    clearInterval(timer);w.style.display='none';
+    if(d.success){
+      ONB.script_in=d.script_in;ONB.script_out=d.script_out;
+      ta.value=d.script_in;to.value=d.script_out;
+      document.getElementById('inbReadyBadge').style.display='inline-block';
+      document.getElementById('outbReadyBadge').style.display='inline-block';
+      ST.done[2]=true;ST.done[3]=true;saveSetupState();renderSetup();
+    }
+   }).catch(function(){clearInterval(timer);w.style.display='none'});
+}
+function syncScriptForm(){
+  document.getElementById('kbHiddenInStep3').value=(document.getElementById('kbTextarea')||{value:''}).value||'{{ biz_info.knowledge_base or "" }}';
+  ST.done[3]=true;saveSetupState();
+}
+
+/* ── Tooltips ── */
+function toggleTip(el){var t=el.nextElementSibling;if(t&&t.classList.contains('tipbox')){t.style.display=(t.style.display==='block')?'none':'block'}}
+document.addEventListener('mouseover',function(e){var h=e.target.closest?e.target.closest('.helpq'):null;if(h){var t=h.nextElementSibling;if(t&&t.classList.contains('tipbox'))t.style.display='block'}});
+document.addEventListener('mouseout',function(e){var h=e.target.closest?e.target.closest('.helpq'):null;if(h){var t=h.nextElementSibling;if(t&&t.classList.contains('tipbox'))t.style.display='none'}});
+
+/* ── Help center: per-tab help + how-to topics ── */
+var HELP_TABS=[
+ {t:'Overview',what:'Your dashboard home — a snapshot of calls, appointments, leads, and campaign activity for your business.',how:'Just read it. Click any number or row to jump to that tab for details.',rec:'Check it daily to see how your AI employee is performing.',mistakes:'None — this is a read-only overview.'},
+ {t:'Agents',what:'Manage your AI employees (agents) — each has its own number, script, knowledge, and voice.',how:'Add an agent, pick its name and phone number, fill its script/knowledge, and save.',rec:'Start with one agent for your main number, then add more as you grow.',mistakes:'Creating multiple agents before finishing your main setup.'},
+ {t:'Calls',what:'See every call your AI handled — inbound and outbound — with outcomes, recordings, and transcripts.',how:'Browse the list, filter by outcome (Booked / Done / No Ans / VM), and open a call for details.',rec:'Review missed/no-answer calls weekly to improve your scripts.',mistakes:'Ignoring no-answer calls — those are lost leads.'},
+ {t:'Leads',what:'Upload and manage the leads your AI calls — names, phone numbers, sources, and campaign status.',how:'Upload a CSV or add leads manually, assign them to a campaign, and let your AI call them.',rec:'Start with 10-20 leads to test your outbound script before scaling.',mistakes:'Uploading duplicate numbers — your AI would call them twice.'},
+ {t:'SMS',what:'Customer text conversations with your AI — it replies automatically using your knowledge base.',how:'Read the threads and reply to any that need a human. Turn auto-replies on/off in Settings → Advanced → Calls & SMS.',rec:'Keep AI SMS replies ON so every text gets an instant answer.',mistakes:'Expecting SMS to work without a number assigned to the agent.'},
+ {t:'Settings',what:'Set up and customize your AI employee: business info, knowledge, scripts, voice, booking, calls & SMS, integrations, and security.',how:'Follow the 4 setup steps in order, then use Advanced Settings to customize anything else.',rec:'Start with your website — Diazites auto-fills everything from it.',mistakes:'Skipping the knowledge base — your AI will sound generic without facts.'},
+ {t:'Landing Page',what:'Your business's AI-powered landing page — where website visitors can interact with your AI or book.',how:'Generate it with AI, preview it, and share the link. Customize colors and text.',rec:'Let the AI generate it first, then tweak the wording.',mistakes:'Publishing before previewing on a phone.'},
+ {t:'Billing',what:'Your plan, minutes usage, payment method, and invoice history.',how:'Upgrade or change your plan here. Manage your trial and subscription.',rec:'Cancel before your trial ends if you don\'t want to be charged.',mistakes:'Forgetting to cancel — you won\'t be charged if you cancel during the trial.'},
+ {t:'Phone Numbers',what:'Buy and manage the phone numbers your AI employees use.',how:'Pick an available number, assign it to an agent, and it starts answering.',rec:'Your first number is included — assign it to your main agent.',mistakes:'Buying extra numbers before using your first one.'}
+];
+var HELP_TOPICS=[
+ {t:'How do I set up my AI employee?',what:'Give Diazites your website and it automatically builds your AI employee — knowledge base and call scripts included.',how:'On Step 1, enter your website URL and click SCAN WEBSITE. Review what was found, then continue through the steps.',rec:'Start with your website URL — everything else is auto-generated from it.',mistakes:'Skipping Step 1 — without business info your AI will sound generic.'},
+ {t:'How do I create an inbound script?',what:'The inbound script controls how your AI answers calls to your business.',how:'Diazites creates it automatically in Step 3 from your website + knowledge base. Edit it there if you want.',rec:'Let the AI generate it, then tweak wording to match your tone.',mistakes:'Writing a full sales pitch — keep it natural and conversational.'},
+ {t:'How do I create an outbound campaign?',what:'Outbound calls let your AI call prospects to follow up or book visits.',how:'The outbound script is auto-created in Step 3. Then upload leads on the Leads tab and start a campaign.',rec:'Include your opening line, what you offer, and the action you want.',mistakes:'Forgetting a callback number on voicemail messages.'},
+ {t:'How do I connect my calendar?',what:'Cal.com lets your AI book appointments live during calls.',how:'Open Advanced Settings → Booking, enter your cal.com username and event type.',rec:'Use a 30-min event for test drives and consultations.',mistakes:'Typing the username wrong — use the exact cal.com username.'},
+ {t:'How do I upload business information?',what:'Documents and URLs give your AI real facts to answer customer questions.',how:'In Step 2, upload PDFs/TXT/CSV or add a website URL.',rec:'Upload your menu or inventory so the AI can search it during calls.',mistakes:'Uploading images — supported formats are PDF, TXT, CSV, JSON, DOC.'},
+ {t:'How do I connect my CRM?',what:'The webhook sends new leads to your AI so it calls them back instantly.',how:'Advanced Settings → Integrations, generate a webhook key and paste the URL into your form/CRM.',rec:'Test with the "Send Test Lead" button after connecting.',mistakes:'Using the URL without the key header — the key is required.'},
+ {t:'How do I test my AI employee?',what:'You can call your number to hear the AI live, or send a test lead.',how:'Use the Calls tab for test calls, or "Send Test Lead" in Advanced Settings → Integrations.',rec:'Test on your real phone, not just the preview voices.',mistakes:'Testing before saving your scripts — save first, then test.'}
+];
+function openHelp(){document.getElementById('helpModal').style.display='block';renderHelpTopics('')}
+function closeHelp(){document.getElementById('helpModal').style.display='none'}
+function renderHelpTopics(q){
+  var el=document.getElementById('helpTopics');el.style.display='block';document.getElementById('helpArticle').style.display='none';
+  var html='<div class="text-[10px] font-bold uppercase mb-2" style="color:#a855f7">WHAT EACH TAB DOES</div>';
+  HELP_TABS.forEach(function(t){
+    html+='<div class="p-3 mb-2 rounded-lg cursor-pointer" style="background:#12121a;border:1px solid #252533;font-size:13px" onclick="showHelp(\'tab\','+HELP_TABS.indexOf(t)+')"><b>'+t.t+'</b> <span style="color:#7a7a8e">— '+t.what+'</span></div>';
+  });
+  var list=HELP_TOPICS.filter(function(h){return !q||h.t.toLowerCase().indexOf(q.toLowerCase())>=0});
+  html+='<div class="text-[10px] font-bold uppercase mt-4 mb-2" style="color:#a855f7">HOW-TO GUIDES</div>';
+  html+=(list.map(function(h,i){return '<div class="p-3 mb-2 rounded-lg cursor-pointer" style="background:#12121a;border:1px solid #252533;font-size:13px" onclick="showHelp(\'topic\','+i+')">'+h.t+'</div>'}).join('')||'<p class="text-xs" style="color:#7a7a8e">No results.</p>');
+  el.innerHTML=html;
+}
+function showHelp(kind,i){
+  var h=kind==='tab'?HELP_TABS[i]:HELP_TOPICS[i];
+  document.getElementById('helpTopics').style.display='none';
+  var a=document.getElementById('helpArticle');a.style.display='block';
+  a.innerHTML='<button type="button" onclick="renderHelpTopics(\'\')" class="btn-secondary text-xs mb-3" style="padding:4px 12px">← All help</button><h4 class="font-bold text-sm mb-3">'+(kind==='tab'?'Tab: ':'')+h.t+'</h4>'
+    +'<div class="mb-3"><div class="text-[10px] font-bold mb-1" style="color:#a855f7">WHAT IT DOES</div><p class="text-xs" style="color:#a0a0b8">'+h.what+'</p></div>'
+    +'<div class="mb-3"><div class="text-[10px] font-bold mb-1" style="color:#a855f7">HOW TO USE IT</div><p class="text-xs" style="color:#a0a0b8">'+h.how+'</p></div>'
+    +'<div class="mb-3"><div class="text-[10px] font-bold mb-1" style="color:#4ade80">RECOMMENDED</div><p class="text-xs" style="color:#a0a0b8">'+h.rec+'</p></div>'
+    +'<div class="mb-3"><div class="text-[10px] font-bold mb-1" style="color:#f87171">COMMON MISTAKES</div><p class="text-xs" style="color:#a0a0b8">'+h.mistakes+'</p></div>';
+}
+function filterHelp(v){renderHelpTopics(v)}
+
+/* ── Forwarding rows ── */
+var _forwardDests = {{ (biz_info.forward_destinations or '[]') | safe }};
+if (!_forwardDests || !_forwardDests.length) { _forwardDests=[{'label':'Manager','number':'{{ biz_info.forward_to or '' }}'}]; }
+function addForwardRow(d){
+  d=d||{label:'',number:''};
+  var row=document.createElement('div');row.className='flex gap-2 items-center';
+  row.innerHTML='<input type="text" placeholder="Who? (e.g. Manager, Sales, Support)" value="'+(d.label||'').replace(/"/g,'&quot;')+'" style="flex:0 0 38%;font-size:12px;padding:8px 10px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5" class="fd-label"><input type="text" placeholder="+1234567890" value="'+(d.number||'').replace(/"/g,'&quot;')+'" style="flex:1;font-size:12px;padding:8px 10px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5" class="fd-number"><button type="button" onclick="this.parentNode.remove()" style="background:none;border:none;color:#f87171;font-size:16px;cursor:pointer;padding:0 4px" title="Remove">✕</button>';
+  document.getElementById('forwardRows').appendChild(row);
+}
+function collectForwardDestinations(){
+  var out=[];
+  document.querySelectorAll('#forwardRows .fd-number').forEach(function(inp){
+    var num=inp.value.trim();if(!num)return;
+    var row=inp.closest('div');
+    out.push({label:row.querySelector('.fd-label').value.trim()||'Manager',number:num});
+  });
+  document.getElementById('forwardDestinations').value=JSON.stringify(out);
+}
+_forwardDests.forEach(function(d){addForwardRow(d)});
+
+/* ── Cal.com ── */
+function saveCalcomSettings(){
+  var username=document.getElementById('calUsernameInput').value.trim();
+  var slug=document.getElementById('calEventSlugInput').value;
+  var status=document.getElementById('calcomStatus');
+  var fd=new FormData();fd.append('username',username||'pablo-d-i2xmhr');fd.append('event_slug',slug);
+  status.classList.remove('hidden');status.textContent='⏳ Saving...';status.style.color='#c084fc';
+  fetch('/api/calcom/save-settings',{method:'POST',body:fd})
+   .then(function(r){return r.json()}).then(function(d){
+    if(d.success){status.textContent='✅ '+d.message;status.style.color='#4ade80';DZ_STEPDATA.s8.cal=1}
+    else{status.textContent='❌ '+(d.message||'Save failed');status.style.color='#ef4444'}
+   }).catch(function(){status.textContent='❌ Network error';status.style.color='#ef4444'});
+}
+function testBooking(){var u=document.getElementById('calUsernameInput')?document.getElementById('calUsernameInput').value.trim():'';if(!u){alert('Connect your calendar first (Advanced Settings → Booking).');return}window.open('https://cal.com/'+u+'/','_blank')}
+
+loadSetupState();renderSetup();
+</script>
 
   <!-- ======== TAB: LANDING PAGE ======== -->
   {% elif tab == 'landing' %}
