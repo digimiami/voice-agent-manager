@@ -1561,6 +1561,9 @@ def api_signup_stripe():
     email = data.get('email', '').strip()
     industry = data.get('industry', 'general')
     phone = data.get('phone', '').strip()
+    contact_name = data.get('contact_name', '').strip()
+    city = data.get('city', '').strip()
+    state = data.get('state', '').strip()
     plan = data.get('plan', 'pro')
     
     if not name:
@@ -1579,20 +1582,65 @@ def api_signup_stripe():
     price = price_map.get(plan, 197)
     
     # Create business with trial
+    business_address = f"{city}, {state}".strip(', ') if (city or state) else ''
     c.execute("""INSERT INTO businesses 
-        (id, name, industry, phone_number, script_template, knowledge_base,
-         plan, monthly_price, email, status, voice_id, created_at, subscription_status, trial_end)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'trial', 'rachel', datetime('now'), 'trial', datetime('now', '+3 days'))""",
-        (bid, name, industry, phone,
+        (id, name, contact_name, industry, phone_number, script_template, knowledge_base,
+         plan, monthly_price, email, status, voice_id, created_at, subscription_status, trial_end, business_address)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'trial', 'rachel', datetime('now'), 'trial', datetime('now', '+3 days'), ?)""",
+        (bid, name, contact_name, industry, phone,
          f"You are a professional employee of {name}. Help them book more clients. Keep responses under 30 seconds. You are a real person — never mention being AI, a robot, or software.",
          f"Industry: {industry}. Business: {name}.",
-         plan, price, email))
+         plan, price, email, business_address))
     
     c.execute("""INSERT INTO campaigns (id, business_id, status) VALUES (?, ?, 'idle')""", (cid, bid))
     db.commit()
     
-    # 🎁 Free first number with trial: provision assistant + number in the background
-    threading.Thread(target=provision_first_number, args=(bid,), daemon=True).start()
+    # Send registration confirmation email (username = Business ID)
+    try:
+        plan_label = {'starter': f'Starter (${price}/month)', 'pro': f'Professional (${price}/month)',
+                      'enterprise': 'Enterprise (Custom)', 'custom': 'Enterprise (Custom)'}.get(plan, plan)
+        trial_end_str = (datetime.now() + timedelta(days=3)).strftime('%B %d, %Y')
+        body = f"""Hi {contact_name or name},
+
+Your Diazites account is ready! Here is your registration information:
+
+Business Name: {name}
+Username (Business ID): {bid}
+Plan: {plan_label}
+Trial: 3-day free trial (ends {trial_end_str})
+Email: {email}
+Phone: {phone or '--'}
+Industry: {industry}
+Location: {business_address or '--'}
+
+Login: go to https://diazites.online/login and enter your Business ID.
+
+Welcome aboard — your AI voice employee is ready to start answering calls.
+-- The Diazites Team"""
+        send_email_via_smtp(email, '🎉 Welcome to Diazites — Your Registration Details', body)
+    except Exception as e:
+        print(f"Registration email error: {e}")
+    
+    # Search available local numbers for the chosen city/state
+    available_numbers = []
+    try:
+        from twilio_helper import search_available_numbers
+        nums, err = search_available_numbers(region=state or None, locality=(city or None), limit=8)
+        if err:
+            nums, err = search_available_numbers(region=state or None, limit=8)
+        if not err and nums:
+            for n in nums[:8]:
+                available_numbers.append({
+                    'phone_number': n.get('phone_number', ''),
+                    'locality': n.get('locality') or '',
+                    'region': n.get('region') or state or '',
+                    'friendly': n.get('phone_number', ''),
+                })
+    except Exception as e:
+        print(f"Number search error: {e}")
+    
+    # 🎁 Free first number with trial: provision assistant + number in the background (prioritize their state)
+    threading.Thread(target=provision_first_number, args=(bid, state or None), daemon=True).start()
     
     # Create Stripe checkout with 3-day trial
     try:
@@ -1603,6 +1651,7 @@ def api_signup_stripe():
                 'success': True,
                 'business_id': bid,
                 'checkout_url': None,
+                'numbers': available_numbers,
                 'message': '🎉 Business created! You have a 3-day free trial. Payments unavailable — contact support to set up billing.',
                 'trial_end': (datetime.now() + timedelta(days=3)).isoformat()
             })
@@ -1624,6 +1673,7 @@ def api_signup_stripe():
                 'success': True,
                 'business_id': bid,
                 'checkout_url': url,
+                'numbers': available_numbers,
                 'message': '🎉 Business created! Set up payment to start your 3-day free trial.',
                 'trial_end': (datetime.now() + timedelta(days=3)).isoformat()
             })
@@ -1632,6 +1682,7 @@ def api_signup_stripe():
                 'success': True,
                 'business_id': bid,
                 'checkout_url': None,
+                'numbers': available_numbers,
                 'message': '🎉 Business created! You have a 3-day free trial. Contact support to complete billing setup.',
                 'trial_end': (datetime.now() + timedelta(days=3)).isoformat()
             })
@@ -1644,6 +1695,37 @@ def api_signup_stripe():
             'message': '🎉 Business created! You have a 3-day free trial. Billing setup unavailable — contact support.',
             'trial_end': (datetime.now() + timedelta(days=3)).isoformat()
         })
+
+
+
+@app.route('/api/numbers/assign', methods=['POST'])
+def api_number_assign():
+    """Buy the chosen Twilio number and assign it to the new business."""
+    data = request.get_json(silent=True) or {}
+    bid = data.get('business_id', '').strip()
+    phone = data.get('phone_number', '').strip()
+    if not bid or not phone:
+        return jsonify({'success': False, 'error': 'business_id and phone_number are required'}), 400
+    db = get_db()
+    c = db.cursor()
+    biz = c.execute("SELECT * FROM businesses WHERE id = ?", (bid,)).fetchone()
+    if not biz:
+        db.close()
+        return jsonify({'success': False, 'error': 'Business not found'}), 404
+    from twilio_helper import buy_twilio_number, register_with_vapi
+    tw, err = buy_twilio_number(phone)
+    if err:
+        db.close()
+        return jsonify({'success': False, 'error': f'Purchase failed: {err}'}), 500
+    bought = tw.get('phone_number', phone)
+    vapi_ok = False
+    if biz['vapi_assistant_id']:
+        _, verr = register_with_vapi(bought, biz['vapi_assistant_id'])
+        vapi_ok = not verr
+    c.execute("UPDATE businesses SET phone_number = ?, number_free_trial = 1 WHERE id = ?", (bought, bid))
+    db.commit()
+    db.close()
+    return jsonify({'success': True, 'phone_number': bought, 'registered_with_vapi': vapi_ok})
 
 
 ONBOARD_HTML = """<!DOCTYPE html>

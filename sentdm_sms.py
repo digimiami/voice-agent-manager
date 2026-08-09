@@ -22,7 +22,7 @@ def send_sms(to_phone, message, business_id=None, lead_id=None):
 
 def send_welcome_sms(phone, name, bid, host_url):
     """Send welcome SMS with Business ID."""
-    msg = f"🎉 Welcome to Diazites, {name}! ✅ Your Business ID: {bid}. Login at {host_url}. 3-day free trial started!"
+    msg = f"🎉 Welcome to Diazites, {name}! ✅ Your User ID: {bid}. Login at {host_url}. 3-day free trial started!"
     return send_sms(phone, msg, business_id=bid)
 
 
