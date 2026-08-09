@@ -1474,6 +1474,19 @@ setTimeout(refreshMonitor, 500);
       </div>
     </div>
     <div class="card">
+      <h3 class="font-bold mb-3">📞 Call Forwarding</h3>
+      <form method="POST" action="/update-forwarding">
+        <p class="text-xs text-[#7a7a8e] mb-3">When a caller asks to speak with a <strong>manager, owner, or supervisor</strong>, the AI says "one moment" and <strong>forwards the call</strong> to the number below.</p>
+        <label class="flex items-center gap-2 cursor-pointer mb-2" style="padding:10px 14px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
+          <input type="checkbox" name="forwarding_enabled" value="1" {% if biz_info.call_forwarding %}checked{% endif %} style="width:18px;height:18px;accent-color:#c084fc">
+          <span class="text-sm">Enable call forwarding</span>
+        </label>
+        <input type="text" name="forward_to" placeholder="+1234567890 — manager's phone" value="{{ biz_info.forward_to or '' }}" class="mb-2">
+        <select name="forward_when" class="mb-2"><option value="always" {% if biz_info.forward_when == 'always' %}selected{% endif %}>Always</option><option value="hours" {% if biz_info.forward_when == 'hours' %}selected{% endif %}>Business Hours</option><option value="after" {% if biz_info.forward_when == 'after' %}selected{% endif %}>After Hours</option></select>
+        <button type="submit" class="btn-primary text-xs w-full">💾 Save Forwarding</button>
+      </form>
+    </div>
+    <div class="card">
       <h3 class="font-bold mb-3">🤖 AI SMS Replies</h3>
       <form method="POST" action="/update-sms-ai">
         <p class="text-xs text-[#7a7a8e] mb-3">When a customer texts this number, the AI replies automatically using your knowledge base — answers questions, schedules appointments, and sends confirmations.</p>
@@ -1514,19 +1527,6 @@ setTimeout(refreshMonitor, 500);
           <div><label class="text-xs text-[#7a7a8e] block mb-1">⚡ Speed</label><div class="flex items-center gap-2"><input type="range" name="voice_speed" min="0.7" max="2.0" step="0.05" value="{{ biz_info.voice_speed or 1.15 }}" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)+'x'" class="flex-1"><output class="text-sm font-bold text-[#4ade80]" style="width:48px;text-align:center">{{ '%.2f'|format(biz_info.voice_speed|float if biz_info.voice_speed else 1.15) }}x</output></div></div>
         </div>
         <button type="submit" class="btn-primary text-xs w-full">💾 Save Voice Settings</button>
-      </form>
-    </div>
-    <div class="card">
-      <h3 class="font-bold mb-3">📞 Call Transfer to Manager</h3>
-      <form method="POST" action="/update-forwarding">
-        <p class="text-xs text-[#7a7a8e] mb-3">When a caller asks to speak with a <strong>manager, owner, or supervisor</strong>, the AI says "one moment" and <strong>transfers the call</strong> to the number below.</p>
-        <label class="flex items-center gap-2 cursor-pointer mb-2" style="padding:10px 14px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
-          <input type="checkbox" name="forwarding_enabled" value="1" {% if biz_info.call_forwarding %}checked{% endif %} style="width:18px;height:18px;accent-color:#c084fc">
-          <span class="text-sm">Enable call transfer</span>
-        </label>
-        <input type="text" name="forward_to" placeholder="+1234567890 — manager's phone" value="{{ biz_info.forward_to or '' }}" class="mb-2">
-        <select name="forward_when" class="mb-2"><option value="always" {% if biz_info.forward_when == 'always' %}selected{% endif %}>Always</option><option value="hours" {% if biz_info.forward_when == 'hours' %}selected{% endif %}>Business Hours</option><option value="after" {% if biz_info.forward_when == 'after' %}selected{% endif %}>After Hours</option></select>
-        <button type="submit" class="btn-primary text-xs w-full">💾 Save Transfer Settings</button>
       </form>
     </div>
     <div class="card">
