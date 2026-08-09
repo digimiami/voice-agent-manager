@@ -951,7 +951,7 @@ LEGAL_PAGES = {
 <h3 class="text-lg font-bold mt-6 mb-2">3. Data Storage & Security</h3>
 <p class="mb-3">Your data is stored securely with encryption at rest and in transit. We retain call transcripts for up to 90 days unless you request deletion.</p>
 <h3 class="text-lg font-bold mt-6 mb-2">4. Third-Party Services</h3>
-<p class="mb-3">We use Stripe for payment processing, VAPI for voice agent infrastructure, and Eleven Labs for text-to-speech. Each service has its own privacy policy governing data handling.</p>
+<p class="mb-3">We use Stripe for payment processing, Eleven Labs for text-to-speech, and leading voice-infrastructure partners to power our AI calling features. Each service has its own privacy policy governing data handling.</p>
 <h3 class="text-lg font-bold mt-6 mb-2">5. Your Rights</h3>
 <p class="mb-3">You can request access, correction, or deletion of your data at any time by contacting support.</p>
 <p class="mt-6"><a href="/" class="text-[#818cf8] hover:text-[#a855f7]">← Back to Home</a></p>
@@ -2202,7 +2202,7 @@ def api_agent_buy_number():
     assistant_id = agent['vapi_assistant_id']
     if not assistant_id:
         db.close()
-        return jsonify({'success': False, 'error': 'Agent has no VAPI assistant yet. Save the agent first.'}), 400
+        return jsonify({'success': False, 'error': 'Agent is not set up to make calls yet. Save the agent first.'}), 400
 
     # Check they haven't already got a number
     if agent['phone_number']:
@@ -2240,7 +2240,7 @@ def api_agent_buy_number():
     vapi_result, error = register_with_vapi(bought_number, assistant_id)
     if error:
         db.close()
-        return jsonify({'success': False, 'error': f'Bought {bought_number} but Vapi registration failed: {error}'}), 500
+        return jsonify({'success': False, 'error': f'Number {bought_number} was assigned but activation failed: {error}'}), 500
     vapi_phone_id = vapi_result.get('id', '')
 
     c.execute("UPDATE agents SET phone_number=?, vapi_phone_id=? WHERE id=?", (bought_number, vapi_phone_id, aid))
@@ -4072,7 +4072,7 @@ def _place_lead_call(phone, name, biz_id, source):
         call_data = json.loads(r.stdout or "{}")
         call_id = call_data.get("id", "")
         if not call_id:
-            return jsonify({"success": False, "error": f"VAPI: {call_data.get('message','failed')}"}), 502
+            return jsonify({"success": False, "error": f"Call failed: {call_data.get('message','failed')}"}), 502
         _lead_call_cooldown[phone] = now
         db = get_db()
         try:
@@ -4113,7 +4113,7 @@ def api_outbound_call():
             "business_name": str(data.get("business_name") or biz["name"] or "your business")}
     call_id = make_vapi_call(lead, dict(biz), biz["vapi_assistant_id"], biz["vapi_phone_id"], 0)
     if not call_id:
-        return jsonify({"success": False, "error": "VAPI call failed to start"}), 502
+        return jsonify({"success": False, "error": "Call failed to start"}), 502
     return jsonify({"success": True, "call_id": call_id, "business": biz_id, "phone": phone})
 
 

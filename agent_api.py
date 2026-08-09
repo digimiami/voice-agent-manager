@@ -1170,10 +1170,10 @@ def api_provision_phone(api_key, bid):
             assistant_id = assistant.get('id')
             if not assistant_id:
                 db.close()
-                return jsonify({'error': f'Vapi assistant creation failed: {result.stdout[:300]}'}), 500
+                return jsonify({'error': f'Voice agent setup failed: {result.stdout[:300]}'}), 500
         except Exception as e:
             db.close()
-            return jsonify({'error': f'Vapi API error: {str(e)}'}), 500
+            return jsonify({'error': f'Voice agent API error: {str(e)}'}), 500
         assistant_created = True
         c.execute("UPDATE businesses SET vapi_assistant_id=? WHERE id=?", (assistant_id, bid))
         db.commit()
@@ -1282,9 +1282,9 @@ def api_outbound_call(api_key, bid):
     phone_id = biz[2]
 
     if not assistant_id:
-        return jsonify({'error': 'No Vapi assistant configured. Provision a phone number first.'}), 400
+        return jsonify({'error': 'No voice agent configured. Assign a phone number first.'}), 400
     if not phone_id:
-        return jsonify({'error': 'No Vapi phone number assigned. Provision a phone number first.'}), 400
+        return jsonify({'error': 'No phone number assigned. Assign a phone number first.'}), 400
 
     body = {
         "assistantId": assistant_id,
@@ -1306,10 +1306,10 @@ def api_outbound_call(api_key, bid):
         vapi_resp = py_json.loads(result.stdout)
         call_id = vapi_resp.get('id')
         if not call_id:
-            return jsonify({'error': f'Vapi call failed: {result.stdout[:300]}'}), 500
+            return jsonify({'error': f'Call failed: {result.stdout[:300]}'}), 500
         status = vapi_resp.get('status', 'queued')
     except Exception as e:
-        return jsonify({'error': f'Vapi API error: {str(e)}'}), 500
+        return jsonify({'error': f'Voice agent API error: {str(e)}'}), 500
 
     return jsonify({
         'success': True,

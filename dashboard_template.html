@@ -1384,7 +1384,7 @@ setTimeout(refreshMonitor, 500);
         <div class="grid md:grid-cols-3 gap-4 mb-4">
           <div>
             <label class="text-xs font-semibold text-[#c084fc] block mb-2">📞 Inbound Script</label>
-            <p class="text-xs text-[#7a7a8e] mb-2">What the AI says when customers <strong>call you</strong>. Saves to Vapi automatically.</p>
+            <p class="text-xs text-[#7a7a8e] mb-2">What the AI says when customers <strong>call you</strong>. Saves automatically.</p>
             <textarea name="script" rows="10" class="w-full text-xs" id="scriptTextarea">{{ biz_info.script_template or '' }}</textarea>
           </div>
           <div>
@@ -1394,11 +1394,11 @@ setTimeout(refreshMonitor, 500);
           </div>
           <div>
             <label class="text-xs font-semibold text-[#c084fc] block mb-2">📚 Knowledge Base</label>
-            <p class="text-xs text-[#7a7a8e] mb-2">Facts & info the AI references during calls. <strong>Saves to Vapi automatically.</strong></p>
+            <p class="text-xs text-[#7a7a8e] mb-2">Facts & info the AI references during calls. <strong>Saves automatically.</strong></p>
             <textarea name="knowledge_base" rows="10" class="w-full text-xs" id="kbTextarea">{{ biz_info.knowledge_base or '' }}</textarea>
           </div>
         </div>
-        <!-- Vapi-specific settings row -->
+        <!-- Call settings row -->
         <div class="grid md:grid-cols-3 gap-4 mb-4 p-4 rounded-lg" style="background:rgba(168,85,247,0.05);border:1px solid rgba(168,85,247,0.15)">
           <div>
             <label class="text-xs font-semibold text-[#c084fc] block mb-1">🗣️ First Message (inbound) <button type="button" onclick="generateFirstMessage('inbound')" class="text-[10px] px-2 py-0.5 rounded ml-1 align-middle" style="background:#1a1a28;border:1px solid #c084fc55;color:#c084fc" id="genFmInboundBtn">🤖 AI Generate</button></label>
@@ -1432,10 +1432,10 @@ setTimeout(refreshMonitor, 500);
           <button type="button" onclick="generateKB('outbound')" id="genKBBtn" class="btn-secondary text-xs" style="padding:6px 14px">🤖 AI Generate KB</button>
           <button type="button" onclick="generateScript('inbound')" id="genInboundBtn" class="btn-secondary text-xs" style="padding:6px 14px">📞 AI Generate Inbound Script</button>
           <button type="button" onclick="generateScript('outbound')" id="genOutboundBtn" class="btn-secondary text-xs" style="padding:6px 14px">📢 AI Generate Outbound Script</button>
-          <button type="submit" class="btn-primary text-xs" style="padding:6px 20px">💾 Save All → Vapi</button>
+          <button type="submit" class="btn-primary text-xs" style="padding:6px 20px">💾 Save All</button>
           <span id="kbGenStatus" class="text-xs"></span>
         </div>
-        <div id="vapiSyncStatus" class="text-xs text-green-400 hidden mt-2">✅ Synced to Vapi assistant</div>
+        <div id="syncStatus" class="text-xs text-green-400 hidden mt-2">✅ Synced — your changes are live</div>
       </form>
     </div>
     <div class="card md:col-span-2">
