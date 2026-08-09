@@ -6594,13 +6594,15 @@ def update_script():
     return redirect('/?tab=settings')
 
 def fetch_vapi_assistant(aid):
-    """GET current VAPI assistant config (used to preserve model/voice on PATCH)."""
-    import urllib.request
-    req = urllib.request.Request(
-        f"{VAPI_BASE}/assistant/{aid}",
-        headers={"Authorization": f"Bearer {VAPI_API_KEY}"})
-    with urllib.request.urlopen(req, timeout=15) as r:
-        return json.loads(r.read())
+    """GET current VAPI assistant config (used to preserve model/voice on PATCH).
+    Uses curl subprocess — urllib gets HTTP 403 from the VAPI API in this env."""
+    import subprocess
+    r = subprocess.run(["curl", "-s", f"{VAPI_BASE}/assistant/{aid}",
+        "-H", f"Authorization: Bearer {VAPI_API_KEY}"], capture_output=True, text=True, timeout=15)
+    try:
+        return json.loads(r.stdout)
+    except Exception:
+        return {"error": r.stdout[:200]}
 
 
 def build_model_patch(cur_assistant, full_prompt, temperature=None, max_tokens=None):
@@ -6649,11 +6651,21 @@ def patch_vapi_assistant(aid, payload):
 TRANSFER_TAG = "[TRANSFER-INSTRUCTION]"
 
 
-def add_transfer_to_assistant(aid, forward_to):
+def add_transfer_to_assistant(aid, forward_to, destinations=None):
     """Add/remove the transferCall tool + transfer instruction on a VAPI assistant.
-    When forward_to is set, the agent transfers callers who ask for a manager/owner.
+    forward_to: single destination number (legacy) OR list of dicts {label, number}.
+    destinations: optional explicit list of {label, number} — supports forwarding
+    to MULTIPLE people/depts. The prompt lists who's reachable so the model picks
+    the right destination (Manager, Sales, Support, …).
     Preserves the assistant's model provider, voice, transcriber, and analysis plan.
     """
+    if isinstance(forward_to, (list, tuple)):
+        destinations = [d if isinstance(d, dict) else {'label': 'Manager', 'number': d} for d in forward_to]
+        forward_to = destinations[0]['number'] if destinations else ''
+    elif destinations is None and forward_to:
+        destinations = [{'label': 'Manager', 'number': forward_to}]
+    else:
+        destinations = [d for d in (destinations or []) if d.get('number')]
     try:
         cur = fetch_vapi_assistant(aid)
     except Exception:
@@ -6678,18 +6690,29 @@ def add_transfer_to_assistant(aid, forward_to):
     if TRANSFER_TAG in prompt:
         prompt = prompt.split(TRANSFER_TAG)[0].rstrip()
 
-    if forward_to:
-        prompt = (prompt.rstrip() + "\n\n" + TRANSFER_TAG +
-                  "\nIf the caller asks to speak with a manager, owner, supervisor, or asks to be transferred, "
-                  "say \"Of course, one moment please\" and immediately use the transferCall function to "
-                  f"transfer the call to {forward_to}. Do not transfer for sales calls or wrong numbers.\n").strip()
+    if destinations:
+        dest_list = ", ".join(f"{d.get('label', 'Manager')} ({d['number']})" for d in destinations)
+        if len(destinations) == 1:
+            d0 = destinations[0]
+            prompt = (prompt.rstrip() + "\n\n" + TRANSFER_TAG +
+                      "\nIf the caller asks to speak with a manager, owner, supervisor, or asks to be transferred, "
+                      "say \"Of course, one moment please\" and immediately use the transferCall function to "
+                      f"transfer the call to {d0['number']}. Do not transfer for sales calls or wrong numbers.\n").strip()
+        else:
+            prompt = (prompt.rstrip() + "\n\n" + TRANSFER_TAG +
+                      "\nIf the caller asks to speak with a specific person or department (manager, owner, supervisor, "
+                      "sales, support, etc.) or asks to be transferred, say \"Of course, one moment please\" and use the "
+                      "transferCall function to transfer to the RIGHT person. Available destinations: "
+                      f"{dest_list}. Match the caller's request to the closest destination. "
+                      "Do not transfer for sales calls or wrong numbers.\n").strip()
     else:
         prompt = prompt.strip()
 
     # ── tools ──
     tools = [t for t in (model.get("tools") or []) if t.get("type") != "transferCall"]
-    if forward_to:
-        tools.append({"type": "transferCall", "destinations": [{"type": "number", "number": forward_to}]})
+    if destinations:
+        tools.append({"type": "transferCall",
+                      "destinations": [{"type": "number", "number": d['number']} for d in destinations]})
 
     model_patch = {
         "provider": provider,
@@ -6959,23 +6982,41 @@ def update_forwarding():
     db = get_db()
     c = db.cursor()
     enabled = 1 if request.form.get('forwarding_enabled') else 0
-    forward_to = request.form.get('forward_to','')
-    c.execute("UPDATE businesses SET call_forwarding = ?, forward_to = ?, forward_when = ? WHERE id = ?",
-        (enabled, forward_to, request.form.get('forward_when','after-hours'), bid))
+    # Multiple destinations: JSON array of {label, number} (empty label -> 'Manager')
+    raw_dest = request.form.get('destinations', '')
+    try:
+        dests = json.loads(raw_dest) if raw_dest else []
+        dests = [{'label': (d.get('label') or 'Manager').strip()[:40], 'number': (d.get('number') or '').strip()}
+                 for d in dests if isinstance(d, dict) and (d.get('number') or '').strip()]
+    except Exception:
+        dests = []
+    forward_to = dests[0]['number'] if dests else (request.form.get('forward_to', '') or '').strip()
+    if not dests and forward_to:
+        dests = [{'label': 'Manager', 'number': forward_to}]
+    c.execute("UPDATE businesses SET call_forwarding = ?, forward_to = ?, forward_when = ?, forward_destinations = ? WHERE id = ?",
+        (enabled, forward_to, request.form.get('forward_when','after-hours'), json.dumps(dests), bid))
     db.commit()
-    # Sync transfer-to-manager tool + instruction to the VAPI assistant
+    # Sync transfer tool + instruction to the VAPI assistant (all destinations)
     c.execute("SELECT vapi_assistant_id FROM businesses WHERE id = ?", (bid,))
     row = c.fetchone()
     db.close()
-    if row and row['vapi_assistant_id'] and forward_to:
-        result = add_transfer_to_assistant(row['vapi_assistant_id'], forward_to)
+    if row and row['vapi_assistant_id'] and dests and enabled:
+        result = add_transfer_to_assistant(row['vapi_assistant_id'], forward_to, destinations=dests)
         if result.get('error') or 'statusCode' in result:
             flash('⚠️ Forwarding saved, but Vapi transfer sync failed: ' + str(result.get('message') or result.get('error')), 'warning')
         else:
-            flash('✅ Forwarding saved — callers asking for a manager now transfer to ' + forward_to, 'success')
+            names = ", ".join(d['label'] for d in dests)
+            flash(f'✅ Forwarding saved — callers can now be transferred to: {names}', 'success')
+    elif row and row['vapi_assistant_id'] and (not dests or not enabled):
+        # forwarding disabled -> strip the transfer tool
+        result = add_transfer_to_assistant(row['vapi_assistant_id'], '')
+        if not result.get('error') and 'statusCode' not in result:
+            flash('✅ Forwarding disabled — transfers removed from your AI agent.', 'success')
+        else:
+            flash('⚠️ Forwarding saved, but Vapi sync failed: ' + str(result.get('message') or result.get('error')), 'warning')
     else:
         flash('✅ Forwarding updated!', 'success')
-    return redirect('/?tab=forwarding')
+    return redirect('/?tab=settings')
 
 @app.route('/update-denoise', methods=['POST'])
 @login_required

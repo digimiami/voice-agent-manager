@@ -1475,17 +1475,44 @@ setTimeout(refreshMonitor, 500);
     </div>
     <div class="card">
       <h3 class="font-bold mb-3">📞 Call Forwarding</h3>
-      <form method="POST" action="/update-forwarding">
-        <p class="text-xs text-[#7a7a8e] mb-3">When a caller asks to speak with a <strong>manager, owner, or supervisor</strong>, the AI says "one moment" and <strong>forwards the call</strong> to the number below.</p>
-        <label class="flex items-center gap-2 cursor-pointer mb-2" style="padding:10px 14px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
+      <form method="POST" action="/update-forwarding" onsubmit="collectForwardDestinations()">
+        <p class="text-xs text-[#7a7a8e] mb-3">Add the people your AI agent can <strong>transfer calls to</strong>. When a caller asks for a manager, sales, support, or anyone specific, the AI picks the right person and forwards the call.</p>
+        <label class="flex items-center gap-2 cursor-pointer mb-3" style="padding:10px 14px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
           <input type="checkbox" name="forwarding_enabled" value="1" {% if biz_info.call_forwarding %}checked{% endif %} style="width:18px;height:18px;accent-color:#c084fc">
           <span class="text-sm">Enable call forwarding</span>
         </label>
-        <input type="text" name="forward_to" placeholder="+1234567890 — manager's phone" value="{{ biz_info.forward_to or '' }}" class="mb-2">
-        <select name="forward_when" class="mb-2"><option value="always" {% if biz_info.forward_when == 'always' %}selected{% endif %}>Always</option><option value="hours" {% if biz_info.forward_when == 'hours' %}selected{% endif %}>Business Hours</option><option value="after" {% if biz_info.forward_when == 'after' %}selected{% endif %}>After Hours</option></select>
-        <button type="submit" class="btn-primary text-xs w-full">💾 Save Forwarding</button>
+        <div id="forwardRows" class="space-y-2 mb-2"></div>
+        <button type="button" onclick="addForwardRow()" class="btn-secondary text-xs" style="padding:5px 14px">➕ Add another person</button>
+        <input type="hidden" name="destinations" id="forwardDestinations" value="">
+        <div class="mt-3"><button type="submit" class="btn-primary text-xs w-full">💾 Save Forwarding</button></div>
       </form>
     </div>
+    <script>
+    var _forwardDests = {{ (biz_info.forward_destinations or '[]') | safe }};
+    if (!_forwardDests || !_forwardDests.length) {
+      _forwardDests = [{'label': 'Manager', 'number': '{{ biz_info.forward_to or '' }}'}];
+    }
+    function addForwardRow(d){
+      d = d || {label:'', number:''};
+      var row = document.createElement('div');
+      row.className = 'flex gap-2 items-center';
+      row.innerHTML = '<input type="text" placeholder="Who? (e.g. Manager, Sales, Support)" value="' + (d.label||'').replace(/"/g,'&quot;') + '" style="flex:0 0 38%;font-size:12px;padding:8px 10px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5" class="fd-label">' +
+        '<input type="text" placeholder="+1234567890" value="' + (d.number||'').replace(/"/g,'&quot;') + '" style="flex:1;font-size:12px;padding:8px 10px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5" class="fd-number">' +
+        '<button type="button" onclick="this.parentNode.remove()" style="background:none;border:none;color:#f87171;font-size:16px;cursor:pointer;padding:0 4px" title="Remove">✕</button>';
+      document.getElementById('forwardRows').appendChild(row);
+    }
+    function collectForwardDestinations(){
+      var out = [];
+      document.querySelectorAll('#forwardRows .fd-number').forEach(function(inp){
+        var num = inp.value.trim();
+        if (!num) return;
+        var row = inp.closest('div');
+        out.push({label: row.querySelector('.fd-label').value.trim() || 'Manager', number: num});
+      });
+      document.getElementById('forwardDestinations').value = JSON.stringify(out);
+    }
+    _forwardDests.forEach(function(d){ addForwardRow(d); });
+    </script>
     <div class="card">
       <h3 class="font-bold mb-3">🤖 AI SMS Replies</h3>
       <form method="POST" action="/update-sms-ai">
