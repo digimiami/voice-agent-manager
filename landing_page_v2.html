@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="/static/landing_tailwind.css">
 <style>
 * { font-family: 'Inter', sans-serif; }
 body { background: #07070d; color: #fff; }
@@ -361,7 +361,7 @@ Homeowner called about storm damage. AI captured the address, asked qualifying q
 </div>
 </div>
 <div class="text-center">
-<button onclick="playDemo(this,'onwK4e9ZLuTAKqWW03F9','Hey, thanks for calling — this is Mike over at Westside Motors. So you're looking at the Tahoe, the black 2024? Yeah, let me pull that up for you real quick... Okay, I've got it here. Yeah, that one's still available. Are you looking to come by today? I can have it cleaned up and ready for a test drive whenever you get here.')" class="px-8 py-4 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 transition">
+<button onclick="playDemo(this,'onwK4e9ZLuTAKqWW03F9','Hey, thanks for calling — this is Mike over at Westside Motors. So you\'re looking at the Tahoe, the black 2024? Yeah, let me pull that up for you real quick... Okay, I\'ve got it here. Yeah, that one\'s still available. Are you looking to come by today? I can have it cleaned up and ready for a test drive whenever you get here.')" class="px-8 py-4 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 transition">
 ▶️ Hear the Call
 </button>
 </div>
@@ -949,7 +949,7 @@ function playLiveCall(btn) {
     btn.innerHTML = orig; return;
   }
   function fallback() {
-    playDemo(btn, 'onwK4e9ZLuTAKqWW03F9', 'Hey, thanks for calling — this is Mike over at Westside Motors. So you're looking at the Tahoe, the black 2024? Yeah, let me pull that up for you real quick... Okay, I've got it here. Yeah, that one's still available. Are you looking to come by today? I can have it cleaned up and ready for a test drive whenever you get here.');
+    playDemo(btn, 'onwK4e9ZLuTAKqWW03F9', 'Hey, thanks for calling — this is Mike over at Westside Motors. So you\'re looking at the Tahoe, the black 2024? Yeah, let me pull that up for you real quick... Okay, I\'ve got it here. Yeah, that one\'s still available. Are you looking to come by today? I can have it cleaned up and ready for a test drive whenever you get here.');
     btn.setAttribute('data-orig', orig);
   }
   var a = window._liveAud = new Audio('/sample-call?t=' + Date.now());

@@ -8934,7 +8934,7 @@ def send_email_via_smtp(to, subject, body):
         if key:
             payload = {"to": to, "subject": subject, "text": body}
             req = urllib.request.Request(
-                "https://api.agentmail.to/v0/inboxes/aiworkers@agentmail.to/messages/send",
+                "https://api.agentmail.to/v0/inboxes/diazites@agentmail.to/messages/send",
                 data=json.dumps(payload).encode(),
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
                          "User-Agent": "DiazitesAffiliate/1.0"},
