@@ -1384,7 +1384,8 @@ setTimeout(refreshMonitor, 500);
       <div class="mb-4" style="padding:12px 14px;border-radius:10px;background:rgba(74,222,128,0.04);border:1px solid rgba(74,222,128,0.15)">
         <label class="text-xs font-semibold text-[#4ade80] block mb-1">🌐 Business Website URL <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
         <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Paste your website (e.g. https://www.yourbusiness.com) and the AI reads it to write scripts and knowledge base with REAL facts — hours, services, prices — instead of placeholders. Works best on simple sites; leave empty to use templates.</div>
-        <input type="text" id="genUrlInput" placeholder="e.g. https://www.brucknerautosales.com" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
+        <input type="text" id="genUrlInput" placeholder="e.g. https://www.brucknerautosales.com" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px" oninput="clearTimeout(this._t);this._t=setTimeout(function(){urlScrollGen()},400)">
+        <div class="text-[10px] mt-1" style="color:#5c5c70">⬇ When you add a URL, we scroll you down to the Script &amp; Knowledge Base below — the AI uses your website to generate real content.</div>
       </div>
       <div class="flex gap-2 items-center flex-wrap">
         <button type="button" onclick="generateKB('outbound')" id="genKBBtn" class="btn-secondary text-xs" style="padding:6px 14px">🤖 AI Generate KB</button><span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8;font-size:11px">❓</span><span class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0;width:100%">Writes your knowledge base automatically using your business type + website URL (if added).</span>
@@ -1395,7 +1396,7 @@ setTimeout(refreshMonitor, 500);
       </div>
       <div id="syncStatus" class="text-xs text-green-400 hidden mt-2">✅ Synced — your changes are live</div>
     </div>
-    <div class="card md:col-span-2">
+    <div class="card md:col-span-2" id="scriptKbCard">
       <h3 class="font-bold mb-4">🎙️ Script & Knowledge Base</h3>
       <form method="POST" action="/update-script" id="scriptForm">
         <div class="grid md:grid-cols-3 gap-4 mb-4">
@@ -3252,6 +3253,16 @@ document.addEventListener('click',function(e){if(e.target&&e.target.classList.co
 if(document.getElementById('browseResults'))setTimeout(browseNumbers,500);
 // Knowledge Base / Script generators (Settings tab) — optional business URL makes output real
 function genUrlVal(){var el=document.getElementById('genUrlInput');return el?el.value.trim():''}
+function urlScrollGen(){
+  var el=document.getElementById('genUrlInput');
+  if(!el||!el.value.trim())return;
+  var card=document.getElementById('scriptKbCard');
+  if(!card)return;
+  card.scrollIntoView({behavior:'smooth',block:'start'});
+  card.style.transition='box-shadow .6s';
+  card.style.boxShadow='0 0 0 2px rgba(168,85,247,.55)';
+  setTimeout(function(){card.style.boxShadow=''},1800);
+}
 function toggleTip(el){var t=el.nextElementSibling;if(t&&t.classList.contains('tipbox')){t.style.display=(t.style.display==='block')?'none':'block'}}
 document.addEventListener('mouseover',function(e){var h=e.target.closest?e.target.closest('.helpq'):null;if(h){var t=h.nextElementSibling;if(t&&t.classList.contains('tipbox'))t.style.display='block'}});
 document.addEventListener('mouseout',function(e){var h=e.target.closest?e.target.closest('.helpq'):null;if(h){var t=h.nextElementSibling;if(t&&t.classList.contains('tipbox'))t.style.display='none'}});
