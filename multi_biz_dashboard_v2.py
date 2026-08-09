@@ -4791,10 +4791,16 @@ FAQ:
 @app.route('/api/generate-kb', methods=['POST'])
 @login_required
 def api_generate_kb():
-    """Generate knowledge base content via templates or AI."""
+    """Generate knowledge base OR full call script via AI (Venice) — optionally from a business URL.
+
+    Payload: {method:'venice', kind:'kb'|'script', type:'inbound'|'outbound', url:'https://...'}
+    kind='kb'     -> knowledge base content (fills the KB textarea)
+    kind='script' -> complete call script for inbound or outbound (fills the matching script textarea)
+    url provided  -> the AI reads the live website first, so output is business-specific.
+    """
     data = request.get_json(silent=True) or {}
     method = data.get('method', 'ai')
-    
+
     # Method: AI via Venice (outbound or inbound)
     if method in ('venice', 'ai'):
         kb_type = data.get('type', 'outbound')
@@ -4818,19 +4824,56 @@ def api_generate_kb():
         
         if api_key and method == 'venice':
             try:
-                if kb_type == 'inbound':
-                    sys_p = "You write concise, practical knowledge base content for AI voice assistants handling INCOMING calls."
-                    usr_p = f"""Write a knowledge base for an AI answering incoming calls for "{biz_name}" in {industry}. Include: business info, common questions, hours, pricing ranges, booking process, escalation. 3-5 paragraphs plain English."""
+                kind = data.get('kind', 'kb')
+                # Optional: fetch the business website so the AI generates real content
+                site_text = ''
+                site_url = (data.get('url') or '').strip()
+                if site_url:
+                    try:
+                        r_site = requests.get(
+                            site_url if site_url.startswith('http') else 'https://' + site_url,
+                            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'},
+                            timeout=20)
+                        import re as _re
+                        site_text = _re.sub(r'<script[\s\S]*?</script>|<style[\s\S]*?</style>', ' ', r_site.text)
+                        site_text = _re.sub(r'<[^>]+>', ' ', site_text)
+                        site_text = _re.sub(r'\s+', ' ', site_text).strip()[:6000]
+                    except Exception as _e:
+                        site_text = ''
+                site_block = f"\n\nBUSINESS WEBSITE CONTENT (use ONLY this for facts — never invent details not found here):\n{site_text}" if site_text else ""
+
+                if kind == 'script':
+                    if kb_type == 'inbound':
+                        sys_p = "You are an expert call-script writer. Write a complete, natural INBOUND call script for a dealership-style AI voice agent that answers the phone."
+                        usr_p = (f"Write a complete inbound call script for \"{biz_name}\" ({industry}). Include: ROLE, PERSONALITY, OPENING greeting, "
+                                 f"how to understand the caller's need, product/service info, pricing guidance, appointment booking, objection handling, "
+                                 f"call-ending rules, and HARD RULES (never reveal being AI, never invent facts, never guarantee financing/approval). "
+                                 f"Format with clear section headers. 400-700 words plain English.{site_block}")
+                    else:
+                        sys_p = "You are an expert outbound sales call-script writer. Write a complete, natural OUTBOUND call script for an AI that CALLS prospects/leads on behalf of a business."
+                        usr_p = (f"Write a complete outbound call script for \"{biz_name}\" ({industry}) — an AI calling prospects. Include: ROLE, OPENING (introduce yourself + business + confirm you're speaking with the right person), "
+                                 f"REASON FOR CALL (website visit / specific product / form / follow-up / trade-in), keep-it-short rule, qualifying questions, "
+                                 f"product/service info, THE ASK (book appointment / next step), objection handling (not interested, busy, just looking, thinking about it, too expensive), "
+                                 f"voicemail script, and HARD RULES (never say 'thanks for calling' — you made the call; never invent facts; never guarantee pricing/approval; always end with a next step; handle opt-out gracefully). "
+                                 f"Format with clear section headers. 400-700 words plain English.{site_block}")
                 else:
-                    sys_p = "You write concise, practical knowledge base content for AI voice assistants making OUTBOUND sales calls."
-                    usr_p = f"""Write a knowledge base for an AI making outbound calls for "{biz_name}" in {industry}. Include: offerings, selling points, objections, pricing, booking process. 3-5 paragraphs plain English."""
+                    if kb_type == 'inbound':
+                        sys_p = "You write concise, practical knowledge base content for AI voice assistants handling INCOMING calls."
+                        usr_p = (f"Write a knowledge base for an AI answering incoming calls for \"{biz_name}\" in {industry}. Include: business info, common questions, hours, pricing ranges, booking process, escalation. 3-5 paragraphs plain English.{site_block}")
+                    else:
+                        sys_p = "You write concise, practical knowledge base content for AI voice assistants making OUTBOUND sales calls."
+                        usr_p = (f"Write a knowledge base for an AI making outbound calls for \"{biz_name}\" in {industry}. Include: offerings, selling points, objections, pricing, booking process. 3-5 paragraphs plain English.{site_block}")
                 r = requests.post("https://api.venice.ai/api/v1/chat/completions",
                     headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                    json={"model": "venice-uncensored-1-2", "messages": [{"role":"system","content":sys_p},{"role":"user","content":usr_p}], "max_tokens":1000, "temperature":0.7},
-                    timeout=30)
+                    json={"model": "venice-uncensored-1-2", "messages": [{"role":"system","content":sys_p},{"role":"user","content":usr_p}], "max_tokens":2000, "temperature":0.7},
+                    timeout=45)
                 content = r.json()['choices'][0]['message']['content'].strip()
-                label = "Inbound Call KB" if kb_type == 'inbound' else "Knowledge Base"
-                return jsonify({'success': True, 'content': content, 'message': f'{label} generated via AI!'})
+                if kind == 'script':
+                    label = "Inbound Script" if kb_type == 'inbound' else "Outbound Script"
+                else:
+                    label = "Inbound Call KB" if kb_type == 'inbound' else "Knowledge Base"
+                src = " from your website" if site_text else ""
+                return jsonify({'success': True, 'content': content, 'message': f'{label} generated{src} via AI!'})
             except Exception as e:
                 return jsonify({'success': False, 'message': f'AI generation failed: {str(e)}'}), 500
         
@@ -5217,6 +5260,12 @@ def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
                 "responseDelaySeconds": float(biz.get('response_delay_seconds') or 0.1)
             }
         }
+        # Outbound first message — VAPI replaces {{prospect_name}} / {{prospect_business}}
+        # / {{business_name}} with the variableValues above. Falls back to the assistant default.
+        ob_first = (biz.get('first_message_outbound') or '').strip()
+        if ob_first:
+            payload["assistantOverrides"]["firstMessage"] = ob_first
+            payload["assistantOverrides"]["firstMessageMode"] = "assistant-speaks-first"
         # Include system prompt and knowledge base in call overrides
         script = biz['script_template'] if biz and biz['script_template'] else ''
         kb = biz['knowledge_base'] if biz and biz['knowledge_base'] else ''
@@ -6128,6 +6177,7 @@ def update_script():
     script_outbound = request.form.get('script_outbound', '')
     kb = request.form.get('knowledge_base', '')
     first_message = request.form.get('first_message', '')
+    first_message_outbound = request.form.get('first_message_outbound', '')
     first_message_mode = request.form.get('first_message_mode', 'assistant-speaks-first')
     voice_provider = request.form.get('voice_provider', '')
 
@@ -6136,16 +6186,16 @@ def update_script():
     if voice_provider:
         c.execute("""UPDATE businesses 
                      SET script_template = ?, script_outbound = ?, knowledge_base = ?, 
-                         first_message = ?, first_message_mode = ?, voice_provider = ?
+                         first_message = ?, first_message_outbound = ?, first_message_mode = ?, voice_provider = ?
                      WHERE id = ?""",
-            (script, script_outbound, kb, first_message, first_message_mode, voice_provider, bid))
+            (script, script_outbound, kb, first_message, first_message_outbound, first_message_mode, voice_provider, bid))
     else:
         # Voice Provider selector removed — preserve the stored provider
         c.execute("""UPDATE businesses 
                      SET script_template = ?, script_outbound = ?, knowledge_base = ?, 
-                         first_message = ?, first_message_mode = ?
+                         first_message = ?, first_message_outbound = ?, first_message_mode = ?
                      WHERE id = ?""",
-            (script, script_outbound, kb, first_message, first_message_mode, bid))
+            (script, script_outbound, kb, first_message, first_message_outbound, first_message_mode, bid))
     db.commit()
     
     # ── Sync to Vapi assistant ──
