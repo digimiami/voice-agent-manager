@@ -2119,11 +2119,12 @@ def api_agent_create():
     import uuid
     aid = 'agent-' + str(uuid.uuid4())[:10]
     
-    c.execute("""INSERT INTO agents (id, business_id, name, script_template, knowledge_base, status)
-                VALUES (?, ?, ?, ?, ?, 'active')""",
+    c.execute("""INSERT INTO agents (id, business_id, name, script_template, knowledge_base, first_message, status)
+                VALUES (?, ?, ?, ?, ?, ?, 'active')""",
               (aid, bid, name,
                f"You are a professional employee of {biz['name']}. Help book more clients. You are a real person — never mention being AI, a robot, or software.",
-               f"Business: {biz['name']}."))
+               f"Business: {biz['name']}.",
+               (data.get('first_message') or '').strip()[:500]))
     db.commit()
     
     return jsonify({'success': True, 'agent_id': aid, 'message': f'✅ Agent "{name}" created!'})
@@ -2146,7 +2147,7 @@ def api_agent_update():
         return jsonify({'success': False, 'error': 'Agent not found'}), 404
     
     fields = ['name', 'phone_number', 'vapi_assistant_id', 'script_template', 'knowledge_base',
-              'voice_id', 'voice_speed', 'language', 'status']
+              'voice_id', 'voice_speed', 'language', 'status', 'first_message']
     updates = []
     values = []
     for f in fields:
@@ -5121,7 +5122,19 @@ def api_generate_kb():
                         site_text = ''
                 site_block = f"\n\nBUSINESS WEBSITE CONTENT (use ONLY this for facts — never invent details not found here):\n{site_text}" if site_text else ""
 
-                if kind == 'script':
+                if kind == 'first_message':
+                    if kb_type == 'inbound':
+                        sys_p = "You write short, natural opening greetings for AI voice assistants that answer business phone calls."
+                        usr_p = (f"Write ONE opening greeting line the AI says when it ANSWERS the phone for \"{biz_name}\" ({industry}). "
+                                 f"Rules: 1-2 sentences max, sounds like a real friendly human (not a robot), include the business name, "
+                                 f"invite the caller to say what they need. Return ONLY the greeting itself — no quotes, no label, no explanation.{site_block}")
+                    else:
+                        sys_p = "You write short, natural cold-call openers for AI voice assistants that call prospects on behalf of a business."
+                        usr_p = (f"Write ONE opening line the AI says when it CALLS a prospect for \"{biz_name}\" ({industry}). "
+                                 f"Rules: 1-2 sentences max, introduce yourself and the business, confirm you're speaking with the right person "
+                                 f"using {{{{prospect_name}}}}, sounds like a real human (not a robot). NEVER start with 'thanks for calling' "
+                                 f"(the AI made the call). Return ONLY the opening itself — no quotes, no label, no explanation.{site_block}")
+                elif kind == 'script':
                     if kb_type == 'inbound':
                         sys_p = "You are an expert call-script writer. Write a complete, natural INBOUND call script for a dealership-style AI voice agent that answers the phone."
                         usr_p = (f"Write a complete inbound call script for \"{biz_name}\" ({industry}). Include: ROLE, PERSONALITY, OPENING greeting, "
@@ -5147,7 +5160,9 @@ def api_generate_kb():
                     json={"model": "venice-uncensored-1-2", "messages": [{"role":"system","content":sys_p},{"role":"user","content":usr_p}], "max_tokens":2000, "temperature":0.7},
                     timeout=45)
                 content = r.json()['choices'][0]['message']['content'].strip()
-                if kind == 'script':
+                if kind == 'first_message':
+                    label = "Inbound First Message" if kb_type == 'inbound' else "Outbound First Message"
+                elif kind == 'script':
                     label = "Inbound Script" if kb_type == 'inbound' else "Outbound Script"
                 else:
                     label = "Inbound Call KB" if kb_type == 'inbound' else "Knowledge Base"
@@ -5157,7 +5172,11 @@ def api_generate_kb():
                 return jsonify({'success': False, 'message': f'AI generation failed: {str(e)}'}), 500
         
         # Fallback: template-based AI generation
-        if kb_type == 'inbound':
+        if kind == 'first_message':
+            kb = (f"Hi, thanks for calling {biz_name}! This is [Your Name] — how can I help you today?"
+                  if kb_type == 'inbound'
+                  else f"Hi {{{{prospect_name}}}}! This is [Your Name] from {biz_name} — do you have a minute to talk?")
+        elif kb_type == 'inbound':
             kb = f"""🏢 BUSINESS: {biz_name}
 📍 LOCATION: [Your City, State]
 🕐 HOURS: Mon-Fri 9am-6pm (customize below)
@@ -8934,7 +8953,7 @@ def send_email_via_smtp(to, subject, body):
         if key:
             payload = {"to": to, "subject": subject, "text": body}
             req = urllib.request.Request(
-                "https://api.agentmail.to/v0/inboxes/diazites@agentmail.to/messages/send",
+                "https://api.agentmail.to/v0/inboxes/aiworkers@agentmail.to/messages/send",
                 data=json.dumps(payload).encode(),
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
                          "User-Agent": "DiazitesAffiliate/1.0"},
