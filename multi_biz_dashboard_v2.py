@@ -7600,9 +7600,9 @@ def agent_book_appointment():
     apt_id = 'apt_' + uuid.uuid4().hex[:10]
     full_notes = f"Test drive: {vehicle}. {notes}".strip()
     c.execute(
-        "INSERT INTO appointments (id, business_id, prospect_name, phone, appointment_time, notes, status) "
-        "VALUES (?,?,?,?,?,?,'booked')",
-        (apt_id, bid, name, phone, apt_time, full_notes))
+        "INSERT INTO appointments (id, business_id, prospect_name, phone, email, appointment_time, notes, status) "
+        "VALUES (?,?,?,?,?,?,?,'booked')",
+        (apt_id, bid, name, phone, email, apt_time, full_notes))
     db.commit()
 
     # ── AUTO CONFIRMATIONS (never block the booking on a delivery failure) ──
@@ -7735,10 +7735,8 @@ def api_reminders_send_now():
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error: {str(e)[:200]}'})
     if sent:
-        msg = f'✅ Sent {len(sent)} reminder(s)'
-        if skipped:
-            msg += f' ({len(skipped)} skipped)'
-        return jsonify({'success': True, 'sent': len(sent), 'message': msg})
+        return jsonify({'success': True, 'sent': len(sent),
+                        'message': f'✅ Sent {len(sent)} reminder(s)'})
     return jsonify({'success': True, 'sent': 0,
                     'message': 'No upcoming booked appointments to remind — add one in the calendar or wait for the AI agent to book one'})
 
