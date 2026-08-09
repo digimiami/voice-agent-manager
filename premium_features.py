@@ -89,11 +89,23 @@ def get_analytics(business_id, days=30):
 STRIPE_CONFIG_PATH = "/root/voice-agent-manager/stripe_config.json"
 
 def load_stripe_config():
+    """Load Stripe config. In SANDBOX mode (admin toggle) the TEST keys are
+    returned as the ACTIVE keys, so checkout + webhooks + cancel-trial all use
+    test mode automatically with zero code changes elsewhere."""
     try:
         with open(STRIPE_CONFIG_PATH) as f:
-            return json.load(f)
+            cfg = json.load(f)
     except:
         return {'secret_key': '', 'publishable_key': '', 'enabled': False, 'webhook_secret': ''}
+    if cfg.get('sandbox') and cfg.get('test_secret_key'):
+        cfg = dict(cfg)
+        cfg['secret_key'] = cfg['test_secret_key']
+        cfg['publishable_key'] = cfg.get('test_publishable_key', '')
+        cfg['webhook_secret'] = cfg.get('test_webhook_secret', '')
+        cfg['mode'] = 'sandbox'
+    else:
+        cfg['mode'] = 'live'
+    return cfg
 
 def save_stripe_config(config):
     with open(STRIPE_CONFIG_PATH, 'w') as f:

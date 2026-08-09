@@ -1185,20 +1185,49 @@ ADMIN_HTML = """<!DOCTYPE html>
         <!-- TAB: STRIPE -->
         {% elif tab == 'stripe' %}
         <h2 class="text-xl font-bold mb-6">💳 Stripe Payment Settings</h2>
+        <!-- Mode banner -->
+        <div class="max-w-xl card mb-6 {% if stripe_config.sandbox %}border-amber-500/40{% endif %}" style="{% if stripe_config.sandbox %}border:1px solid rgba(245,158,11,0.4){% endif %}">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="font-bold">🧪 Test Mode</h3>
+                {% if stripe_config.sandbox %}
+                <span class="px-3 py-1 rounded-full text-xs font-semibold" style="background:rgba(245,158,11,0.15);color:#fbbf24">● SANDBOX ACTIVE</span>
+                {% else %}
+                <span class="px-3 py-1 rounded-full text-xs font-semibold" style="background:rgba(34,197,94,0.15);color:#4ade80">● LIVE</span>
+                {% endif %}
+            </div>
+            <p class="text-xs text-[#64748b] mb-3">Turn ON to test payments with <strong>Stripe test keys</strong> (card 4242 4242 4242 4242 — no real charges). Turn OFF to go back to real payments. Checkout, webhooks &amp; trial-cancel all follow this switch automatically.</p>
+            <label class="flex items-center gap-3 cursor-pointer" style="padding:12px 16px;border-radius:10px;background:#1a1a28;border:1px solid #252533">
+                <input type="checkbox" name="sandbox_mode" form="stripeForm" value="1" {% if stripe_config.sandbox %}checked{% endif %} style="width:20px;height:20px;accent-color:#f59e0b">
+                <span class="text-sm font-semibold">Sandbox mode {% if stripe_config.sandbox %}<span class="text-[#fbbf24]">— testing (no real charges)</span>{% endif %}</span>
+            </label>
+            <p class="text-[10px] text-[#5c5c70] mt-2">Sandbox switch saves with the form below. Test webhook: use <code>whsec_test_...</code> + point your Stripe test webhook at the same URL.</p>
+        </div>
         <div class="max-w-xl card mb-6">
             <h3 class="font-bold mb-3">API Keys</h3>
             <p class="text-xs text-[#64748b] mb-4">Configure Stripe to auto-bill clients monthly.</p>
-            <form method="POST" action="/admin/update-stripe">
+            <form method="POST" action="/admin/update-stripe" id="stripeForm">
                 <label class="flex items-center gap-2 mb-3">
                     <input type="checkbox" name="stripe_enabled" value="1" {% if stripe_config.enabled %}checked{% endif %} class="w-auto accent-[#6366f1]">
                     <span class="text-sm">Enable Stripe Payments</span>
                 </label>
-                <label class="text-xs text-[#64748b] block mb-1">Secret Key</label>
-                <input type="password" name="secret_key" value="{{ stripe_config.secret_key or '' }}" placeholder="sk_live_..." class="mb-3 font-mono text-xs">
-                <label class="text-xs text-[#64748b] block mb-1">Publishable Key</label>
-                <input type="text" name="publishable_key" value="{{ stripe_config.publishable_key or '' }}" placeholder="pk_live_..." class="mb-3 font-mono text-xs">
-                <label class="text-xs text-[#64748b] block mb-1">Webhook Secret</label>
-                <input type="password" name="webhook_secret" value="{{ stripe_config.webhook_secret or '' }}" placeholder="whsec_..." class="mb-4 font-mono text-xs">
+                <div class="mb-4 p-3 rounded-lg" style="background:rgba(34,197,94,0.05);border:1px solid rgba(34,197,94,0.2)">
+                    <div class="text-xs font-semibold text-[#4ade80] mb-2">🔴 LIVE Keys <span class="text-[#5c5c70] font-normal">— real payments</span></div>
+                    <label class="text-xs text-[#64748b] block mb-1">Secret Key</label>
+                    <input type="password" name="secret_key" value="{{ stripe_config_raw.secret_key or '' }}" placeholder="sk_live_..." class="mb-3 font-mono text-xs">
+                    <label class="text-xs text-[#64748b] block mb-1">Publishable Key</label>
+                    <input type="text" name="publishable_key" value="{{ stripe_config_raw.publishable_key or '' }}" placeholder="pk_live_..." class="mb-3 font-mono text-xs">
+                    <label class="text-xs text-[#64748b] block mb-1">Webhook Secret</label>
+                    <input type="password" name="webhook_secret" value="{{ stripe_config_raw.webhook_secret or '' }}" placeholder="whsec_..." class="font-mono text-xs">
+                </div>
+                <div class="mb-4 p-3 rounded-lg" style="background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.2)">
+                    <div class="text-xs font-semibold text-[#fbbf24] mb-2">🟡 TEST Keys <span class="text-[#5c5c70] font-normal">— used when Sandbox is ON</span></div>
+                    <label class="text-xs text-[#64748b] block mb-1">Test Secret Key</label>
+                    <input type="password" name="test_secret_key" value="{{ stripe_config_raw.test_secret_key or '' }}" placeholder="sk_test_..." class="mb-3 font-mono text-xs">
+                    <label class="text-xs text-[#64748b] block mb-1">Test Publishable Key</label>
+                    <input type="text" name="test_publishable_key" value="{{ stripe_config_raw.test_publishable_key or '' }}" placeholder="pk_test_..." class="mb-3 font-mono text-xs">
+                    <label class="text-xs text-[#64748b] block mb-1">Test Webhook Secret</label>
+                    <input type="password" name="test_webhook_secret" value="{{ stripe_config_raw.test_webhook_secret or '' }}" placeholder="whsec_test_..." class="font-mono text-xs">
+                </div>
                 <button type="submit" class="btn-primary text-sm"><i class="fas fa-save mr-1"></i> Save Stripe Config</button>
             </form>
         </div>
@@ -3588,18 +3617,38 @@ def admin_sms_reply():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+def load_raw_stripe_config():
+    """Raw stripe_config.json (no sandbox key-swap) — used by the admin tab for
+    editing/display so LIVE and TEST keys are shown in their own boxes."""
+    import json as _json
+    try:
+        with open('/root/voice-agent-manager/stripe_config.json') as f:
+            return _json.load(f)
+    except Exception:
+        return {}
+
+
 @app.route('/admin/update-stripe', methods=['POST'])
 @admin_required
 def update_stripe():
-    from premium_features import save_stripe_config, load_stripe_config
-    config = {
-        'secret_key': request.form.get('secret_key', ''),
-        'publishable_key': request.form.get('publishable_key', ''),
-        'webhook_secret': request.form.get('webhook_secret', ''),
-        'enabled': request.form.get('stripe_enabled') == '1',
-    }
+    from premium_features import save_stripe_config
+    import json as _json, os
+    try:
+        with open('/root/voice-agent-manager/stripe_config.json') as f:
+            config = _json.load(f)
+    except Exception:
+        config = {}
+    config['secret_key'] = request.form.get('secret_key', '')
+    config['publishable_key'] = request.form.get('publishable_key', '')
+    config['webhook_secret'] = request.form.get('webhook_secret', '')
+    config['enabled'] = request.form.get('stripe_enabled') == '1'
+    config['sandbox'] = request.form.get('sandbox_mode') == '1'
+    config['test_secret_key'] = request.form.get('test_secret_key', '')
+    config['test_publishable_key'] = request.form.get('test_publishable_key', '')
+    config['test_webhook_secret'] = request.form.get('test_webhook_secret', '')
     save_stripe_config(config)
-    flash('✅ Stripe config saved!', 'success')
+    mode = '🧪 SANDBOX (test payments — no real charges)' if config['sandbox'] else 'LIVE (real payments)'
+    flash(f'✅ Stripe config saved! Mode: {mode}', 'success')
     return redirect('/admin?tab=stripe')
 
 GA_CONFIG_PATH = "/root/voice-agent-manager/ga_config.json"
@@ -4145,6 +4194,7 @@ def admin_dashboard():
         smtp_config=load_smtp_config(),
         twilio_config=load_twilio_config(),
         stripe_config=load_stripe_config(),
+        stripe_config_raw=load_raw_stripe_config(),
         ga_config=load_ga_config(),
         **admin_extra_data(tab))
 
