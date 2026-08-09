@@ -5068,6 +5068,47 @@ FAQ:
 • Q: How long does closing take? A: Typically 30-45 days""",
 }
 
+def fetch_site_text(url):
+    """Fetch a website's readable text with a fallback chain:
+    direct GET -> Wayback Machine snapshot -> Jina reader.
+    Returns (text, title). Bot-protected/JS-only sites (e.g. brucknerautosales.com)
+    are unreachable directly, so the Wayback snapshot provides the real content."""
+    import re as _re
+    u = url if url.startswith('http') else 'https://' + url
+    for attempt in [u, 'https://web.archive.org/web/2026id_/' + u, 'https://r.jina.ai/' + u]:
+        try:
+            r = requests.get(attempt, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}, timeout=35)
+            if r.status_code != 200:
+                continue
+            t = r.text
+            m = _re.search(r'<title[^>]*>([^<]+)</title>', t, _re.I)
+            title = m.group(1).strip() if m else ''
+            txt = _re.sub(r'<script[\s\S]*?</script>|<style[\s\S]*?</style>', ' ', t)
+            # Next.js sites keep real content inside __NEXT_DATA__ JSON — keep it
+            m2 = _re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', t, _re.S)
+            if m2:
+                try:
+                    import json as _json
+                    def _walk(o):
+                        if isinstance(o, str):
+                            return o
+                        if isinstance(o, dict):
+                            return ' '.join(_walk(v) for v in o.values())
+                        if isinstance(o, list):
+                            return ' '.join(_walk(i) for i in o)
+                        return ''
+                    txt = txt + ' ' + _walk(_json.loads(m2.group(1)))
+                except Exception:
+                    pass
+            txt = _re.sub(r'<[^>]+>', ' ', txt)
+            txt = _re.sub(r'\s+', ' ', txt).strip()
+            if len(txt) >= 200:
+                return txt[:8000], title
+        except Exception:
+            continue
+    return '', ''
+
+
 @app.route('/api/onboard-run', methods=['POST'])
 @login_required
 def api_onboard_run():
@@ -5088,20 +5129,8 @@ def api_onboard_run():
     site_text, title = '', ''
     fetched = False
     if url:
-        try:
-            r_site = requests.get(url if url.startswith('http') else 'https://' + url,
-                                  headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'},
-                                  timeout=25)
-            raw = r_site.text
-            m = _re.search(r'<title[^>]*>([^<]+)</title>', raw, _re.I)
-            if m:
-                title = m.group(1).strip()
-            site_text = _re.sub(r'<script[\s\S]*?</script>|<style[\s\S]*?</style>', ' ', raw)
-            site_text = _re.sub(r'<[^>]+>', ' ', site_text)
-            site_text = _re.sub(r'\s+', ' ', site_text).strip()
-            fetched = bool(site_text)
-        except Exception:
-            site_text = ''
+        site_text, title = fetch_site_text(url)
+        fetched = bool(site_text)
 
     # ── 2. Extract business info ──
     def find_phone(t):
@@ -5281,17 +5310,8 @@ def api_generate_kb():
                 site_text = ''
                 site_url = (data.get('url') or '').strip()
                 if site_url:
-                    try:
-                        r_site = requests.get(
-                            site_url if site_url.startswith('http') else 'https://' + site_url,
-                            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'},
-                            timeout=20)
-                        import re as _re
-                        site_text = _re.sub(r'<script[\s\S]*?</script>|<style[\s\S]*?</style>', ' ', r_site.text)
-                        site_text = _re.sub(r'<[^>]+>', ' ', site_text)
-                        site_text = _re.sub(r'\s+', ' ', site_text).strip()[:6000]
-                    except Exception as _e:
-                        site_text = ''
+                    site_text, _t = fetch_site_text(site_url)
+                    site_text = site_text[:6000]
                 site_block = f"\n\nBUSINESS WEBSITE CONTENT (use ONLY this for facts — never invent details not found here):\n{site_text}" if site_text else ""
 
                 if kind == 'first_message':
