@@ -1384,11 +1384,12 @@ setTimeout(refreshMonitor, 500);
       <div class="mb-4" style="padding:12px 14px;border-radius:10px;background:rgba(74,222,128,0.04);border:1px solid rgba(74,222,128,0.15)">
         <label class="text-xs font-semibold text-[#4ade80] block mb-1">🌐 Business Website URL <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
         <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Paste your website (e.g. https://www.yourbusiness.com) and the AI reads it to write scripts and knowledge base with REAL facts — hours, services, prices — instead of placeholders. Works best on simple sites; leave empty to use templates.</div>
-        <input type="text" id="genUrlInput" placeholder="e.g. https://www.brucknerautosales.com" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px" oninput="clearTimeout(this._t);this._t=setTimeout(function(){urlScrollGen()},400)">
-        <div class="text-[10px] mt-1" style="color:#5c5c70">⬇ When you add a URL, we scroll you down to the Script &amp; Knowledge Base below — the AI uses your website to generate real content.</div>
+        <input type="text" id="genUrlInput" placeholder="e.g. https://www.brucknerautosales.com" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px" onkeydown="if(event.key==='Enter'){event.preventDefault();urlScrollGen(true);return false}" onblur="if(this.value.trim())urlScrollGen(false)">
+        <div class="text-[10px] mt-1" style="color:#5c5c70">⬇ Add your URL, then tap <b>"Generate from URL"</b> — we take you down to the Script &amp; Knowledge Base and generate using your website.</div>
       </div>
       <div class="flex gap-2 items-center flex-wrap">
         <button type="button" onclick="generateKB('outbound')" id="genKBBtn" class="btn-secondary text-xs" style="padding:6px 14px">🤖 AI Generate KB</button><span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8;font-size:11px">❓</span><span class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0;width:100%">Writes your knowledge base automatically using your business type + website URL (if added).</span>
+        <button type="button" onclick="urlScrollGen(true)" class="btn-primary text-xs" style="padding:6px 14px;background:linear-gradient(90deg,#a855f7,#ec4899);border:none">⬇ Generate from URL</button>
         <button type="button" onclick="generateScript('inbound')" id="genInboundBtn" class="btn-secondary text-xs" style="padding:6px 14px">📞 AI Generate Inbound Script</button><span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8;font-size:11px">❓</span><span class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0;width:100%">Writes the full inbound call script — how your AI greets, talks, and books appointments.</span>
         <button type="button" onclick="generateScript('outbound')" id="genOutboundBtn" class="btn-secondary text-xs" style="padding:6px 14px">📢 AI Generate Outbound Script</button><span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8;font-size:11px">❓</span><span class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0;width:100%">Writes the outbound cold-call script for when your AI calls prospects.</span>
         <button type="button" onclick="document.getElementById('scriptForm').submit()" class="btn-primary text-xs" style="padding:6px 20px">💾 Save All</button><span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8;font-size:11px">❓</span><span class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0;width:100%">Saves the scripts, knowledge base, first messages, address, and speech settings — and updates your live AI agent instantly.</span>
@@ -3253,15 +3254,22 @@ document.addEventListener('click',function(e){if(e.target&&e.target.classList.co
 if(document.getElementById('browseResults'))setTimeout(browseNumbers,500);
 // Knowledge Base / Script generators (Settings tab) — optional business URL makes output real
 function genUrlVal(){var el=document.getElementById('genUrlInput');return el?el.value.trim():''}
-function urlScrollGen(){
+function urlScrollGen(autoGen){
   var el=document.getElementById('genUrlInput');
-  if(!el||!el.value.trim())return;
+  if(!el)return;
+  var v=el.value.trim();
+  if(!v){el.focus();el.style.borderColor='#f87171';setTimeout(function(){el.style.borderColor='#252533'},1200);return}
   var card=document.getElementById('scriptKbCard');
-  if(!card)return;
-  card.scrollIntoView({behavior:'smooth',block:'start'});
-  card.style.transition='box-shadow .6s';
-  card.style.boxShadow='0 0 0 2px rgba(168,85,247,.55)';
-  setTimeout(function(){card.style.boxShadow=''},1800);
+  if(card){
+    card.scrollIntoView({behavior:'smooth',block:'start'});
+    card.style.transition='box-shadow .6s';
+    card.style.boxShadow='0 0 0 2px rgba(168,85,247,.55)';
+    setTimeout(function(){card.style.boxShadow=''},1800);
+  }
+  if(autoGen){
+    var btn=document.getElementById('genKBBtn');
+    if(btn&&!btn.disabled)setTimeout(function(){generateKB('outbound')},350);
+  }
 }
 function toggleTip(el){var t=el.nextElementSibling;if(t&&t.classList.contains('tipbox')){t.style.display=(t.style.display==='block')?'none':'block'}}
 document.addEventListener('mouseover',function(e){var h=e.target.closest?e.target.closest('.helpq'):null;if(h){var t=h.nextElementSibling;if(t&&t.classList.contains('tipbox'))t.style.display='block'}});
