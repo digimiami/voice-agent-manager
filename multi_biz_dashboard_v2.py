@@ -1236,7 +1236,7 @@ def provision_first_number(bid, priority_area=None):
                     "voice": {"provider": "cartesia", "voiceId": "a167e0f3-df7e-4d52-a9c3-f949145efdab", "model": "sonic-3.5"},
                     "firstMessage": f"Hi, this is {name}'s assistant from Diazites. How can I help you today?",
                     "firstMessageMode": "assistant-speaks-first",
-                    "silenceTimeoutSeconds": 10,
+                    "silenceTimeoutSeconds": 40,
                     "maxDurationSeconds": 300,
                     "backgroundSound": "off"
                 })], capture_output=True, text=True, timeout=30)
@@ -5396,7 +5396,7 @@ def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
                     "prospect_notes": (lead.get('notes') or '').strip()
                 },
                 "maxDurationSeconds": int(biz.get('max_duration_seconds') or 300),
-                "silenceTimeoutSeconds": int(biz.get('silence_timeout') or 10),
+                "silenceTimeoutSeconds": int(biz.get('silence_timeout') or 40),
                 "responseDelaySeconds": float(biz.get('response_delay_seconds') or 0.1)
             }
         }

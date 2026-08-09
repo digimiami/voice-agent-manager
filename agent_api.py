@@ -1134,7 +1134,7 @@ def api_provision_phone(api_key, bid):
             "voice": {"provider": "11labs", "voiceId": voice_id, "model": "eleven_v3"},
             "firstMessage": f"Hi, this is {name}'s assistant. I'm calling because we help {industry} businesses. Am I catching you at a good time?",
             "firstMessageMode": "assistant-speaks-first",
-            "silenceTimeoutSeconds": 10,
+            "silenceTimeoutSeconds": 40,
             "maxDurationSeconds": 300,
             "backgroundSound": "off",
             # CRITICAL: 8083 webhook (vapi_webhook_server.py) does the email/SMS/calendar

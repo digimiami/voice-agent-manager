@@ -3032,7 +3032,7 @@ def setup_vapi(bid):
             },
             "firstMessage": f"Hi, this is {name}'s assistant from Diazites. We help {industry} businesses never miss a call. Do you have a moment?",
             "firstMessageMode": "assistant-speaks-first",
-            "silenceTimeoutSeconds": 10,
+            "silenceTimeoutSeconds": 40,
             "maxDurationSeconds": 300,
             "backgroundSound": "off"
         })
