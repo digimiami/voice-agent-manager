@@ -181,6 +181,8 @@ Diazites AI voice employees answer every call 24/7, qualify customers, book appo
 <span>→</span>
 <span>Next action: Confirm appointment · Send details via SMS</span>
 </div>
+<button onclick="playLiveCall(this)" class="mt-4 w-full px-4 py-3 rounded-lg border border-purple-500/40 bg-purple-500/10 text-white font-semibold text-sm hover:bg-purple-500/20 transition flex items-center justify-center gap-2">▶️ Hear This Live Conversation</button>
+<p class="text-center text-[10px] text-gray-500 mt-2">Real inbound call · natural conversation</p>
 </div>
 </div>
 </div>
@@ -937,6 +939,24 @@ function pickNumber(phone) {
 function backToForm() {
   document.getElementById('numStep').classList.add('hidden');
   document.getElementById('formStep').classList.remove('hidden');
+}
+
+// Live sample call (admin-uploaded audio, falls back to default demo)
+function playLiveCall(btn) {
+  var orig = btn.innerHTML;
+  if (window._liveAud && !window._liveAud.paused) {
+    window._liveAud.pause(); window._liveAud.currentTime = 0;
+    btn.innerHTML = orig; return;
+  }
+  function fallback() {
+    playDemo(btn, 'onwK4e9ZLuTAKqWW03F9', 'Hey, thanks for calling — this is Mike over at Westside Motors. So you're looking at the Tahoe, the black 2024? Yeah, let me pull that up for you real quick... Okay, I've got it here. Yeah, that one's still available. Are you looking to come by today? I can have it cleaned up and ready for a test drive whenever you get here.');
+    btn.setAttribute('data-orig', orig);
+  }
+  var a = window._liveAud = new Audio('/sample-call?t=' + Date.now());
+  a.onerror = function(){ window._liveAud = null; fallback(); };
+  a.onplay = function(){ btn.innerHTML = '⏸️ Playing…'; };
+  a.onended = function(){ btn.innerHTML = orig; };
+  a.play().catch(function(){ window._liveAud = null; fallback(); });
 }
 
 // Signup form submission
