@@ -99,8 +99,10 @@ def save_stripe_config(config):
     with open(STRIPE_CONFIG_PATH, 'w') as f:
         json.dump(config, f)
 
-def create_stripe_checkout(business_id, plan_name, price_cents, email, success_url, cancel_url, trial_days=0):
-    """Create a Stripe checkout session with optional trial period."""
+def create_stripe_checkout(business_id, plan_name, price_cents, email, success_url, cancel_url, trial_days=0, mode='subscription'):
+    """Create a Stripe checkout session with optional trial period.
+    mode='subscription' -> charge plan price monthly (with optional trial).
+    mode='setup'        -> collect card info WITHOUT charging any amount (Enterprise/custom plans)."""
     cfg = load_stripe_config()
     if not cfg.get('enabled') or not cfg.get('secret_key'):
         return None
@@ -109,6 +111,19 @@ def create_stripe_checkout(business_id, plan_name, price_cents, email, success_u
     stripe.api_key = cfg['secret_key']
     
     try:
+        if mode == 'setup':
+            # Collect card info only — no amount charged
+            session_params = {
+                'customer_email': email,
+                'payment_method_types': ['card'],
+                'mode': 'setup',
+                'success_url': success_url,
+                'cancel_url': cancel_url,
+                'metadata': {'business_id': business_id, 'plan': plan_name},
+                'setup_intent_data': {'metadata': {'business_id': business_id, 'plan': plan_name}},
+            }
+            session = stripe.checkout.Session.create(**session_params)
+            return session.url
         session_params = {
             'customer_email': email,
             'payment_method_types': ['card'],

@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- GSC_META -->
+<script>(function(){fetch('/api/ga-config').then(function(r){return r.json()}).then(function(d){if(d&&d.sc_key){var m=document.createElement('meta');m.name='google-site-verification';m.content=d.sc_key;document.head.appendChild(m)}if(d&&d.ga_id&&d.ga_id.indexOf('G-')===0){var s=document.createElement('script');s.src='https://www.googletagmanager.com/gtag/js?id='+d.ga_id;s.async=true;document.head.appendChild(s);window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config',d.ga_id)}}).catch(function(){})})();</script>
+<title>Diazites — AI Voice Agents for Local Businesses</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>@import url('https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap');
+*{font-family:'Inter',sans-serif;margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:#0a0a0f;color:#f1f1f5;overflow-x:hidden;width:100%;max-width:100vw;-webkit-overflow-scrolling:touch;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+:root{--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);--safe-left:env(safe-area-inset-left,0px);--safe-right:env(safe-area-inset-right,0px)}
+section{overflow-x:hidden}nav{overflow-x:hidden}
+.gradient-text{background:linear-gradient(135deg,#c084fc,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.gradient-bg{background:linear-gradient(135deg,#a855f7,#ec4899)}
+.btn-primary{background:linear-gradient(135deg,#a855f7,#ec4899);color:white;padding:12px 28px;border-radius:10px;font-weight:600;border:none;cursor:pointer;transition:opacity .2s,transform .2s;display:inline-block}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px)}
+.btn-outline{border:1px solid #3b3b50;color:#f1f1f5;padding:12px 28px;border-radius:10px;font-weight:500;background:transparent;cursor:pointer;transition:all .2s;display:inline-block}
+.btn-outline:hover{border-color:#a855f7;color:#c084fc}
+.card{background:#12121a;border:1px solid #252533;border-radius:16px;padding:24px;transition:transform .2s,border-color .2s}
+.card:hover{transform:translateY(-2px);border-color:#a855f744}
+.glass{background:rgba(18,18,26,.7);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+/* Audio player styles */
+.audio-card{background:#12121a;border:1px solid #252533;border-radius:16px;padding:20px;transition:all .3s}
+.audio-card:hover{border-color:#ec489966;transform:translateY(-2px)}
+.audio-card.active{border-color:#a855f7;box-shadow:0 0 30px rgba(168,85,247,.15)}
+.play-btn{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#a855f7,#ec4899);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .2s}
+.play-btn:hover{transform:scale(1.1)}
+.play-btn svg{width:20px;height:20px;fill:white;margin-left:2px}
+.waveform-bar{width:3px;border-radius:2px;background:#a855f7;transition:height .3s}
+/* Floating animation */
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.float-anim{animation:float 4s ease-in-out infinite}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 20px rgba(168,85,247,.1)}50%{box-shadow:0 0 40px rgba(168,85,247,.25)}}
+.pulse-glow{animation:pulse-glow 3s ease-in-out infinite}
+/* Call flow animation */
+@keyframes ring{0%,100%{transform:scale(1)}20%{transform:scale(1.05)}40%{transform:scale(1)}60%{transform:scale(1.05)}}
+.ring-anim{animation:ring 2s ease-in-out infinite}
+@keyframes dots{0%,20%{opacity:0}50%{opacity:1}80%,100%{opacity:0}}
+.dot-1,.dot-2,.dot-3{display:inline-block;animation:dots 1.5s infinite}
+.dot-2{animation-delay:.3s}
+.dot-3{animation-delay:.6s}
+/* Step connector line */
+.step-line{position:absolute;top:40px;left:50%;width:100%;height:2px;background:linear-gradient(90deg,#a855f744,#ec489944);transform:translateX(0)}
+@media(max-width:768px){.step-line{display:none}}
+/* Mobile nav — hide links, show hamburger */
+@media(max-width:768px){
+  nav .flex.items-center.gap-4{display:none}
+  nav .flex.items-center.gap-4.open{display:flex;flex-direction:column;position:fixed;top:60px;left:0;right:0;background:rgba(10,10,15,.98);border-bottom:1px solid #252533;padding:20px 16px;gap:12px;z-index:100;align-items:stretch}
+  nav .flex.items-center.gap-4.open a{text-align:center;padding:10px;border-radius:10px}
+  nav .flex.items-center.gap-4.open a:hover{background:rgba(168,85,247,.1)}
+}
+/* Mobile optimizations */
+.mobile-cta-bar{position:fixed;bottom:0;left:0;right:0;z-index:999;background:rgba(10,10,15,.95);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-top:1px solid #252533;padding:10px 16px;display:none;gap:8px}
+@media(max-width:768px){.mobile-cta-bar{display:flex}.mobile-cta-bar a{flex:1;text-align:center;font-size:13px;padding:10px 8px;border-radius:10px;font-weight:600;text-decoration:none}}
+/* Mobile fine-tuning */
+@media(max-width:768px){
+  .max-w-5xl,.max-w-6xl,.max-w-3xl,.max-w-7xl{padding-left:16px !important;padding-right:16px !important}
+  .text-5xl.md\:text-6xl{font-size:2rem !important;line-height:1.15 !important}
+  h1 .gradient-text{display:inline-block}
+  .flex.items-center.justify-center.gap-6{flex-direction:column;gap:8px !important;align-items:center}
+  .card,.audio-card{padding:16px !important}
+  .py-24{padding-top:48px !important;padding-bottom:48px !important}
+  .grid.md\:grid-cols-3.gap-5{gap:12px !important}
+  .grid.md\:grid-cols-4.gap-4{gap:8px !important}
+}
+</style>
+
+<!-- NAV -->
+<nav class="glass flex items-center justify-between max-w-6xl mx-auto px-6 py-4 sticky top-0 z-50" style="border-bottom:1px solid #252533">
+<div class="flex items-center gap-2">
+<div class="text-2xl">🎙️</div>
+<span class="text-lg font-bold gradient-text">Diazites</span>
+</div>
+<div class="flex items-center gap-4" id="nav-links">
+<a href="#try-it-live" class="text-sm text-[#7a7a8e] hover:text-[#c084fc]">Live Demos</a>
+<a href="#features" class="text-sm text-[#7a7a8e] hover:text-[#c084fc]">Features</a>
+<a href="#industries" class="text-sm text-[#7a7a8e] hover:text-[#c084fc]">Industries</a>
+<a href="#signup-form" class="text-sm text-[#7a7a8e] hover:text-[#c084fc]">Pricing</a>
+<a href="/signup" class="btn-outline text-sm px-4 py-2">Sign Up</a>
+<a href="/login" class="btn-primary text-sm px-5 py-2">Login</a>
+</div>
+<button onclick="document.getElementById('nav-links').classList.toggle('open');this.innerHTML=this.innerHTML=='☰'?'✕':'☰'" class="md:hidden text-2xl text-[#c084fc] bg-transparent border-none cursor-pointer" style="display:none">☰</button>
+<script>if(window.innerWidth<768)document.querySelector('button').style.display='block'</script>
+</nav>
+
+<!-- HERO -->
+<section class="max-w-6xl mx-auto px-6 pt-16 pb-12 text-center relative">
+<div class="absolute inset-0 overflow-hidden pointer-events-none" style="top:-100px">
+<div class="absolute top-20 left-1/4 w-96 h-96 rounded-full opacity-[0.04]" style="background:radial-gradient(circle,#a855f7,transparent);transform:translateX(-50%)"></div>
+<div class="absolute top-40 right-1/4 w-80 h-80 rounded-full opacity-[0.03]" style="background:radial-gradient(circle,#ec4899,transparent);transform:translateX(50%)"></div>
+</div>
+<div class="relative">
+<h1 class="text-5xl md:text-6xl font-bold mb-4">Never Miss Another<br><span class="gradient-text">Customer Call</span> Again</h1>
+<p class="text-lg text-[#7a7a8e] max-w-2xl mx-auto mb-8 leading-relaxed">
+Diazites AI voice agents answer calls <strong class="text-[#f1f1f5]">24/7</strong>, qualify customers, schedule appointments, and help local businesses grow <strong class="text-[#f1f1f5]">without adding staff</strong>.
+</p>
+<div class="flex items-center justify-center gap-4 flex-wrap mb-6">
+<a href="#try-it-live" class="btn-primary text-base px-8 py-3 flex items-center gap-2">🎧 Hear My AI Agent</a>
+<a href="/login" onclick="if(window.innerWidth<768){event.preventDefault();document.getElementById('signup-form').scrollIntoView({behavior:'smooth'})}" class="btn-outline text-base px-8 py-3">📅 Book a Demo</a>
+</div>
+<div class="flex items-center justify-center gap-6 text-sm text-[#5c5c70]">
+  <span class="flex items-center gap-1.5"><span class="text-green-400">✓</span> No setup fees</span>
+  <span class="flex items-center gap-1.5"><span class="text-green-400">✓</span> Cancel anytime</span>
+  <span class="flex items-center gap-1.5"><span class="text-green-400">✓</span> 14-day free trial</span>
+</div>
+</div>
+</section>
+
+<!-- LIVE CALL DASHBOARD -->
+<style>
+@keyframes dzbpulse { 0%{box-shadow:0 0 0 0 rgba(74,222,128,.6)} 70%{box-shadow:0 0 0 8px rgba(74,222,128,0)} 100%{box-shadow:0 0 0 0 rgba(74,222,128,0)} }
+@keyframes dzwave { 0%,100%{height:5px} 50%{height:22px} }
+.dz-bar{width:3px;border-radius:2px;background:linear-gradient(180deg,#c084fc,#ec4899);animation:dzwave 1s ease-in-out infinite}
+.dz-live{width:10px;height:10px;border-radius:50%;background:#4ade80;animation:dzbpulse 1.6s infinite}
+.dz-label{font-size:10px;letter-spacing:.08em;color:#7a7a8e;font-weight:700;text-transform:uppercase}
+.dz-big{font-size:22px;font-weight:800}
+.dz-box{background:#12121a;border:1px solid #252533;border-radius:12px;padding:12px}
+</style>
+<section id="product" class="max-w-6xl mx-auto px-6 pb-16">
+<h2 class="text-3xl md:text-4xl font-extrabold text-center mb-3">A Real Call, <span class="gradient-text">Live Right Now</span></h2>
+<p class="text-center text-[#7a7a8e] mb-10 text-sm max-w-2xl mx-auto">This is what your team sees while Diazites works the phone — a real conversation, in real time.</p>
+<div class="grid lg:grid-cols-2 gap-6 items-start">
+  <div class="card p-6 text-left" style="border:1px solid #232332;background:#0c0c18;border-radius:16px">
+    <div class="flex items-center justify-between mb-5">
+      <div class="flex items-center gap-2.5"><span class="dz-live"></span><span class="text-xs font-black tracking-widest text-green-400">ACTIVE CALL</span><span class="text-[10px] text-[#5c5c70]">LIVE</span></div>
+      <div class="flex items-end gap-[3px] h-6"><span class="dz-bar" style="height:10px"></span><span class="dz-bar" style="height:18px;animation-delay:.1s"></span><span class="dz-bar" style="height:12px;animation-delay:.2s"></span><span class="dz-bar" style="height:20px;animation-delay:.3s"></span><span class="dz-bar" style="height:9px;animation-delay:.4s"></span><span class="dz-bar" style="height:16px;animation-delay:.5s"></span></div>
+    </div>
+    <div class="flex items-center gap-3 mb-5">
+      <div class="w-11 h-11 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center font-bold text-sm">S</div>
+      <div><div class="font-bold">Sarah Johnson</div><div class="text-xs text-[#7a7a8e]">Lead · Auto Dealership</div></div>
+      <div class="ml-auto text-right"><div class="font-bold">02:41</div><div class="text-[10px] text-[#5c5c70]">duration</div></div>
+    </div>
+    <div class="grid grid-cols-2 gap-2.5 mb-3">
+      <div class="dz-box"><div class="dz-label mb-1">AI AGENT</div><div class="text-sm font-bold">Mike</div></div>
+      <div class="dz-box"><div class="dz-label mb-1">STATUS</div><div class="text-sm font-bold text-[#c084fc]">Qualifying</div></div>
+      <div class="dz-box"><div class="dz-label mb-1">LEAD SCORE</div><div class="text-sm font-bold text-green-400">92/100</div></div>
+      <div class="dz-box"><div class="dz-label mb-1">INTENT</div><div class="text-sm font-bold">High Purchase Intent</div></div>
+    </div>
+    <div class="dz-box mb-3"><div class="dz-label mb-1">APPOINTMENT</div><div class="text-sm font-bold">Today · 4:30 PM <span class="text-green-400">✓</span></div></div>
+    <div class="dz-label mb-2">TRANSCRIPT</div>
+    <div class="space-y-2 text-[13px] mb-4">
+      <div class="text-[#7a7a8e]"><span class="text-[#c084fc] font-bold">AI:</span> “What type of vehicle are you looking for?”</div>
+      <div class="text-[#c9c9da]"><span class="text-green-400 font-bold">Caller:</span> “I'm looking for an SUV, preferably something under $35,000.”</div>
+      <div class="text-[#7a7a8e]"><span class="text-[#c084fc] font-bold">AI:</span> “Absolutely. I can help with that. Are you available to come in this afternoon?”</div>
+    </div>
+    <div class="flex items-center gap-2 text-xs text-[#5c5c70] border-t border-[#252533] pt-4"><span class="text-[#c084fc]">→</span> Next action: Confirm appointment · Send details via SMS</div>
+  </div>
+  <div class="card p-6 text-left" style="border:1px solid #232332;background:#0c0c18;border-radius:16px">
+    <div class="flex items-center justify-between mb-6">
+      <div><div class="dz-label mb-1">CALL PERFORMANCE</div><div class="text-sm font-bold">Today · all agents active</div></div>
+      <div class="flex items-center gap-2 text-xs text-green-400"><span class="dz-live"></span> LIVE</div>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-2.5 mb-6">
+      <div class="dz-box"><div class="dz-label mb-1">CALLS</div><div class="dz-big">1,284</div></div>
+      <div class="dz-box"><div class="dz-label mb-1">ANSWERED</div><div class="dz-big text-green-400">98.7%</div></div>
+      <div class="dz-box"><div class="dz-label mb-1">QUALIFIED</div><div class="dz-big text-[#c084fc]">347</div></div>
+      <div class="dz-box"><div class="dz-label mb-1">BOOKED</div><div class="dz-big text-[#ec4899]">126</div></div>
+      <div class="dz-box"><div class="dz-label mb-1">RESPONSE</div><div class="dz-big">0.8s</div></div>
+    </div>
+    <div class="dz-label mb-3">CALL → QUALIFIED → BOOKED</div>
+    <div class="flex items-end gap-4 h-32 mb-6">
+      <div class="flex-1 text-center"><div class="w-full rounded-md bg-gradient-to-t from-[#c084fc] to-[#ec4899]" style="height:90%"></div><div class="text-[11px] mt-1.5 text-[#7a7a8e]">Calls</div></div>
+      <div class="flex-1 text-center"><div class="w-full rounded-md bg-gradient-to-t from-[#c084fc] to-[#ec4899]" style="height:56%"></div><div class="text-[11px] mt-1.5 text-[#7a7a8e]">Qualified</div></div>
+      <div class="flex-1 text-center"><div class="w-full rounded-md bg-gradient-to-t from-[#c084fc] to-[#ec4899]" style="height:30%"></div><div class="text-[11px] mt-1.5 text-[#7a7a8e]">Booked</div></div>
+    </div>
+    <div class="dz-label mb-2">RECENT CALLS</div>
+    <div class="space-y-2 text-sm">
+      <div class="dz-box flex items-center gap-3"><span class="text-lg">🔧</span><div class="flex-1"><div class="font-semibold text-[13px]">Plumber · burst pipe</div><div class="text-[11px] text-[#5c5c70]">Booked · 8 min ago</div></div><span class="text-green-400 text-xs font-bold">✓ Booked</span></div>
+      <div class="dz-box flex items-center gap-3"><span class="text-lg">🦷</span><div class="flex-1"><div class="font-semibold text-[13px]">Dentist · new patient</div><div class="text-[11px] text-[#5c5c70]">Qualified · 14 min ago</div></div><span class="text-[#c084fc] text-xs font-bold">● Qualifying</span></div>
+      <div class="dz-box flex items-center gap-3"><span class="text-lg">🏡</span><div class="flex-1"><div class="font-semibold text-[13px]">Real estate · showing</div><div class="text-[11px] text-[#5c5c70]">Follow-up sent · 22 min ago</div></div><span class="text-[#ec4899] text-xs font-bold">✉️ SMS Sent</span></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- REAL CALL PROOF -->
+<section class="max-w-6xl mx-auto px-6 pb-16">
+<h2 class="text-2xl md:text-3xl font-extrabold text-center mb-8">Real Calls. Real Conversations. <span class="gradient-text">Right Now.</span></h2>
+<div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
+  <div class="card p-6"><div class="text-3xl mb-2">🔧</div><div class="text-sm font-bold">Burst-pipe emergency</div><p class="text-xs text-[#7a7a8e] mt-1">Triaged urgency, captured address, dispatched the plumber — captured on the live demo line</p></div>
+  <div class="card p-6"><div class="text-3xl mb-2">🦷</div><div class="text-sm font-bold">Dentist booking</div><p class="text-xs text-[#7a7a8e] mt-1">Checked availability, scheduled the appointment, sent a text reminder</p></div>
+  <div class="card p-6"><div class="text-3xl mb-2">🏡</div><div class="text-sm font-bold">Real estate showing</div><p class="text-xs text-[#7a7a8e] mt-1">Qualified the buyer, booked the showing, confirmed by text</p></div>
+  <div class="card p-6"><div class="text-3xl mb-2">🏠</div><div class="text-sm font-bold">Roofing estimate</div><p class="text-xs text-[#7a7a8e] mt-1">Captured the lead and scheduled the estimate — never left waiting</p></div>
+</div>
+<p class="text-center text-xs text-[#5c5c70] mt-6">These are real call types handled by Diazites today. Try one yourself: <a href="#try-it-live" class="text-[#c084fc] font-semibold">📞 (786) 808-4099</a></p>
+</section>
+
+<!-- AUTO DEALERSHIPS FLAGSHIP -->
+<section class="max-w-6xl mx-auto px-6 pb-16">
+<div class="card p-8 md:p-10 relative overflow-hidden" style="border:1px solid #a855f744;background:linear-gradient(135deg,#0c0c18,#1a1030);border-radius:20px">
+  <div class="absolute inset-0 bg-gradient-to-r from-[#a855f7]/10 via-transparent to-[#ec4899]/10"></div>
+  <div class="relative z-10">
+    <span class="text-xs font-black tracking-widest text-[#c084fc]">🚗 FLAGSHIP VERTICAL · AUTO DEALERSHIPS</span>
+    <h2 class="text-3xl md:text-4xl font-extrabold mt-3 mb-3">Every sales call, answered like <span class="gradient-text">your best closer</span></h2>
+    <p class="text-[#8f8fa8] max-w-2xl mb-8">Inventory questions, trade-in offers, test-drive bookings, financing — Diazites handles the calls that keep your lot moving, and follows up until the deal happens.</p>
+    <div class="grid md:grid-cols-4 gap-4 mb-8">
+      <div class="dz-box"><div class="dz-label mb-1">1 · INQUIRY</div><div class="text-sm font-bold">Every call answered</div><p class="text-xs text-[#7a7a8e] mt-1">Online listings and walk-in calls — never a missed ring.</p></div>
+      <div class="dz-box"><div class="dz-label mb-1">2 · QUALIFY</div><div class="text-sm font-bold">Budget &amp; financing</div><p class="text-xs text-[#7a7a8e] mt-1">Vehicle needs, trade-in, credit range — scored before your sales team picks up.</p></div>
+      <div class="dz-box"><div class="dz-label mb-1">3 · BOOK</div><div class="text-sm font-bold">Test drive scheduled</div><p class="text-xs text-[#7a7a8e] mt-1">Slots confirmed on the call, reminder sent by text.</p></div>
+      <div class="dz-box"><div class="dz-label mb-1">4 · FOLLOW UP</div><div class="text-sm font-bold">Leads stay warm</div><p class="text-xs text-[#7a7a8e] mt-1">No-shows and cold leads get automatic call + SMS follow-up.</p></div>
+    </div>
+    <div class="grid md:grid-cols-2 gap-4 items-center">
+      <div class="space-y-2 text-sm">
+        <div class="dz-box"><span class="text-green-400 font-bold">Caller:</span> <span class="text-[#c9c9da]">“Hey, I was looking at one of the SUVs online. Is it still available?”</span></div>
+        <div class="dz-box"><span class="text-[#c084fc] font-bold">Mike:</span> <span class="text-[#8f8fa8]">“Yeah, let me check that for you. Which one were you looking at?”</span></div>
+        <div class="dz-box"><span class="text-green-400 font-bold">Caller:</span> <span class="text-[#c9c9da]">“The black 2024 Tahoe.”</span></div>
+        <div class="dz-box"><span class="text-[#c084fc] font-bold">Mike:</span> <span class="text-[#8f8fa8]">“Got you. Yeah, that one is available. Are you looking to come by today?”</span></div>
+      </div>
+      <div class="text-center">
+        <div class="text-5xl mb-3">🚗</div>
+        <p class="text-sm text-[#7a7a8e] mb-4">Hear the call — sounds like a real closer, because it is one.</p>
+        <button onclick="playDemo(this,'onwK4e9ZLuTAKqWW03F9','Hey, thanks for calling — this is Mike over at Westside Motors. So you're looking at the Tahoe, the black 2024? Yeah, let me pull that up for you real quick... Okay, I've got it here. Yeah, that one's still available. Are you looking to come by today? I can have it cleaned up and ready for a test drive whenever you get here.')" class="btn-primary text-sm px-6 py-3">▶️ Hear the Call</button>
+        <p class="text-[10px] text-[#5c5c70] mt-3">Real voice · ~25 seconds · no robot</p>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- REVENUE: EMPLOYEE THAT GENERATES REVENUE -->
+<section class="max-w-6xl mx-auto px-6 pb-16">
+<span class="text-xs font-black tracking-widest text-[#c084fc] text-center block mb-3">NOT A CHATBOT — AN EMPLOYEE THAT WORKS THE PHONE</span>
+<h2 class="text-3xl md:text-4xl font-extrabold text-center mb-4">This Isn't an AI Gimmick. <span class="gradient-text">It's an Employee That Brings In Revenue.</span></h2>
+<p class="text-center text-[#7a7a8e] mb-10 text-sm max-w-2xl mx-auto">A phone employee earns its keep two ways: capturing revenue you're already losing, and generating revenue your team doesn't have time to chase.</p>
+<div class="grid md:grid-cols-2 gap-6">
+  <div class="card p-8" style="border:1px solid #232332;background:#0c0c18;border-radius:16px">
+    <div class="text-xs font-black tracking-widest text-green-400 mb-3">📥 INBOUND — CAPTURE REVENUE</div>
+    <h3 class="text-xl font-bold mb-3">Every missed call is a job, a table, a patient, a sale — gone.</h3>
+    <ul class="space-y-2.5 text-sm text-[#c9c9da]">
+      <li><span class="text-green-400 font-bold">✓</span> Answers every call the instant it rings — 24/7, weekends, holidays</li>
+      <li><span class="text-green-400 font-bold">✓</span> Qualifies the caller and books the appointment on the spot</li>
+      <li><span class="text-green-400 font-bold">✓</span> Sends the confirmation by SMS so they show up</li>
+      <li><span class="text-green-400 font-bold">✓</span> Transfers to your team when the caller needs a human</li>
+    </ul>
+  </div>
+  <div class="card p-8" style="border:1px solid #232332;background:#0c0c18;border-radius:16px">
+    <div class="text-xs font-black tracking-widest text-[#c084fc] mb-3">📤 OUTBOUND — GENERATE REVENUE</div>
+    <h3 class="text-xl font-bold mb-3">It dials too. Your next customer is already in your phone.</h3>
+    <ul class="space-y-2.5 text-sm text-[#c9c9da]">
+      <li><span class="text-[#c084fc] font-bold">✓</span> Reactivate past customers who haven't booked in months</li>
+      <li><span class="text-[#c084fc] font-bold">✓</span> Fill empty appointment slots and slow hours</li>
+      <li><span class="text-[#c084fc] font-bold">✓</span> Follow up every missed lead until it converts or says no</li>
+      <li><span class="text-[#c084fc] font-bold">✓</span> Run seasonal promos — holiday specials, maintenance reminders</li>
+    </ul>
+  </div>
+</div>
+<div class="card mt-6 p-6 text-center" style="border:1px solid #a855f744;background:#0c0c18;border-radius:16px">
+  <p class="text-sm text-[#c9c9da] mb-4">One outbound campaign can fill next week's calendar. One answered call can pay for the month. <span class="text-white font-bold">That's the math.</span></p>
+  <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+    <a href="#signup-form" class="btn-primary text-base px-8 py-3">🤖 Build Your AI Employee</a>
+    <a href="#try-it-live" class="btn-outline text-base px-8 py-3">📞 Hear It On The Demo Line</a>
+  </div>
+</div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="max-w-5xl mx-auto px-6 pb-16">
+<h2 class="text-3xl font-bold text-center mb-12">How It <span class="gradient-text">Works</span></h2>
+<div class="grid md:grid-cols-4 gap-6 relative">
+<div class="card text-center py-8 relative z-10">
+<div class="text-4xl mb-3 ring-anim">📞</div>
+<div class="text-xs text-[#a855f7] font-bold mb-1">STEP 1</div>
+<h3 class="font-semibold mb-1">Customer Calls</h3>
+<p class="text-xs text-[#7a7a8e]">Your AI agent answers instantly, 24/7</p>
+</div>
+<div class="card text-center py-8 relative z-10">
+<div class="text-4xl mb-3 float-anim">🤖</div>
+<div class="text-xs text-[#a855f7] font-bold mb-1">STEP 2</div>
+<h3 class="font-semibold mb-1">AI Qualifies Lead</h3>
+<p class="text-xs text-[#7a7a8e]">Natural conversation captures details & intent</p>
+</div>
+<div class="card text-center py-8 relative z-10">
+<div class="text-4xl mb-3 float-anim" style="animation-delay:1s">📅</div>
+<div class="text-xs text-[#a855f7] font-bold mb-1">STEP 3</div>
+<h3 class="font-semibold mb-1">Books Appointment</h3>
+<p class="text-xs text-[#7a7a8e]">Auto-schedules and sends confirmation</p>
+</div>
+<div class="card text-center py-8 relative z-10">
+<div class="text-4xl mb-3 float-anim" style="animation-delay:2s">📊</div>
+<div class="text-xs text-[#a855f7] font-bold mb-1">STEP 4</div>
+<h3 class="font-semibold mb-1">Dashboard Review</h3>
+<p class="text-xs text-[#7a7a8e]">View calls, leads, and analytics in real-time</p>
+</div>
+</div>
+</section>
+
+<!-- INDUSTRIES -->
+<section id="industries" class="max-w-6xl mx-auto px-6 pb-16">
+<h2 class="text-3xl font-bold text-center mb-3">Built for <span class="gradient-text">High-Volume Call Businesses</span></h2>
+<p class="text-[#7a7a8e] text-center text-sm mb-10 max-w-2xl mx-auto">Restaurants, clinics, dealerships — any business where every missed call is money lost to a competitor.</p>
+<div class="grid md:grid-cols-2 gap-4">
+<div class="card p-5 flex items-start gap-4 glow-border">
+<div class="text-3xl flex-shrink-0">🍽️</div>
+<div><h4 class="font-bold text-base">AI Receptionist For Restaurants</h4>
+<p class="text-xs text-[#7a7a8e] mt-0.5">Reservations, takeout and delivery orders, hours, party bookings — never put a hungry caller on hold again.</p></div>
+</div>
+<div class="card p-5 flex items-start gap-4 glow-border">
+<div class="text-3xl flex-shrink-0">🔧</div>
+<div><h4 class="font-bold text-base">AI Receptionist For Plumbers</h4>
+<p class="text-xs text-[#7a7a8e] mt-0.5">Never lose emergency calls after hours. AI triages burst pipes, captures addresses, dispatches your team instantly.</p></div>
+</div>
+<div class="card p-5 flex items-start gap-4 glow-border">
+<div class="text-3xl flex-shrink-0">🩺</div>
+<div><h4 class="font-bold text-base">AI Receptionist For Medical Clinics</h4>
+<p class="text-xs text-[#7a7a8e] mt-0.5">Appointments, confirmations, patient FAQs, and routing — including dentists and specialists.</p></div>
+</div>
+<div class="card p-5 flex items-start gap-4 glow-border">
+<div class="text-3xl flex-shrink-0">🏡</div>
+<div><h4 class="font-bold text-base">AI Receptionist For Real Estate</h4>
+<p class="text-xs text-[#7a7a8e] mt-0.5">Capture every buyer inquiry instantly. Qualify leads, schedule showings, follow up automatically.</p></div>
+</div>
+<div class="card p-5 flex items-start gap-4 glow-border">
+<div class="text-3xl flex-shrink-0">❄️</div>
+<div><h4 class="font-bold text-base">AI Receptionist For HVAC</h4>
+<p class="text-xs text-[#7a7a8e] mt-0.5">Handle after-hours emergencies. Dispatch calls when temperatures spike, book maintenance visits automatically.</p></div>
+</div>
+<div class="card p-5 flex items-start gap-4 glow-border">
+<div class="text-3xl flex-shrink-0">💈</div>
+<div><h4 class="font-bold text-base">AI Receptionist For Salons &amp; Barbershops</h4>
+<p class="text-xs text-[#7a7a8e] mt-0.5">Bookings, waitlists, and no-show fills — every chair stays full.</p></div>
+</div>
+<div class="card p-5 flex items-start gap-4 glow-border">
+<div class="text-3xl flex-shrink-0">⚖️</div>
+<div><h4 class="font-bold text-base">AI Receptionist For Law Firms</h4>
+<p class="text-xs text-[#7a7a8e] mt-0.5">Qualify leads automatically. Book consultations, collect case details, never miss a potential client call.</p></div>
+</div>
+<div class="card p-5 flex items-start gap-4 glow-border">
+<div class="text-3xl flex-shrink-0">🛡️</div>
+<div><h4 class="font-bold text-base">AI Receptionist For Insurance Agencies</h4>
+<p class="text-xs text-[#7a7a8e] mt-0.5">Quote requests, policy questions, claims intake — qualify every caller, book the call-back.</p></div>
+</div>
+<div class="card p-5 flex items-start gap-4 glow-border">
+<div class="text-3xl flex-shrink-0">🚗</div>
+<div><h4 class="font-bold text-base">AI Receptionist For Auto Dealerships</h4>
+<p class="text-xs text-[#7a7a8e] mt-0.5">Sales calls, inventory inquiries, test-drive bookings, and service appointments — the flagship vertical.</p></div>
+</div>
+<div class="card p-5 flex items-start gap-4 glow-border">
+<div class="text-3xl flex-shrink-0">🧹</div>
+<div><h4 class="font-bold text-base">AI Receptionist For Cleaning &amp; Landscaping</h4>
+<p class="text-xs text-[#7a7a8e] mt-0.5">Estimate requests, scheduling, and emergency calls — capture every quote request.</p></div>
+</div>
+</div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" class="max-w-5xl mx-auto px-6 pb-16">
+<h2 class="text-3xl font-bold text-center mb-10">Everything You <span class="gradient-text">Need</span></h2>
+<div class="grid md:grid-cols-3 gap-5">
+<div class="card p-5 text-center">
+<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/20 to-purple-500/5 flex items-center justify-center mx-auto mb-4 text-2xl">🤖</div>
+<h3 class="font-semibold mb-1">Smart AI Receptionist</h3><p class="text-sm text-[#7a7a8e]">Natural conversations that qualify leads and book calls automatically. Never miss a business opportunity.</p>
+</div>
+<div class="card p-5 text-center">
+<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-500/20 to-pink-500/5 flex items-center justify-center mx-auto mb-4 text-2xl">📞</div>
+<h3 class="font-semibold mb-1">Call Forwarding</h3><p class="text-sm text-[#7a7a8e]">Route calls to your personal line during business hours. AI handles after-hours and overflow automatically.</p>
+</div>
+<div class="card p-5 text-center">
+<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-500/5 flex items-center justify-center mx-auto mb-4 text-2xl">📊</div>
+<h3 class="font-semibold mb-1">Campaign Dashboard</h3><p class="text-sm text-[#7a7a8e]">Start, pause, and monitor outbound campaigns with real-time analytics and performance metrics.</p>
+</div>
+<div class="card p-5 text-center">
+<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 flex items-center justify-center mx-auto mb-4 text-2xl">📝</div>
+<h3 class="font-semibold mb-1">Custom Scripts</h3><p class="text-sm text-[#7a7a8e]">Tailor your AI agent's script and knowledge base to your exact business needs and brand voice.</p>
+</div>
+<div class="card p-5 text-center">
+<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500/20 to-green-500/5 flex items-center justify-center mx-auto mb-4 text-2xl">🌎</div>
+<h3 class="font-semibold mb-1">Multi-Language</h3><p class="text-sm text-[#7a7a8e]">Speak with customers in English, Spanish, and more — naturally, with full context switching.</p>
+</div>
+<div class="card p-5 text-center">
+<div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500/20 to-red-500/5 flex items-center justify-center mx-auto mb-4 text-2xl">📱</div>
+<h3 class="font-semibold mb-1">SMS Follow-Ups</h3><p class="text-sm text-[#7a7a8e]">Auto-send appointment reminders, missed-call texts, and follow-up messages to warm leads.</p>
+</div>
+</div>
+</section>
+
+<!-- PRICING STARTING POINT -->
+<section class="max-w-3xl mx-auto px-6 pb-8 text-center">
+<div class="inline-flex items-center gap-2 glass rounded-full px-6 py-3 text-sm">
+<span class="text-purple-400">💰</span>
+<span class="text-[#f1f1f5] font-semibold">Plans Starting At</span>
+<span class="gradient-text text-lg font-bold">$97</span>
+<span class="text-[#5c5c70]">/month</span>
+<span class="text-[#5c5c70]">—</span>
+<a href="#signup-form" class="text-purple-400 hover:text-purple-300 font-semibold">See Plans →</a>
+</div>
+</section>
+
+<!-- PRICING TABLES -->
+<section class="max-w-5xl mx-auto px-6 pb-8">
+<div class="grid md:grid-cols-3 gap-5">
+
+<!-- Starter -->
+<div class="card p-6 text-center glow-border">
+<h3 class="font-bold text-xl mb-1">Starter</h3>
+<p class="text-xs text-[#64748b] mb-3">Perfect for small businesses</p>
+<div class="text-4xl font-black mb-1 gradient-text">$97</div>
+<p class="text-sm text-[#5c5c70] mb-4">per month</p>
+<ul class="text-left space-y-2 text-sm mb-6">
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> 1 AI Voice Agent</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> 1 Phone Number</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> <strong>250</strong> Call Minutes</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Booking & Analytics</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Email Support</li>
+</ul>
+<a href="#signup-form" class="btn-outline text-sm w-full block text-center py-2.5 rounded-xl">Get Started</a>
+</div>
+
+<!-- Professional (Featured) -->
+<div class="card p-6 text-center relative" style="border-color:#a855f744;background:linear-gradient(135deg,rgba(168,85,247,0.06),rgba(236,72,153,0.06))">
+<div class="absolute -top-3 left-1/2 -translate-x-1/2 gradient-bg text-white text-xs font-bold px-4 py-1 rounded-full">🔥 Most Popular</div>
+<h3 class="font-bold text-xl mb-1 mt-1">Professional</h3>
+<p class="text-xs text-[#64748b] mb-3">Best for growing businesses</p>
+<div class="text-4xl font-black mb-1 gradient-text">$197</div>
+<p class="text-sm text-[#5c5c70] mb-4">per month</p>
+<ul class="text-left space-y-2 text-sm mb-6">
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> 2 AI Voice Agents</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> 2 Phone Numbers</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> <strong>1,000</strong> Call Minutes</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Outbound Campaigns</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> SMS & Calendar</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Priority Support</li>
+</ul>
+<a href="#signup-form" class="btn-primary text-sm w-full block text-center py-2.5 rounded-xl">🎯 Start Free Trial</a>
+</div>
+
+<!-- Enterprise -->
+<div class="card p-6 text-center glow-border">
+<h3 class="font-bold text-xl mb-1">Enterprise</h3>
+<p class="text-xs text-[#64748b] mb-3">For agencies & high-volume</p>
+<div class="text-4xl font-black mb-1 gradient-text">Custom</div>
+<p class="text-sm text-[#5c5c70] mb-4">tailored pricing</p>
+<ul class="text-left space-y-2 text-sm mb-6">
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Up to 5 AI Agents</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Up to 5 Phone Numbers</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Unlimited Minutes</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Custom Integrations</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> API & White-Label</li>
+<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Dedicated Manager</li>
+</ul>
+<a href="/login" class="btn-outline text-sm w-full block text-center py-2.5 rounded-xl">Contact Us</a>
+</div>
+
+</div>
+</section>
+
+<!-- CTA / SIGNUP -->
+<section id="signup-form" class="max-w-3xl mx-auto px-6 pb-20 text-center">
+<div class="grid md:grid-cols-2 gap-6">
+<div class="card py-12 px-6 pulse-glow" style="border-color:#a855f744">
+<div class="text-5xl mb-5">🚀</div>
+<h2 class="text-2xl font-bold gradient-text mb-3">Existing Client?</h2>
+<p class="text-[#7a7a8e] mb-6 max-w-sm mx-auto text-sm">Log in with your Business ID to manage your dashboard, view analytics, and configure your AI voice agent.</p>
+<a href="/login" class="btn-primary text-base px-10 py-3">Login to Dashboard</a>
+</div>
+
+<div class="card py-12 px-6" style="border-color:#252533">
+<div class="text-5xl mb-5">✨</div>
+<h2 class="text-2xl font-bold gradient-text mb-3">New Business?</h2>
+<p class="text-[#7a7a8e] mb-6 max-w-sm mx-auto text-sm">Sign up in seconds and get your AI voice agent running today. No credit card required to start.</p>
+<form id="signupFormLanding" class="space-y-3 text-left" onsubmit="return submitLandingSignup(event)">
+<div>
+<label class="text-xs text-[#7a7a8e] block mb-1">Business Name *</label>
+<input type="text" id="sBizName" required class="w-full bg-[#1a1a26] border border-[#252533] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#a855f7]">
+</div>
+<div>
+<label class="text-xs text-[#7a7a8e] block mb-1">Email *</label>
+<input type="email" id="sEmail" required class="w-full bg-[#1a1a26] border border-[#252533] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#a855f7]">
+</div>
+<div>
+<label class="text-xs text-[#7a7a8e] block mb-1">Phone</label>
+<input type="tel" id="sPhone" class="w-full bg-[#1a1a26] border border-[#252533] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#a855f7]">
+</div>
+<div>
+<label class="text-xs text-[#7a7a8e] block mb-1">Industry</label>
+<select id="sIndustry" class="w-full bg-[#1a1a26] border border-[#252533] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#a855f7]">
+<option value="plumber">Plumber</option>
+<option value="hvac">HVAC</option>
+<option value="electrician">Electrician</option>
+<option value="roofing">Roofing</option>
+<option value="painter">Painter</option>
+<option value="landscaper">Landscaper</option>
+<option value="cleaning">Cleaning</option>
+<option value="auto">Auto Mechanic</option>
+<option value="realestate">Real Estate</option>
+<option value="dentist">Dentist</option>
+<option value="general">General Business</option>
+</select>
+</div>
+<button type="submit" id="sBtn" class="btn-primary w-full text-sm py-3">🚀 Sign Up Free</button>
+<div id="sResult" class="hidden"></div>
+</form>
+</div>
+</div>
+</section>
+
+<!-- DEMO + ROI -->
+<section id="try-it-live" class="max-w-6xl mx-auto px-6 py-20">
+<h2 class="text-3xl md:text-4xl font-extrabold text-center mb-3 gradient-text">Try It Live — It's a Phone Call</h2>
+<p class="text-center text-[#7a7a8e] mb-10 text-sm">Call it, or hear a real call first. No forms, no videos — just a phone call.</p>
+<div class="grid md:grid-cols-3 gap-6">
+<div class="card p-8 text-center" style="border:1px solid #252533;background:#0c0c18;border-radius:16px">
+<div class="flex items-end justify-center gap-[3px] h-6 mb-4"><span class="dz-bar" style="height:10px"></span><span class="dz-bar" style="height:18px;animation-delay:.1s"></span><span class="dz-bar" style="height:12px;animation-delay:.2s"></span><span class="dz-bar" style="height:20px;animation-delay:.3s"></span><span class="dz-bar" style="height:9px;animation-delay:.4s"></span><span class="dz-bar" style="height:16px;animation-delay:.5s"></span></div>
+<h3 class="text-xl font-bold mb-2">Hear Diazites Take a Sales Call</h3>
+<p class="text-[#7a7a8e] text-sm mb-4">A real inbound call — natural pacing, no script, no robot.</p>
+<div class="space-y-1.5 text-left text-[13px] mb-5 bg-[#12121a] border border-[#252533] rounded-xl p-3">
+<div class="text-[#7a7a8e]"><span class="text-[#c084fc] font-bold">Mike:</span> “Which one were you looking at?”</div>
+<div class="text-[#c9c9da]"><span class="text-green-400 font-bold">Caller:</span> “The black 2024 Tahoe.”</div>
+<div class="text-[#7a7a8e]"><span class="text-[#c084fc] font-bold">Mike:</span> “Got you. That one's available. Coming by today?”</div>
+</div>
+<button onclick="playDemo(this,'onwK4e9ZLuTAKqWW03F9','Hey, thanks for calling — this is Mike over at Westside Motors. So you're looking at the Tahoe, the black 2024? Yeah, let me pull that up for you real quick... Okay, I've got it here. Yeah, that one's still available. Are you looking to come by today? I can have it cleaned up and ready for a test drive whenever you get here.')" class="btn-primary w-full py-3 text-sm">▶️ Hear It — Sounds Human</button>
+<p class="text-[10px] text-[#5c5c70] mt-3">Real voice · natural dialogue</p>
+</div>
+<div class="card p-8 text-center" style="border:1px solid #252533;background:#0c0c18;border-radius:16px">
+<div class="text-5xl mb-4">📞</div>
+<h3 class="text-xl font-bold mb-2">Diazites Demo Line</h3>
+<p class="text-[#7a7a8e] text-sm mb-5">"Hi, you've reached the Diazites demo line — I'm Pablo, the receptionist!"</p>
+<a href="tel:+17868084099" class="btn-primary inline-block py-4 px-8 text-lg rounded-2xl">📱 (786) 808-4099</a>
+<p class="text-xs text-[#5c5c70] mt-5">Works with any phone. Try asking: <i>"What can you do for my roofing business?"</i> — he speaks <b style="color:#c084fc">español</b>, português, français & more 🌎</p>
+</div>
+<div class="card p-8" style="border:1px solid #252533;background:#0c0c18;border-radius:16px">
+<h3 class="text-xl font-bold mb-1">Missed-Call ROI Calculator</h3>
+<p class="text-xs text-[#7a7a8e] mb-6">How much are missed calls costing your business every month?</p>
+<div class="space-y-4 text-left">
+<div><label class="text-xs text-[#7a7a8e] block mb-1">Missed calls per day</label><input id="roiCalls" type="number" value="5" min="0" style="width:100%;background:#12121a;border:1px solid #252533;color:#fff;border-radius:10px;padding:10px 12px;font-size:14px"></div>
+<div><label class="text-xs text-[#7a7a8e] block mb-1">Average job value ($)</label><input id="roiValue" type="number" value="850" min="0" style="width:100%;background:#12121a;border:1px solid #252533;color:#fff;border-radius:10px;padding:10px 12px;font-size:14px"></div>
+<div><label class="text-xs text-[#7a7a8e] block mb-1">Close rate on answered calls (%)</label><input id="roiClose" type="number" value="30" min="0" max="100" style="width:100%;background:#12121a;border:1px solid #252533;color:#fff;border-radius:10px;padding:10px 12px;font-size:14px"></div>
+<div style="background:#12121a;border-radius:12px;padding:16px;text-align:center">
+<div class="text-xs text-[#7a7a8e] mb-1">Missed revenue every month</div>
+<div id="roiResult" class="text-3xl font-extrabold" style="color:#4ade80">$25,500</div>
+<div class="text-xs text-[#5c5c70] mt-2">An AI agent at <b style="color:#c084fc">$197/mo</b> helps you recover that</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<script>
+function roiCalc(){var c=parseFloat(document.getElementById('roiCalls').value)||0,v=parseFloat(document.getElementById('roiValue').value)||0,cl=(parseFloat(document.getElementById('roiClose').value)||0)/100;document.getElementById('roiResult').textContent='$'+Math.round(c*30*v*cl).toLocaleString()}
+document.getElementById('roiCalls').addEventListener('input',roiCalc);
+document.getElementById('roiValue').addEventListener('input',roiCalc);
+document.getElementById('roiClose').addEventListener('input',roiCalc);
+roiCalc();
+</script>
+
+<audio id="demoPlayer" preload="none" style="display:none"></audio>
+<script>
+function playDemo(btn, voiceId, text) {
+  var p = document.getElementById('demoPlayer');
+  p.src = '/api/test-voice?voice_id=' + encodeURIComponent(voiceId) + '&text=' + encodeURIComponent(text) + '&speed=1.0&t=' + Date.now();
+  p.onended = function(){ btn.innerHTML = btn.getAttribute('data-orig') || '▶️ Play'; };
+  if (!btn.getAttribute('data-orig')) btn.setAttribute('data-orig', btn.innerHTML);
+  p.onplay = function(){ btn.innerHTML = '⏸️ Playing…'; };
+  p.play();
+}
+</script>
+
+<!-- FOOTER -->
+<footer class="border-t border-[#252533] py-8 text-center text-xs text-[#5c5c70]">
+<div class="flex items-center justify-center gap-2 mb-3"><div class="text-lg">🎙️</div><span class="text-sm gradient-text font-bold">Diazites</span></div>
+<div class="flex justify-center gap-4 mb-3 text-xs">
+<a href="/signup" class="text-[#818cf8] hover:text-[#a855f7] font-medium">Start Free Trial</a>
+<a href="/affiliate" class="text-[#818cf8] hover:text-[#a855f7] font-medium">💸 Affiliates — Earn $50/Signup</a>
+<a href="/privacy" class="hover:text-[#c084fc]">Privacy Policy</a>
+<a href="/terms" class="hover:text-[#c084fc]">Terms of Service</a>
+<a href="/refund" class="hover:text-[#c084fc]">Refund Policy</a>
+</div>
+<p>© 2026 Diazites. AI-powered voice agents for local businesses.</p>
+</footer>
+
+<script>
+// Audio player
+let currentAudio = null;
+let currentCard = null;
+
+function toggleAudio(card, src) {
+    const demo = card.dataset.demo;
+    const playBtn = document.getElementById('play-' + demo);
+    const timeEl = document.getElementById('time-' + demo);
+    const statusEl = document.getElementById('status-' + demo);
+    const waveform = document.getElementById('waveform-' + demo);
+    const bars = waveform ? waveform.querySelectorAll('.waveform-bar') : [];
+
+    if (currentAudio && currentAudio.dataset.demo === demo) {
+        if (!currentAudio.paused) {
+            currentAudio.pause();
+            playBtn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>';
+            statusEl.textContent = '⏸ Paused';
+            card.classList.remove('active');
+            return;
+        } else {
+            currentAudio.play();
+            playBtn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+            statusEl.textContent = '▶ Playing...';
+            card.classList.add('active');
+            return;
+        }
+    }
+
+    // Stop previous
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        const oldDemo = currentAudio.dataset.demo;
+        const oldBtn = document.getElementById('play-' + oldDemo);
+        const oldStatus = document.getElementById('status-' + oldDemo);
+        const oldCard = document.querySelector('.audio-card[data-demo="' + oldDemo + '"]');
+        if (oldBtn) oldBtn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>';
+        if (oldStatus) oldStatus.textContent = '▶ Click to play';
+        if (oldCard) oldCard.classList.remove('active');
+    }
+
+    // Create and play new
+    const audio = new Audio(src);
+    audio.dataset.demo = demo;
+    currentAudio = audio;
+    currentCard = card;
+
+    audio.addEventListener('timeupdate', function() {
+        const mins = Math.floor(this.currentTime / 60);
+        const secs = Math.floor(this.currentTime % 60);
+        const tmins = Math.floor(this.duration / 60);
+        const tsecs = Math.floor(this.duration % 60);
+        timeEl.textContent = mins + ':' + String(secs).padStart(2,'0') + ' / ' + tmins + ':' + String(tsecs).padStart(2,'0');
+        // Waveform animation
+        const progress = this.currentTime / (this.duration || 1);
+        if (bars.length) {
+            bars.forEach((bar, i) => {
+                const idx = i / bars.length;
+                const amp = 10 + 38 * (1 - Math.abs(idx - progress) * 2);
+                bar.style.height = Math.min(48, Math.max(8, amp)) + 'px';
+                bar.style.background = idx <= progress ? 'linear-gradient(180deg,#a855f7,#ec4899)' : '#a855f7';
+            });
+        }
+    });
+
+    audio.addEventListener('ended', function() {
+        playBtn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>';
+        statusEl.textContent = '✓ Done';
+        card.classList.remove('active');
+        currentAudio = null;
+        currentCard = null;
+    });
+
+    audio.play();
+    playBtn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+    statusEl.textContent = '▶ Playing...';
+    card.classList.add('active');
+}
+
+// Landing page signup
+function submitLandingSignup(e) {
+    e.preventDefault();
+    var btn = document.getElementById('sBtn');
+    var result = document.getElementById('sResult');
+    btn.disabled = true; btn.textContent = '⏳ Creating your account...';
+    result.classList.add('hidden');
+    fetch('/api/signup-stripe', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            name: document.getElementById('sBizName').value.trim(),
+            email: document.getElementById('sEmail').value.trim(),
+            phone: document.getElementById('sPhone').value.trim(),
+            industry: document.getElementById('sIndustry').value
+        })
+    }).then(function(r) { return r.json(); })
+    .then(function(d) {
+        btn.disabled = false; btn.textContent = '🚀 Sign Up Free';
+        if (d.success) {
+            if (d.checkout_url) {
+                // Redirect to Stripe checkout to set up payment (3-day trial, no charge yet)
+                window.location.href = d.checkout_url;
+            } else {
+                // Show business ID and trial info
+                result.className = 'mt-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-xs text-green-400';
+                result.innerHTML = '<strong>✅ Business created!</strong><br>🎁 3-day free trial active!<br>Your Business ID: <code class="font-mono bg-[#0a0a0f] px-2 py-0.5 rounded">' + d.business_id + '</code><br><br><div class="text-yellow-400 text-xs mb-2">⚠️ ' + (d.message || 'Set up billing to continue after trial.') + '</div><a href="/login" class="btn-primary text-xs px-4 py-2 inline-block">🔑 Login Now</a>';
+                result.classList.remove('hidden');
+            }
+        } else {
+            result.className = 'mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-400';
+            result.innerHTML = '❌ ' + (d.error || 'Failed to create business');
+            result.classList.remove('hidden');
+        }
+    }).catch(function(err) {
+        btn.disabled = false; btn.textContent = '🚀 Sign Up Free';
+        result.className = 'mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-400';
+        result.innerHTML = '❌ Network error. Please try again.';
+        result.classList.remove('hidden');
+    });
+    return false;
+}
+
+// Smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', function(e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) target.scrollIntoView({behavior:'smooth'});
+    });
+});
+</script>
+
+<!-- Mobile Sticky CTA -->
+<div class="mobile-cta-bar">
+<a href="#try-it-live" class="btn-primary text-sm" style="background:linear-gradient(135deg,#a855f7,#ec4899);color:white">🎧 Hear AI Agent</a>
+<a href="/login" class="btn-outline text-sm" style="border:1px solid #3b3b50;color:#f1f1f5">📅 Book Demo</a>
+</div>
+
+</body></html>
