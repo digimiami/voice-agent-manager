@@ -21,7 +21,7 @@ import urllib.request
 from datetime import datetime, timedelta
 
 # ── Config ──
-API_KEY = "am_us_c5cf4cf40b8b25b09546e54890bb4d570a00d3a93cd9f09cfa762b6f7f139c90"
+API_KEY = os.environ.get("AGENTMAIL_API_KEY") or "am_us_40204f4ba2b7915eab6469ef8fcf2c0b8f405342eb0e01d18fe033ae5df69889"
 INBOX = "diazites@agentmail.to"
 API_BASE = "https://api.agentmail.to"
 
@@ -96,6 +96,7 @@ def send_agentmail(to, subject, text, html=None, attachments=None):
 
 def send_appointment_confirmation(to, prospect_name, business_name, 
                                    appointment_time, business_phone="",
+                                   business_address="",
                                    duration_min=30, cc=None,
                                    cal_username="pablo-d-i2xmhr",
                                    cal_event_slug="30min"):
@@ -169,6 +170,7 @@ Your appointment with <strong>{business_name}</strong> has been confirmed. Here 
 <tr><td style="padding:6px 0"><span style="color:#6b7280;font-size:13px">📞 Type</span></td>
 <td style="text-align:right;color:#374151;font-size:14px;font-weight:600">Phone Call</td></tr>
 {"<tr><td style='padding:6px 0'><span style='color:#6b7280;font-size:13px'>📱 Contact</span></td><td style='text-align:right;color:#374151;font-size:14px;font-weight:600'>" + business_phone + "</td></tr>" if business_phone else ""}
+{"<tr><td style='padding:6px 0'><span style='color:#6b7280;font-size:13px'>📍 Address</span></td><td style='text-align:right;color:#374151;font-size:14px;font-weight:600'>" + business_address + "</td></tr>" if business_address else ""}
 </table>
 </td></tr>
 </table>

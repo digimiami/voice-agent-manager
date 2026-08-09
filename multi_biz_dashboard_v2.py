@@ -1192,7 +1192,7 @@ def booking_tool(bid):
         "url": f"https://diazites.online/api/agent/book-appointment?bid={bid}",
         "function": {
             "name": "book_appointment",
-            "description": "BOOK A TEST DRIVE / APPOINTMENT for the caller. Call this the moment the customer agrees to a test drive or visit. Pass the customer's FULL NAME, PHONE, preferred DATE+TIME in ISO format (YYYY-MM-DDTHH:MM:SS, e.g. 2026-08-15T14:00:00), EMAIL if they give one, and which VEHICLE they want to see. This sends the customer an automatic SMS + email confirmation. After the tool returns, read the confirmation back to the customer.",
+            "description": "BOOK A TEST DRIVE / APPOINTMENT for the caller. Call this the moment the customer agrees to a test drive or visit. Pass the customer's FULL NAME, PHONE, preferred DATE+TIME in ISO format (YYYY-MM-DDTHH:MM:SS, e.g. 2026-08-15T14:00:00), EMAIL if they give one, and which VEHICLE they want to see. IMPORTANT: when asking for the email, have the customer SPELL it and repeat it back to confirm — typos mean no confirmation arrives. This sends the customer an automatic SMS + email confirmation with the dealership address. After the tool returns, read the confirmation back to the customer.",
             "parameters": {
                 "type": "object",
                 "required": ["name", "phone", "appointment_time"],
@@ -6349,6 +6349,7 @@ def update_script():
     first_message = request.form.get('first_message', '')
     first_message_outbound = request.form.get('first_message_outbound', '')
     first_message_mode = request.form.get('first_message_mode', 'assistant-speaks-first')
+    business_address = request.form.get('business_address', '').strip()[:200]
     voice_provider = request.form.get('voice_provider', '')
 
     db = get_db()
@@ -6356,16 +6357,16 @@ def update_script():
     if voice_provider:
         c.execute("""UPDATE businesses 
                      SET script_template = ?, script_outbound = ?, knowledge_base = ?, 
-                         first_message = ?, first_message_outbound = ?, first_message_mode = ?, voice_provider = ?
+                         first_message = ?, first_message_outbound = ?, first_message_mode = ?, business_address = ?, voice_provider = ?
                      WHERE id = ?""",
-            (script, script_outbound, kb, first_message, first_message_outbound, first_message_mode, voice_provider, bid))
+            (script, script_outbound, kb, first_message, first_message_outbound, first_message_mode, business_address, voice_provider, bid))
     else:
         # Voice Provider selector removed — preserve the stored provider
         c.execute("""UPDATE businesses 
                      SET script_template = ?, script_outbound = ?, knowledge_base = ?, 
-                         first_message = ?, first_message_outbound = ?, first_message_mode = ?
+                         first_message = ?, first_message_outbound = ?, first_message_mode = ?, business_address = ?
                      WHERE id = ?""",
-            (script, script_outbound, kb, first_message, first_message_outbound, first_message_mode, bid))
+            (script, script_outbound, kb, first_message, first_message_outbound, first_message_mode, business_address, bid))
     db.commit()
     
     # ── Sync to Vapi assistant ──
@@ -7595,6 +7596,7 @@ def agent_book_appointment():
     biz = c.execute("SELECT * FROM businesses WHERE id=?", (bid,)).fetchone() if bid else None
     biz_name = (biz['name'] if biz else 'your business')
     biz_phone = (biz['phone_number'] if biz and biz['phone_number'] else '')
+    biz_address = (biz['business_address'] if biz and biz['business_address'] else '')
     apt_id = 'apt_' + uuid.uuid4().hex[:10]
     full_notes = f"Test drive: {vehicle}. {notes}".strip()
     c.execute(
@@ -7616,10 +7618,15 @@ def agent_book_appointment():
             except Exception:
                 day, tm = apt_time, ''
             sms_body = (f"Hi {name}! ✅ Your test drive at {biz_name} is booked for "
-                        f"{day}{' at ' + tm if tm else ''}. Call us at {biz_phone} "
-                        f"if you need to reschedule. See you soon!")
-            if smsgate_send(phone, sms_body, business_id=bid):
-                delivered.append('sms')
+                        f"{day}{' at ' + tm if tm else ''}. "
+                        f"📍 {biz_name}: {biz_address} | 📞 {biz_phone}. "
+                        f"See you soon!")
+            # sms-gate intermittently 401s on /messages — retry up to 3x (known quirk)
+            for _attempt in range(3):
+                if smsgate_send(phone, sms_body, business_id=bid):
+                    delivered.append('sms')
+                    break
+                time.sleep(2)
         except Exception:
             pass
     except Exception:
@@ -7629,7 +7636,8 @@ def agent_book_appointment():
             from agentmail_email import send_appointment_confirmation
             send_appointment_confirmation(
                 to=email, prospect_name=name, business_name=biz_name,
-                appointment_time=apt_time, business_phone=biz_phone)
+                appointment_time=apt_time, business_phone=biz_phone,
+                business_address=biz_address)
             delivered.append('email')
     except Exception:
         pass
