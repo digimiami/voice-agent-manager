@@ -60,7 +60,7 @@ nav { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 </div>
 <div class="flex items-center space-x-4">
 <a href="/login" class="hidden md:block text-sm text-gray-300 hover:text-white transition">Login</a>
-<a href="#signup-form" class="px-5 py-2 gradient-bg text-white text-sm font-semibold rounded-lg hover:opacity-90 transition">Get Started</a>
+<a href="#" onclick="openSignup();return false;" class="px-5 py-2 gradient-bg text-white text-sm font-semibold rounded-lg hover:opacity-90 transition">Get Started</a>
 <button id="mobileMenuBtn" class="md:hidden text-gray-300 hover:text-white">
 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
@@ -96,7 +96,7 @@ Diazites AI voice employees answer every call 24/7, qualify customers, book appo
 <a href="#try-it-live" class="px-8 py-4 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 transition text-center">
 🎧 Hear My AI Agent
 </a>
-<a href="#signup-form" class="px-8 py-4 card text-white font-semibold rounded-lg hover:bg-white/10 transition text-center">
+<a href="#" onclick="openSignup();return false;" class="px-8 py-4 card text-white font-semibold rounded-lg hover:bg-white/10 transition text-center">
 📅 Book a Demo
 </a>
 </div>
@@ -438,7 +438,7 @@ Homeowner called about storm damage. AI captured the address, asked qualifying q
 <div class="card-premium p-8 text-center reveal">
 <p class="text-xl mb-6 leading-relaxed">One outbound campaign can fill next week's calendar. One answered call can pay for the month.</p>
 <div class="flex flex-col sm:flex-row gap-4 justify-center">
-<a href="#signup-form" class="px-8 py-4 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 transition">
+<a href="#" onclick="openSignup();return false;" class="px-8 py-4 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 transition">
 🤖 Build Your AI Employee
 </a>
 <a href="#try-it-live" class="px-8 py-4 card text-white font-semibold rounded-lg hover:bg-white/10 transition">
@@ -631,7 +631,7 @@ Homeowner called about storm damage. AI captured the address, asked qualifying q
 <section id="pricing" class="py-20 px-4 sm:px-6 lg:px-8">
 <div class="max-w-7xl mx-auto">
 <div class="text-center mb-12 reveal">
-<a href="#signup-form" class="inline-flex items-center px-6 py-3 rounded-full text-sm font-semibold mb-6 gradient-bg hover:opacity-90 transition">
+<a href="#" onclick="openSignup();return false;" class="inline-flex items-center px-6 py-3 rounded-full text-sm font-semibold mb-6 gradient-bg hover:opacity-90 transition">
 🚀 Start Automating Your Calls Today — Plans From $97/mo →
 </a>
 <h2 class="text-4xl sm:text-5xl font-black mb-4">Put Your Phone on Autopilot</h2>
@@ -648,7 +648,7 @@ Homeowner called about storm damage. AI captured the address, asked qualifying q
 <div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>Booking & Analytics</span></div>
 <div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>Email Support</span></div>
 </div>
-<a href="#signup-form" onclick="selectPlan('starter')" class="block w-full px-6 py-3 card text-white font-semibold rounded-lg hover:bg-white/10 transition text-center">
+<a href="#" onclick="selectPlan('starter');openSignup();return false;" class="block w-full px-6 py-3 card text-white font-semibold rounded-lg hover:bg-white/10 transition text-center">
 Get Started — 3-Day Trial
 </a>
 </div>
@@ -664,7 +664,7 @@ Get Started — 3-Day Trial
 <div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>SMS & Calendar Integration</span></div>
 <div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>Priority Support</span></div>
 </div>
-<a href="#signup-form" onclick="selectPlan('pro')" class="block w-full px-6 py-3 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 transition text-center">
+<a href="#" onclick="selectPlan('pro');openSignup();return false;" class="block w-full px-6 py-3 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 transition text-center">
 Get Started — 3-Day Trial
 </a>
 </div>
@@ -679,7 +679,7 @@ Get Started — 3-Day Trial
 <div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>API & White Label</span></div>
 <div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>Dedicated Account Manager</span></div>
 </div>
-<a href="#signup-form" onclick="selectPlan('enterprise')" class="block w-full px-6 py-3 card text-white font-semibold rounded-lg hover:bg-white/10 transition text-center">
+<a href="#" onclick="selectPlan('enterprise');openSignup();return false;" class="block w-full px-6 py-3 card text-white font-semibold rounded-lg hover:bg-white/10 transition text-center">
 Talk to Sales — No Charge
 </a>
 </div>
@@ -696,7 +696,7 @@ No complicated setup. No long-term contract. Upgrade or cancel anytime.
 <h2 class="text-4xl sm:text-5xl font-black mb-6">Your next customer could be calling right now.</h2>
 <p class="text-xl text-gray-400 mb-8">Let Diazites answer, qualify, follow up, and book appointments around the clock.</p>
 <div class="flex flex-col sm:flex-row gap-4 justify-center">
-<a href="#signup-form" class="px-8 py-4 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 transition text-lg">
+<a href="#" onclick="openSignup();return false;" class="px-8 py-4 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 transition text-lg">
 🤖 Build Your AI Employee
 </a>
 <a href="#try-it-live" class="px-8 py-4 card text-white font-semibold rounded-lg hover:bg-white/10 transition text-lg">
@@ -706,60 +706,56 @@ No complicated setup. No long-term contract. Upgrade or cancel anytime.
 </div>
 </section>
 
-<!-- SIGNUP FORM -->
-<section id="signup-form" class="py-20 px-4 sm:px-6 lg:px-8">
-<div class="max-w-5xl mx-auto">
-<div class="grid md:grid-cols-2 gap-8">
-<div class="card p-8 reveal">
-<h3 class="text-2xl font-bold mb-6">Existing Client?</h3>
-<p class="text-gray-400 mb-6">Access your dashboard to manage AI voice employees, review calls, and track performance.</p>
-<a href="/login" class="block w-full px-6 py-3 card text-white font-semibold rounded-lg hover:bg-white/10 transition text-center">
-Login to Dashboard →
-</a>
+<!-- SIGNUP MODAL -->
+<div id="signupModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeSignup()"></div>
+  <div class="relative card p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" style="border:1px solid #232332;background:#0c0c18;border-radius:20px">
+    <button onclick="closeSignup()" class="absolute top-4 right-5 text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close">&times;</button>
+    <div class="text-center mb-6">
+      <div class="text-3xl mb-2">✨</div>
+      <h3 class="text-2xl font-bold">Start Your 3-Day Free Trial</h3>
+      <p class="text-gray-400 text-sm mt-1">No credit card required to start. Cancel anytime.</p>
+    </div>
+    <form id="signupFormLanding" onsubmit="return submitLandingSignup(event)" class="space-y-4">
+      <input type="hidden" id="sPlan" value="pro">
+      <div class="text-center bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-sm">Plan: <span id="sPlanLabel" class="font-bold gradient-text">Professional — $197/mo</span> · 3-day free trial</div>
+      <div>
+        <label class="block text-sm font-semibold mb-2">Business Name *</label>
+        <input type="text" id="sBizName" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-2">Email *</label>
+        <input type="email" id="sEmail" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-2">Phone</label>
+        <input type="tel" id="sPhone" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-2">Industry</label>
+        <select id="sIndustry" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+          <option value="">Select...</option>
+          <option value="plumber">Plumber</option>
+          <option value="hvac">HVAC</option>
+          <option value="electrician">Electrician</option>
+          <option value="roofing">Roofing</option>
+          <option value="painter">Painter</option>
+          <option value="landscaper">Landscaper</option>
+          <option value="cleaning">Cleaning</option>
+          <option value="auto">Auto Dealership</option>
+          <option value="realestate">Real Estate</option>
+          <option value="dentist">Dentist</option>
+          <option value="general">General/Other</option>
+        </select>
+      </div>
+      <button type="submit" id="sBtn" class="w-full px-6 py-3 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 transition">
+        🚀 Build Your AI Employee
+      </button>
+      <div id="sResult"></div>
+    </form>
+    <p class="text-center text-xs text-gray-500 mt-4">Existing client? <a href="/login" class="text-purple-400 hover:text-purple-300 font-semibold">Login to Dashboard</a></p>
+  </div>
 </div>
-<div class="card p-8 reveal">
-<h3 class="text-2xl font-bold mb-6">New Business?</h3>
-<form id="signupFormLanding" onsubmit="return submitLandingSignup(event)" class="space-y-4">
-<input type="hidden" id="sPlan" value="pro">
-<div class="text-center bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-sm">Plan: <span id="sPlanLabel" class="font-bold gradient-text">Professional — $197/mo</span> · 3-day free trial</div>
-<div>
-<label class="block text-sm font-semibold mb-2">Business Name *</label>
-<input type="text" id="sBizName" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
-</div>
-<div>
-<label class="block text-sm font-semibold mb-2">Email *</label>
-<input type="email" id="sEmail" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
-</div>
-<div>
-<label class="block text-sm font-semibold mb-2">Phone</label>
-<input type="tel" id="sPhone" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
-</div>
-<div>
-<label class="block text-sm font-semibold mb-2">Industry</label>
-<select id="sIndustry" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
-<option value="">Select...</option>
-<option value="plumber">Plumber</option>
-<option value="hvac">HVAC</option>
-<option value="electrician">Electrician</option>
-<option value="roofing">Roofing</option>
-<option value="painter">Painter</option>
-<option value="landscaper">Landscaper</option>
-<option value="cleaning">Cleaning</option>
-<option value="auto">Auto Dealership</option>
-<option value="realestate">Real Estate</option>
-<option value="dentist">Dentist</option>
-<option value="general">General/Other</option>
-</select>
-</div>
-<button type="submit" id="sBtn" class="w-full px-6 py-3 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 transition">
-🚀 Build Your AI Employee
-</button>
-<div id="sResult"></div>
-</form>
-</div>
-</div>
-</div>
-</section>
 
 <!-- FOOTER -->
 <footer class="border-t border-white/10 py-12 px-4 sm:px-6 lg:px-8">
@@ -770,7 +766,7 @@ Login to Dashboard →
 <span class="font-bold">Diazites</span>
 </div>
 <div class="flex flex-wrap justify-center gap-6 text-sm text-gray-400">
-<a href="#signup-form" class="hover:text-white transition">Get Started</a>
+<a href="#" onclick="openSignup();return false;" class="hover:text-white transition">Get Started</a>
 <a href="/affiliate" class="hover:text-white transition">💸 Affiliates — Earn $50/Signup</a>
 <a href="/privacy" class="hover:text-white transition">Privacy</a>
 <a href="/terms" class="hover:text-white transition">Terms</a>
@@ -807,6 +803,21 @@ function playDemo(btn, voiceId, text) {
     btn.innerHTML = '▶️ Hear the Call';
   }
 }
+
+// Signup modal
+function openSignup() {
+  var m = document.getElementById('signupModal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+  document.body.style.overflow = 'hidden';
+  var f = document.getElementById('sBizName');
+  if (f) setTimeout(function(){ f.focus(); }, 150);
+}
+function closeSignup() {
+  var m = document.getElementById('signupModal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeSignup(); });
 
 // Plan selection (pricing cards)
 function selectPlan(p) {

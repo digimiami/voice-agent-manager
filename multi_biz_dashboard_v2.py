@@ -1182,15 +1182,45 @@ INVENTORY_TOOL = [{
 }]
 
 
-def _assistant_model(name, full_script, max_tokens, industry=''):
-    """Build the VAPI model config for a new assistant. Dealerships get the
-    live-inventory search tool attached automatically."""
+def booking_tool(bid):
+    """VAPI apiRequest tool that books an appointment for a specific business
+    and auto-sends the customer an SMS + email confirmation."""
+    return [{
+        "type": "apiRequest",
+        "async": False,
+        "method": "POST",
+        "url": f"https://diazites.online/api/agent/book-appointment?bid={bid}",
+        "function": {
+            "name": "book_appointment",
+            "description": "BOOK A TEST DRIVE / APPOINTMENT for the caller. Call this the moment the customer agrees to a test drive or visit. Pass the customer's FULL NAME, PHONE, preferred DATE+TIME in ISO format (YYYY-MM-DDTHH:MM:SS, e.g. 2026-08-15T14:00:00), EMAIL if they give one, and which VEHICLE they want to see. This sends the customer an automatic SMS + email confirmation. After the tool returns, read the confirmation back to the customer.",
+            "parameters": {
+                "type": "object",
+                "required": ["name", "phone", "appointment_time"],
+                "properties": {
+                    "name": {"type": "string", "description": "Customer's full name"},
+                    "phone": {"type": "string", "description": "Customer's phone number, e.g. 7865551234"},
+                    "appointment_time": {"type": "string", "description": "Preferred date+time in ISO format YYYY-MM-DDTHH:MM:SS, e.g. 2026-08-15T14:00:00"},
+                    "email": {"type": "string", "description": "Customer's email for the confirmation email (optional but ask for it)"},
+                    "vehicle": {"type": "string", "description": "Vehicle they want to see/test drive, e.g. 2018 Ford Explorer"},
+                    "notes": {"type": "string", "description": "Any extra notes from the call"}
+                }
+            }
+        }
+    }]
+
+
+def _assistant_model(name, full_script, max_tokens, industry='', bid=''):
+    """Build the VAPI model config for a new assistant. All assistants get the
+    appointment-booking tool; dealerships additionally get the live-inventory
+    search tool."""
     model = {"provider": "xai", "model": "grok-4.3",
              "temperature": 0.3, "maxTokens": max_tokens,
              "systemPrompt": full_script}
+    tools = booking_tool(bid)
     ind = (industry or '').lower()
     if any(k in ind for k in ('auto', 'dealer', 'car', 'vehicle', 'motor')):
-        model["tools"] = INVENTORY_TOOL
+        tools = INVENTORY_TOOL + tools
+    model["tools"] = tools
     return model
 
 
@@ -1231,7 +1261,7 @@ def provision_first_number(bid, priority_area=None):
                 "-H", "Content-Type: application/json",
                 "-d", json.dumps({
                     "name": f"{name} Voice Agent",
-                    "model": _assistant_model(name, full_script, max_tokens, industry),
+                    "model": _assistant_model(name, full_script, max_tokens, industry, bid),
                     "transcriber": {"provider": "openai", "model": "gpt-4o-transcribe"},
                     "voice": {"provider": "cartesia", "voiceId": "a167e0f3-df7e-4d52-a9c3-f949145efdab", "model": "sonic-3.5"},
                     "firstMessage": f"Hi, this is {name}'s assistant from Diazites. How can I help you today?",
@@ -7534,6 +7564,85 @@ def appointment_add():
         (apt_id, bid, name, phone, apt_time, notes))
     db.commit()
     return jsonify({'success': True, 'message': '✅ Appointment added', 'id': apt_id})
+
+@app.route('/api/agent/book-appointment', methods=['POST'])
+def agent_book_appointment():
+    """VAPI server-tool endpoint: book a test drive/appointment and AUTO-SEND
+    the customer an SMS + email confirmation. Accepts the VAPI apiRequest
+    envelope or plain JSON. Business is resolved from the ?bid= query param."""
+    bid = request.args.get('bid', '').strip()
+    body = request.get_json(silent=True) or {}
+    # VAPI apiRequest posts {message: {toolCallList: [{arguments: {...}}]}} (async=false -> plain args too)
+    msg = body.get('message') if isinstance(body, dict) else None
+    tcl = (msg or {}).get('toolCallList') or [] if isinstance(msg, dict) else []
+    args = {}
+    if tcl and isinstance(tcl[0], dict) and isinstance(tcl[0].get('arguments'), dict):
+        args = tcl[0]['arguments']
+    elif isinstance(body, dict):
+        args = body.get('args') if isinstance(body.get('args'), dict) else body
+
+    name = str(args.get('name') or '').strip()[:120]
+    phone = str(args.get('phone') or '').strip()[:30]
+    apt_time = str(args.get('appointment_time') or '').strip()[:200]
+    email = str(args.get('email') or '').strip()[:200]
+    vehicle = str(args.get('vehicle') or '').strip()[:200]
+    notes = str(args.get('notes') or '').strip()[:2000]
+    if not name or not phone or not apt_time:
+        return jsonify({'ok': False, 'error': 'name, phone, and appointment_time are required'}), 400
+
+    db = get_db()
+    c = db.cursor()
+    biz = c.execute("SELECT * FROM businesses WHERE id=?", (bid,)).fetchone() if bid else None
+    biz_name = (biz['name'] if biz else 'your business')
+    biz_phone = (biz['phone_number'] if biz and biz['phone_number'] else '')
+    apt_id = 'apt_' + uuid.uuid4().hex[:10]
+    full_notes = f"Test drive: {vehicle}. {notes}".strip()
+    c.execute(
+        "INSERT INTO appointments (id, business_id, prospect_name, phone, appointment_time, notes, status) "
+        "VALUES (?,?,?,?,?,?,'booked')",
+        (apt_id, bid, name, phone, apt_time, full_notes))
+    db.commit()
+
+    # ── AUTO CONFIRMATIONS (never block the booking on a delivery failure) ──
+    delivered = []
+    try:
+        from smsgate_sms import send_sms as smsgate_send
+        try:
+            from datetime import datetime as _dt
+            try:
+                dt = _dt.fromisoformat(apt_time.replace('Z', '+00:00'))
+                day = dt.strftime('%A, %B %d')
+                tm = dt.strftime('%I:%M %p').lstrip('0')
+            except Exception:
+                day, tm = apt_time, ''
+            sms_body = (f"Hi {name}! ✅ Your test drive at {biz_name} is booked for "
+                        f"{day}{' at ' + tm if tm else ''}. Call us at {biz_phone} "
+                        f"if you need to reschedule. See you soon!")
+            if smsgate_send(phone, sms_body, business_id=bid):
+                delivered.append('sms')
+        except Exception:
+            pass
+    except Exception:
+        pass
+    try:
+        if email:
+            from agentmail_email import send_appointment_confirmation
+            send_appointment_confirmation(
+                to=email, prospect_name=name, business_name=biz_name,
+                appointment_time=apt_time, business_phone=biz_phone)
+            delivered.append('email')
+    except Exception:
+        pass
+
+    confirm_note = (" Confirmation sent by SMS." if 'sms' in delivered else "")
+    if 'email' in delivered:
+        confirm_note += " and email." if 'sms' in delivered else " Confirmation sent by email."
+    return jsonify({
+        'ok': True,
+        'appointment_id': apt_id,
+        'message': f'Booked for {name} on {apt_time}.{confirm_note}'
+    })
+
 
 @app.route('/api/appointment/complete', methods=['POST'])
 @login_required
