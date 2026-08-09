@@ -1378,45 +1378,66 @@ setTimeout(refreshMonitor, 500);
   <!-- ======== TAB: SETTINGS ======== -->
   {% elif tab == 'settings' %}
   <div class="grid md:grid-cols-2 gap-6">
+    <div class="card md:col-span-2" style="border-color:rgba(168,85,247,0.3)">
+      <h3 class="font-bold mb-2">🤖 AI Assistant Generator</h3>
+      <p class="text-xs text-[#7a7a8e] mb-3">Paste your website URL (optional) and let the AI write your scripts &amp; knowledge base with <strong>real facts</strong> about your business.</p>
+      <div class="mb-4" style="padding:12px 14px;border-radius:10px;background:rgba(74,222,128,0.04);border:1px solid rgba(74,222,128,0.15)">
+        <label class="text-xs font-semibold text-[#4ade80] block mb-1">🌐 Business Website URL <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
+        <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Paste your website (e.g. https://www.yourbusiness.com) and the AI reads it to write scripts and knowledge base with REAL facts — hours, services, prices — instead of placeholders. Works best on simple sites; leave empty to use templates.</div>
+        <input type="text" id="genUrlInput" placeholder="e.g. https://www.brucknerautosales.com" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
+      </div>
+      <div class="flex gap-2 items-center flex-wrap">
+        <button type="button" onclick="generateKB('outbound')" id="genKBBtn" class="btn-secondary text-xs" style="padding:6px 14px">🤖 AI Generate KB</button><span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8;font-size:11px">❓</span><span class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0;width:100%">Writes your knowledge base automatically using your business type + website URL (if added).</span>
+        <button type="button" onclick="generateScript('inbound')" id="genInboundBtn" class="btn-secondary text-xs" style="padding:6px 14px">📞 AI Generate Inbound Script</button><span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8;font-size:11px">❓</span><span class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0;width:100%">Writes the full inbound call script — how your AI greets, talks, and books appointments.</span>
+        <button type="button" onclick="generateScript('outbound')" id="genOutboundBtn" class="btn-secondary text-xs" style="padding:6px 14px">📢 AI Generate Outbound Script</button><span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8;font-size:11px">❓</span><span class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0;width:100%">Writes the outbound cold-call script for when your AI calls prospects.</span>
+        <button type="button" onclick="document.getElementById('scriptForm').submit()" class="btn-primary text-xs" style="padding:6px 20px">💾 Save All</button><span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8;font-size:11px">❓</span><span class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0;width:100%">Saves the scripts, knowledge base, first messages, address, and speech settings — and updates your live AI agent instantly.</span>
+        <span id="kbGenStatus" class="text-xs"></span>
+      </div>
+      <div id="syncStatus" class="text-xs text-green-400 hidden mt-2">✅ Synced — your changes are live</div>
+    </div>
     <div class="card md:col-span-2">
       <h3 class="font-bold mb-4">🎙️ Script & Knowledge Base</h3>
-      <form method="POST" action="/update-script">
+      <form method="POST" action="/update-script" id="scriptForm">
         <div class="grid md:grid-cols-3 gap-4 mb-4">
           <div>
-            <label class="text-xs font-semibold text-[#c084fc] block mb-2">📞 Inbound Script</label>
-            <p class="text-xs text-[#7a7a8e] mb-2">What the AI says when customers <strong>call you</strong>. Saves automatically.</p>
+            <label class="text-xs font-semibold text-[#c084fc] block mb-2">📞 Inbound Script <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
+            <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">The main script controlling how your AI answers the phone: greeting, how it collects info, how it books test drives/appointments, and how it handles questions. Saves instantly to your live agent.</div>
             <textarea name="script" rows="10" class="w-full text-xs" id="scriptTextarea">{{ biz_info.script_template or '' }}</textarea>
           </div>
           <div>
-            <label class="text-xs font-semibold text-[#4ade80] block mb-2">📢 Outbound Script</label>
-            <p class="text-xs text-[#7a7a8e] mb-2">What the AI says when it <strong>calls prospects</strong> (campaigns, follow-ups, missed calls). Explicit call instructions go here.</p>
+            <label class="text-xs font-semibold text-[#4ade80] block mb-2">📢 Outbound Script <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
+            <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">What the AI says when it CALLS prospects — campaigns, follow-ups, missed-call callbacks. Include your opening pitch, key selling points, and what action you want (book a visit, get info).</div>
             <textarea name="script_outbound" rows="10" class="w-full text-xs" id="outboundTextarea">{{ biz_info.script_outbound or '' }}</textarea>
           </div>
           <div>
-            <label class="text-xs font-semibold text-[#c084fc] block mb-2">📚 Knowledge Base</label>
-            <p class="text-xs text-[#7a7a8e] mb-2">Facts & info the AI references during calls. <strong>Saves automatically.</strong></p>
+            <label class="text-xs font-semibold text-[#c084fc] block mb-2">📚 Knowledge Base <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
+            <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Facts about your business the AI references during calls: hours, prices, services, location, inventory. The better this is, the smarter and more accurate your AI sounds. Saves automatically.</div>
             <textarea name="knowledge_base" rows="10" class="w-full text-xs" id="kbTextarea">{{ biz_info.knowledge_base or '' }}</textarea>
           </div>
         </div>
         <!-- Call settings row -->
         <div class="grid md:grid-cols-3 gap-4 mb-4 p-4 rounded-lg" style="background:rgba(168,85,247,0.05);border:1px solid rgba(168,85,247,0.15)">
           <div>
-            <label class="text-xs font-semibold text-[#c084fc] block mb-1">🗣️ First Message (inbound) <button type="button" onclick="generateFirstMessage('inbound')" class="text-[10px] px-2 py-0.5 rounded ml-1 align-middle" style="background:#1a1a28;border:1px solid #c084fc55;color:#c084fc" id="genFmInboundBtn">🤖 AI Generate</button></label>
+            <label class="text-xs font-semibold text-[#c084fc] block mb-1">🗣️ First Message (inbound) <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span> <button type="button" onclick="generateFirstMessage('inbound')" class="text-[10px] px-2 py-0.5 rounded ml-1 align-middle" style="background:#1a1a28;border:1px solid #c084fc55;color:#c084fc" id="genFmInboundBtn">🤖 AI Generate</button></label>
+            <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">The exact first sentence your AI says when it picks up the phone. Keep it friendly and short — the caller then tells you what they need.</div>
             <p class="text-xs text-[#7a7a8e] mb-1">Greeting the AI says when it answers.</p>
             <input type="text" name="first_message" id="firstMessageInbound" value="{{ biz_info.first_message or '' }}" placeholder="e.g. Hi, thanks for calling! How can I help?" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
           </div>
           <div>
-            <label class="text-xs font-semibold text-[#4ade80] block mb-1">📢 Outbound First Message <button type="button" onclick="generateFirstMessage('outbound')" class="text-[10px] px-2 py-0.5 rounded ml-1 align-middle" style="background:#1a1a28;border:1px solid #4ade8055;color:#4ade80" id="genFmOutboundBtn">🤖 AI Generate</button></label>
+            <label class="text-xs font-semibold text-[#4ade80] block mb-1">📢 Outbound First Message <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span> <button type="button" onclick="generateFirstMessage('outbound')" class="text-[10px] px-2 py-0.5 rounded ml-1 align-middle" style="background:#1a1a28;border:1px solid #4ade8055;color:#4ade80" id="genFmOutboundBtn">🤖 AI Generate</button></label>
+            <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">The exact first sentence the AI says when it calls a prospect. {{'{{'}}prospect_name{{'}}'}} is replaced with the person's first name automatically — always keep it in.</div>
             <p class="text-xs text-[#7a7a8e] mb-1">What the AI says when it <strong>calls</strong>. Variables: <code class="text-[#4ade80]">{{'{{'}}prospect_name{{'}}'}}</code> <code class="text-[#4ade80]">{{'{{'}}prospect_business{{'}}'}}</code> <code class="text-[#4ade80]">{{'{{'}}business_name{{'}}'}}</code></p>
             <input type="text" name="first_message_outbound" id="firstMessageOutbound" value="{{ biz_info.first_message_outbound or '' }}" placeholder="e.g. Hi {{'{{'}}prospect_name{{'}}'}}, this is Mike from Bruckner Auto Sales — how are you?" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
           </div>
           <div>
-            <label class="text-xs font-semibold text-[#4ade80] block mb-1">📍 Business Address</label>
+            <label class="text-xs font-semibold text-[#4ade80] block mb-1">📍 Business Address <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
+            <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Your physical address — shown in every appointment confirmation SMS and email so customers know exactly where to go.</div>
             <p class="text-xs text-[#7a7a8e] mb-1">Shown in the appointment confirmation SMS + email.</p>
             <input type="text" name="business_address" value="{{ biz_info.business_address or '' }}" placeholder="e.g. 1480 Bruckner Blvd, Bronx, NY 10473" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
           </div>
           <div>
-            <label class="text-xs font-semibold text-[#c084fc] block mb-1">🎤 Assistant Speaks First</label>
+            <label class="text-xs font-semibold text-[#c084fc] block mb-1">🎤 Assistant Speaks First <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
+            <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">"Assistant Speaks First" = your AI greets the caller the moment the call connects. "Assistant Waits" = it stays silent until the caller speaks first (good for callers who expect a human to say hello).</div>
             <p class="text-xs text-[#7a7a8e] mb-1">AI speaks immediately or waits for caller.</p>
             <select name="first_message_mode" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
               <option value="assistant-speaks-first" {% if biz_info.first_message_mode == 'assistant-speaks-first' or not biz_info.first_message_mode %}selected{% endif %}>✅ Assistant Speaks First</option>
@@ -1424,26 +1445,16 @@ setTimeout(refreshMonitor, 500);
             </select>
           </div>
         </div>
-        <div class="mb-4 p-4 rounded-lg" style="background:rgba(74,222,128,0.04);border:1px solid rgba(74,222,128,0.15)">
-          <label class="text-xs font-semibold text-[#4ade80] block mb-1">🌐 Business Website URL <span class="text-[#7a7a8e] font-normal">(optional — the AI reads it to generate REAL scripts &amp; knowledge base)</span></label>
-          <input type="text" id="genUrlInput" placeholder="e.g. https://www.brucknerautosales.com" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
-        </div>
-        <div class="flex gap-2 items-center flex-wrap">
-          <button type="button" onclick="generateKB('outbound')" id="genKBBtn" class="btn-secondary text-xs" style="padding:6px 14px">🤖 AI Generate KB</button>
-          <button type="button" onclick="generateScript('inbound')" id="genInboundBtn" class="btn-secondary text-xs" style="padding:6px 14px">📞 AI Generate Inbound Script</button>
-          <button type="button" onclick="generateScript('outbound')" id="genOutboundBtn" class="btn-secondary text-xs" style="padding:6px 14px">📢 AI Generate Outbound Script</button>
-          <button type="submit" class="btn-primary text-xs" style="padding:6px 20px">💾 Save All</button>
-          <span id="kbGenStatus" class="text-xs"></span>
-        </div>
-        <div id="syncStatus" class="text-xs text-green-400 hidden mt-2">✅ Synced — your changes are live</div>
       </form>
     </div>
     <div class="card md:col-span-2">
-      <h3 class="font-bold mb-3">📄 Documents &amp; Menus <span class="text-xs font-normal text-[#7a7a8e]">— the AI answers from these</span></h3>
+      <h3 class="font-bold mb-3">📄 Documents &amp; Menus <span class="text-xs font-normal text-[#7a7a8e]">— the AI answers from these</span> <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></h3>
+      <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Upload your menu, inventory, or price list here — the AI reads them to answer callers and texts with real details (e.g. a pizza menu to place orders, a car inventory to search for cars).</div>
       <p class="text-xs text-[#7a7a8e] mb-3">Upload your <strong>menu</strong>, <strong>inventory</strong>, price list — or add a website URL. The AI reads them to answer callers and texts (e.g. pizza menu to place orders, car inventory to search for cars).</p>
       <div class="grid md:grid-cols-2 gap-4 mb-4">
         <div style="padding:14px;border-radius:10px;background:#1a1a26;border:1px solid #252533">
-          <label class="text-xs font-semibold text-[#c084fc] block mb-2">📎 Upload File</label>
+          <label class="text-xs font-semibold text-[#c084fc] block mb-2">📎 Upload File <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
+          <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Upload a .txt, .md, .csv, .json, or .pdf file with your business info (max 3MB).</div>
           <p class="text-xs text-[#7a7a8e] mb-2">.txt &nbsp;.md &nbsp;.csv &nbsp;.json &nbsp;.pdf &nbsp;(max 3MB)</p>
           <div class="flex gap-2">
             <input type="file" id="kbFileInput" accept=".txt,.md,.csv,.json,.pdf" style="flex:1;font-size:12px;color:#f1f1f5">
@@ -1451,7 +1462,8 @@ setTimeout(refreshMonitor, 500);
           </div>
         </div>
         <div style="padding:14px;border-radius:10px;background:#1a1a26;border:1px solid #252533">
-          <label class="text-xs font-semibold text-[#c084fc] block mb-2">🌐 Add Website URL</label>
+          <label class="text-xs font-semibold text-[#c084fc] block mb-2">🌐 Add Website URL <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label>
+          <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Add a page URL (menu site, inventory page, catalog) and the AI reads that page's text into its knowledge.</div>
           <p class="text-xs text-[#7a7a8e] mb-2">Fetches the page text (menu site, inventory page, catalog)</p>
           <div class="flex gap-2">
             <input type="text" id="kbUrlInput" placeholder="https://yourmenu.com/menu" style="flex:1;font-size:12px;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5">
@@ -1474,13 +1486,16 @@ setTimeout(refreshMonitor, 500);
       </div>
     </div>
     <div class="card">
-      <h3 class="font-bold mb-3">📞 Call Forwarding</h3>
+      <h3 class="font-bold mb-3">📞 Call Forwarding <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></h3>
+      <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">When a caller asks for a manager, owner, or a specific person, your AI says "one moment" and forwards the call to the number(s) you add. Add as many people as you want (Manager, Sales, Support…).</div>
       <form method="POST" action="/update-forwarding" onsubmit="collectForwardDestinations()">
         <p class="text-xs text-[#7a7a8e] mb-3">Add the people your AI agent can <strong>transfer calls to</strong>. When a caller asks for a manager, sales, support, or anyone specific, the AI picks the right person and forwards the call.</p>
-        <label class="flex items-center gap-2 cursor-pointer mb-3" style="padding:10px 14px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
+        <label class="flex items-center gap-2 cursor-pointer mb-2" style="padding:10px 14px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
           <input type="checkbox" name="forwarding_enabled" value="1" {% if biz_info.call_forwarding %}checked{% endif %} style="width:18px;height:18px;accent-color:#c084fc">
           <span class="text-sm">Enable call forwarding</span>
         </label>
+        <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8;font-size:11px;margin-bottom:8px;display:inline-block">❓ What does this do?</span>
+        <span class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0;width:100%;display:none">Turns the transfer feature on/off. Off = your AI handles the whole call itself.</span>
         <div id="forwardRows" class="space-y-2 mb-2"></div>
         <button type="button" onclick="addForwardRow()" class="btn-secondary text-xs" style="padding:5px 14px">➕ Add another person</button>
         <input type="hidden" name="destinations" id="forwardDestinations" value="">
@@ -1514,7 +1529,8 @@ setTimeout(refreshMonitor, 500);
     _forwardDests.forEach(function(d){ addForwardRow(d); });
     </script>
     <div class="card">
-      <h3 class="font-bold mb-3">🤖 AI SMS Replies</h3>
+      <h3 class="font-bold mb-3">🤖 AI SMS Replies <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></h3>
+      <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">When a customer texts your number, the AI replies automatically using your knowledge base — answers questions, schedules appointments, and sends confirmations. You don't have to lift a finger.</div>
       <form method="POST" action="/update-sms-ai">
         <p class="text-xs text-[#7a7a8e] mb-3">When a customer texts this number, the AI replies automatically using your knowledge base — answers questions, schedules appointments, and sends confirmations.</p>
         <label class="flex items-center gap-2 cursor-pointer" style="padding:10px 14px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
@@ -1525,7 +1541,8 @@ setTimeout(refreshMonitor, 500);
       </form>
     </div>
     <div class="card">
-      <h3 class="font-bold mb-3">👤 Your User ID</h3>
+      <h3 class="font-bold mb-3">👤 Your User ID <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></h3>
+      <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">The ID you type on the login page. You can change it to anything you like (4–40 characters) — your old ID keeps working too.</div>
       <p class="text-xs text-[#7a7a8e] mb-2">This is what you type on the login page. Your current User ID:</p>
       <div class="mb-3" style="padding:10px 14px;border-radius:8px;background:#1a1a26;border:1px solid #252533;font-family:monospace;font-size:13px;color:#a5b4fc">{{ biz_info.login_id or biz_info.id }}</div>
       <input type="text" id="newLoginId" placeholder="New User ID (4-40 chars: letters, numbers, . _ -)" style="width:100%;font-size:12px;padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;margin-bottom:8px">
@@ -1533,7 +1550,8 @@ setTimeout(refreshMonitor, 500);
       <div id="loginIdStatus" class="text-xs mt-2"></div>
     </div>
     <div class="card">
-      <h3 class="font-bold mb-3">🗣️ AI Voice</h3>
+      <h3 class="font-bold mb-3">🗣️ AI Voice <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></h3>
+      <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Choose the voice your AI uses on calls, the language it speaks, and how fast it talks. Click ▶️ to preview each voice.</div>
       <form method="POST" action="/update-voice">
         <p class="text-xs text-[#7a7a8e] mb-3">Click ▶️ to preview. Select active voice, language, and speed.</p>
         {% set voice_icons = {'burt':'👨‍💼','indy':'👩','michael':'🧔','emma':'👩‍🦰','antoni':'🧑'} %}
@@ -1550,14 +1568,15 @@ setTimeout(refreshMonitor, 500);
         </div>
         <input type="hidden" name="voice_id" id="voice_id" value="{{ biz_info.voice_id or 'burt' }}">
         <div class="grid grid-cols-2 gap-3 mb-3">
-          <div><label class="text-xs text-[#7a7a8e] block mb-1">🌐 Language</label><select name="language">{% for lang_id, lang_name in languages.items() %}<option value="{{ lang_id }}" {% if biz_info.language == lang_id %}selected{% endif %}>{{ lang_name }}</option>{% endfor %}</select></div>
-          <div><label class="text-xs text-[#7a7a8e] block mb-1">⚡ Speed</label><div class="flex items-center gap-2"><input type="range" name="voice_speed" min="0.7" max="2.0" step="0.05" value="{{ biz_info.voice_speed or 1.15 }}" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)+'x'" class="flex-1"><output class="text-sm font-bold text-[#4ade80]" style="width:48px;text-align:center">{{ '%.2f'|format(biz_info.voice_speed|float if biz_info.voice_speed else 1.15) }}x</output></div></div>
+          <div><label class="text-xs text-[#7a7a8e] block mb-1">🌐 Language <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label><div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">The language your AI speaks on calls.</div><select name="language">{% for lang_id, lang_name in languages.items() %}<option value="{{ lang_id }}" {% if biz_info.language == lang_id %}selected{% endif %}>{{ lang_name }}</option>{% endfor %}</select></div>
+          <div><label class="text-xs text-[#7a7a8e] block mb-1">⚡ Speed <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></label><div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">How fast the AI talks. 1.0 = normal, higher = faster, lower = slower and more relaxed.</div><div class="flex items-center gap-2"><input type="range" name="voice_speed" min="0.7" max="2.0" step="0.05" value="{{ biz_info.voice_speed or 1.15 }}" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)+'x'" class="flex-1"><output class="text-sm font-bold text-[#4ade80]" style="width:48px;text-align:center">{{ '%.2f'|format(biz_info.voice_speed|float if biz_info.voice_speed else 1.15) }}x</output></div></div>
         </div>
         <button type="submit" class="btn-primary text-xs w-full">💾 Save Voice Settings</button>
       </form>
     </div>
     <div class="card">
-      <h3 class="font-bold mb-3">🔗 CRM Webhook — AI Instant Callback</h3>
+      <h3 class="font-bold mb-3">🔗 CRM Webhook — AI Instant Callback <span class="helpq" onclick="toggleTip(this)" style="cursor:pointer;color:#818cf8">❓</span></h3>
+      <div class="tipbox" style="display:none;font-size:11px;color:#c4b5fd;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);padding:8px 10px;border-radius:8px;margin:6px 0">Connect this to your website forms, Facebook leads, or CRM — when a new lead comes in, your AI calls them back within seconds. Copy the URL and paste it into your form tool as a webhook.</div>
       <p class="text-xs text-[#7a7a8e] mb-3">When a lead comes in (your website form, Facebook lead, or CRM), send it here and the AI agent <strong>calls them back within seconds</strong>.</p>
       <div class="mb-3" style="padding:10px 12px;border-radius:8px;background:#1a1a26;border:1px solid #252533">
         <div class="text-[10px] text-[#7a7a8e] mb-1">WEBHOOK URL</div>
@@ -3224,6 +3243,7 @@ document.addEventListener('click',function(e){if(e.target&&e.target.classList.co
 if(document.getElementById('browseResults'))setTimeout(browseNumbers,500);
 // Knowledge Base / Script generators (Settings tab) — optional business URL makes output real
 function genUrlVal(){var el=document.getElementById('genUrlInput');return el?el.value.trim():''}
+function toggleTip(el){var t=el.nextElementSibling;if(t&&t.classList.contains('tipbox')){t.style.display=(t.style.display==='block')?'none':'block'}}
 function genDone(btn,label){btn.disabled=false;btn.textContent=label}
 function generateKB(type){var btn=document.getElementById('genKBBtn');var status=document.getElementById('kbGenStatus');var ta=document.getElementById('kbTextarea');btn.disabled=true;btn.textContent='⏳ Generating...';status.textContent='Generating knowledge base via AI...';status.style.color='#c084fc';fetch('/api/generate-kb',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({method:'venice',kind:'kb',type:type,url:genUrlVal()})}).then(function(r){return r.json()}).then(function(d){genDone(btn,'🤖 AI Generate KB');if(d.success){ta.value=d.content;status.textContent='✅ '+d.message;status.style.color='#4ade80'}else{status.textContent='❌ '+(d.message||'Generation failed');status.style.color='#ef4444'}}).catch(function(){genDone(btn,'🤖 AI Generate KB');status.textContent='❌ Network error';status.style.color='#ef4444'})}
 function generateFirstMessage(type){var inbound=type==='inbound';var btn=document.getElementById(inbound?'genFmInboundBtn':'genFmOutboundBtn');var label=inbound?'🗣️ First Message (inbound)':'📢 Outbound First Message';var status=document.getElementById('kbGenStatus');var input=document.getElementById(inbound?'firstMessageInbound':'firstMessageOutbound');if(!input){return}btn.disabled=true;btn.textContent='⏳...';status.textContent='Generating '+label+' via AI...';status.style.color='#c084fc';fetch('/api/generate-kb',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({method:'venice',kind:'first_message',type:type,url:genUrlVal()})}).then(function(r){return r.json()}).then(function(d){btn.disabled=false;btn.textContent='🤖 AI Generate';if(d.success){input.value=d.content.replace(/^["'\s]+|["'\s]+$/g,'');status.textContent='✅ '+d.message;status.style.color='#4ade80'}else{status.textContent='❌ '+(d.message||'Generation failed');status.style.color='#ef4444'}}).catch(function(){btn.disabled=false;btn.textContent='🤖 AI Generate';status.textContent='❌ Network error';status.style.color='#ef4444'})}
