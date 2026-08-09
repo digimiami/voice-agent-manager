@@ -1158,6 +1158,104 @@ def user_2fa_dismiss():
     session.pop('user_2fa_new_codes', None)
     return redirect('/?tab=settings')
 
+def provision_first_number(bid, priority_area=None):
+    """Auto-provision a free first number for a new trial customer (background task).
+
+    1) Creates the VAPI assistant if missing (same config as the admin button).
+    2) Reuses an unassigned VAPI number if one exists (zero cost), otherwise
+       buys a Twilio number and registers it with Vapi.
+    3) Marks number_free_trial=1 so the $9.99 gate is skipped for the FIRST number.
+    Never raises — signup must succeed even if provisioning fails (admin can retry).
+    """
+    try:
+        db = get_db()
+        c = db.cursor()
+        biz = c.execute("SELECT * FROM businesses WHERE id=?", (bid,)).fetchone()
+        if not biz:
+            return
+        name = biz['name'] or 'Business'
+        industry = biz['industry'] or 'general'
+        voice_id = biz['voice_id'] or 'burt'
+        max_tokens = int(biz['max_tokens'] or 200) if biz['max_tokens'] else 200
+        assistant_id = biz['vapi_assistant_id']
+
+        # 1) Create the VAPI assistant if missing
+        if not assistant_id:
+            script = biz['script_template'] or ''
+            kb = biz['knowledge_base'] or ''
+            full_script = build_diazites_prompt(
+                business_name=name, industry=industry,
+                script=script, knowledge_base=kb)
+            full_script += ("\n\nIMPORTANT: You are a MULTI-LINGUAL assistant. Detect the caller's language and "
+                            "respond in that same language. You speak: English, Spanish, French, German, "
+                            "Portuguese, Chinese, Arabic, Hindi, Korean, Japanese. Switch languages naturally "
+                            "when the caller switches.")
+            r = subprocess.run(["curl", "-s", "-X", "POST", f"{VAPI_BASE}/assistant",
+                "-H", f"Authorization: Bearer {VAPI_API_KEY}",
+                "-H", "Content-Type: application/json",
+                "-d", json.dumps({
+                    "name": f"{name} Voice Agent",
+                    "model": {"provider": "xai", "model": "grok-4.3",
+                              "temperature": 0.3, "maxTokens": max_tokens,
+                              "systemPrompt": full_script},
+                    "transcriber": {"provider": "openai", "model": "gpt-4o-transcribe"},
+                    "voice": {"provider": "cartesia", "voiceId": "a167e0f3-df7e-4d52-a9c3-f949145efdab", "model": "sonic-3.5"},
+                    "firstMessage": f"Hi, this is {name}'s assistant from Diazites. How can I help you today?",
+                    "firstMessageMode": "assistant-speaks-first",
+                    "silenceTimeoutSeconds": 10,
+                    "maxDurationSeconds": 300,
+                    "backgroundSound": "off"
+                })], capture_output=True, text=True, timeout=30)
+            try:
+                assistant_id = json.loads(r.stdout).get('id')
+            except Exception:
+                assistant_id = None
+            if not assistant_id:
+                return
+            c.execute("UPDATE businesses SET vapi_assistant_id=? WHERE id=?", (assistant_id, bid))
+            db.commit()
+
+        # 2) Try an unassigned VAPI number first (free reuse)
+        try:
+            r = subprocess.run(["curl", "-s", f"{VAPI_BASE}/phone-number",
+                "-H", f"Authorization: Bearer {VAPI_API_KEY}"],
+                capture_output=True, text=True, timeout=15)
+            for phone in json.loads(r.stdout) or []:
+                if not phone.get('assistantId') and phone.get('id'):
+                    c.execute("UPDATE businesses SET vapi_phone_id=? WHERE id=?", (phone['id'], bid))
+                    db.commit()
+                    subprocess.run(["curl", "-s", "-X", "PATCH", f"{VAPI_BASE}/phone-number/{phone['id']}",
+                        "-H", f"Authorization: Bearer {VAPI_API_KEY}",
+                        "-H", "Content-Type: application/json",
+                        "-d", json.dumps({"assistantId": assistant_id})],
+                        capture_output=True, text=True, timeout=15)
+                    break
+        except Exception:
+            pass
+
+        # 3) Otherwise buy from Twilio + register with Vapi
+        biz = c.execute("SELECT * FROM businesses WHERE id=?", (bid,)).fetchone()
+        if not biz or not biz['vapi_phone_id']:
+            try:
+                from twilio_helper import buy_and_assign_number
+                phone_id, phone_number, error = buy_and_assign_number(assistant_id, priority_area)
+                if phone_id:
+                    c.execute("UPDATE businesses SET vapi_phone_id=? WHERE id=?", (phone_id, bid))
+                    db.commit()
+            except Exception:
+                pass
+
+        # 4) Mark as free-trial number (skips the $9.99 gate for the first number)
+        c.execute("UPDATE businesses SET number_free_trial=1 WHERE id=?", (bid,))
+        db.commit()
+        db.close()
+    except Exception:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
 @app.route('/api/signup', methods=['POST'])
 def api_signup():
     """Self-service signup - creates business and returns ID."""
@@ -1208,6 +1306,10 @@ def api_signup():
     except Exception:
         pass
     db.commit()
+    
+    # 🎁 Free first number with trial: provision assistant + number in the background
+    # (signup returns instantly; the number appears in the Phone Numbers tab shortly)
+    threading.Thread(target=provision_first_number, args=(bid,), daemon=True).start()
     
     # Try to send email
     try:
@@ -1306,6 +1408,9 @@ def api_signup_stripe():
     c.execute("""INSERT INTO campaigns (id, business_id, status) VALUES (?, ?, 'idle')""", (cid, bid))
     db.commit()
     
+    # 🎁 Free first number with trial: provision assistant + number in the background
+    threading.Thread(target=provision_first_number, args=(bid,), daemon=True).start()
+    
     # Create Stripe checkout with 3-day trial
     try:
         from premium_features import create_stripe_checkout, load_stripe_config
@@ -1402,6 +1507,7 @@ body{background:#0a0a0f;color:#f1f1f5;overflow-x:hidden}
 <div class="text-[#7a7a8e]">📱 We've also sent them via SMS to <strong>{{ phone }}</strong></div>
 </div>
 <div class="text-xs text-yellow-400 mb-4">🎁 Your 3-day free trial has started. You will be charged ${{ price }}/month after the trial ends.</div>
+<div class="text-xs text-green-400 mb-4">📱 Your first phone number is <b>included FREE</b> with the trial — it's being assigned automatically and will appear in your <b>Phone Numbers</b> tab within a minute.</div>
 <button onclick="nextStep(2)" class="btn-primary">Let's Go! →</button>
 </div>
 </div>
@@ -6958,11 +7064,11 @@ def buy_number():
     except:
         pass
     
-    # Check payment status before buying - everyone pays
+    # Check payment status before buying — everyone pays EXCEPT the free trial first number
     biz_plan = biz['plan'] or ''
     number_paid = biz['number_paid'] or 0
     
-    if not number_paid:
+    if not number_paid and not (biz['number_free_trial'] or 0):
         # Redirect to Stripe checkout
         from premium_features import create_stripe_checkout
         from premium_features import load_stripe_config
