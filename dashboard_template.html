@@ -234,6 +234,7 @@ document.querySelectorAll(".sidebar a").forEach(function(a) {
     <a href="/?tab=followups" class="nav-item {% if tab == 'followups' %}active{% endif %}"><span>🔄</span> Follow-ups</a>
     <a href="/?tab=numbers" class="nav-item {% if tab == 'numbers' %}active{% endif %}"><span>📱</span> Phone Numbers</a>
     <a href="/?tab=agents" class="nav-item {% if tab == 'agents' %}active{% endif %}"><span>🤖</span> Agents</a>
+    <a href="/?tab=squad" class="nav-item {% if tab == 'squad' %}active{% endif %}"><span>🔗</span> Squad</a>
     <a href="/?tab=settings" class="nav-item {% if tab == 'settings' %}active{% endif %}"><span>⚙️</span> Settings</a>
     <a href="/?tab=landing" class="nav-item {% if tab == 'landing' %}active{% endif %}"><span>🌐</span> Landing Page</a>
     <a href="/?tab=calendar" class="nav-item {% if tab == 'calendar' %}active{% endif %}"><span>📅</span> Calendar</a>
@@ -260,6 +261,7 @@ document.querySelectorAll(".sidebar a").forEach(function(a) {
         {% elif tab == 'followups' %}🔄 Follow-ups
         {% elif tab == 'numbers' %}📱 Phone Numbers
         {% elif tab == 'agents' %}🤖 Agents
+        {% elif tab == 'squad' %}🔗 Squad
         {% elif tab == 'settings' %}⚙️ Settings
         {% elif tab == 'landing' %}🌐 Landing Page
         {% elif tab == 'calendar' %}📅 Calendar
@@ -1373,6 +1375,277 @@ setTimeout(refreshMonitor, 500);
     if (params.get('tab') === 'agents') { setTimeout(loadAgents, 100); }
     if (_orig) _orig();
   };
+  </script>
+
+  <!-- ======== TAB: SQUAD ======== -->
+  {% elif tab == 'squad' %}
+  <style>
+    .squad-card { background: #0f0f1e; border: 1px solid #1a1a33; border-radius: 16px; padding: 20px; margin-bottom: 16px; transition: all 0.2s; }
+    .squad-card:hover { border-color: #a855f7; }
+    .squad-member-tag { display: inline-flex; align-items: center; gap: 6px; background: #1a1a33; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; }
+    .squad-empty { text-align: center; padding: 60px 20px; color: #5c5c70; }
+    .btn-sm { padding: 6px 14px; font-size: 0.75rem; border-radius: 8px; cursor: pointer; border: none; }
+    .btn-purple { background: #a855f7; color: white; }
+    .btn-purple:hover { background: #9333ea; }
+    .btn-outline { background: transparent; border: 1px solid #333; color: #a0a0b8; }
+    .btn-outline:hover { border-color: #a855f7; color: #a855f7; }
+    .btn-danger-squad { background: transparent; border: 1px solid #dc2626; color: #dc2626; }
+    .btn-danger-squad:hover { background: #dc2626; color: white; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.show { display: flex; }
+    .modal-box { background: #12121a; border: 1px solid #252533; border-radius: 16px; padding: 24px; width: 90%; max-width: 480px; max-height: 80vh; overflow-y: auto; }
+    .squad-agent-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 10px; margin-bottom: 6px; background: #0a0a14; }
+    .squad-agent-row:hover { background: #1a1a2e; }
+    .vapi-badge { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; }
+    .vapi-ok { background: rgba(34,197,94,0.15); color: #22c55e; }
+    .vapi-no { background: rgba(234,179,8,0.15); color: #eab308; }
+  </style>
+
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h3 class="font-bold text-lg">🔗 Agent Squads</h3>
+      <p class="text-xs text-[#7a7a8e] mt-1">Group agents together to enable call transfers between them</p>
+    </div>
+    <button onclick="showCreateSquadModal()" class="btn-sm btn-purple">+ New Squad</button>
+  </div>
+
+  <div id="squadsContainer">
+    <div class="text-center text-[#5c5c70] py-8">Loading squads...</div>
+  </div>
+
+  <!-- Create Squad Modal -->
+  <div id="createSquadModal" class="modal-overlay" onclick="if(event.target===this)closeCreateModal()">
+    <div class="modal-box">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold">🆕 New Squad</h3>
+        <button onclick="closeCreateModal()" class="text-[#7a7a8e] hover:text-white text-xl">&times;</button>
+      </div>
+      <input id="newSquadName" type="text" placeholder="Squad Name (Optional)" class="w-full mb-4" style="background:#0a0a14;border:1px solid #252533;border-radius:8px;padding:10px;color:white;">
+      <label class="text-xs text-[#7a7a8e] block mb-2">Add Members (Optional — select agents to include)</label>
+      <div id="createAgentList" class="max-h-48 overflow-y-auto mb-4 space-y-1">
+        <div class="text-xs text-[#5c5c70]">Loading agents...</div>
+      </div>
+      <button onclick="createSquad()" class="btn-sm btn-purple w-full">Create Squad</button>
+    </div>
+  </div>
+
+  <!-- Detail Modal -->
+  <div id="detailSquadModal" class="modal-overlay" onclick="if(event.target===this)closeDetailModal()">
+    <div class="modal-box">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold" id="detailSquadName">Squad Details</h3>
+        <button onclick="closeDetailModal()" class="text-[#7a7a8e] hover:text-white text-xl">&times;</button>
+      </div>
+      <div id="detailSquadMembers" class="mb-4 space-y-1"></div>
+      <div class="border-t border-[#1a1a33] pt-4 mb-4">
+        <label class="text-xs text-[#7a7a8e] block mb-2">➕ Add Agent</label>
+        <div id="detailAddAgentList" class="max-h-40 overflow-y-auto mb-2 space-y-1"></div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="deleteCurrentSquad()" class="btn-sm btn-danger-squad">🗑 Delete Squad</button>
+        <button onclick="closeDetailModal()" class="btn-sm btn-outline ml-auto">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var currentSquads = [];
+    var currentDetailSquadId = null;
+
+    function loadSquads() {
+      fetch('/api/squads/list')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          currentSquads = data.squads || [];
+          renderSquads();
+        });
+    }
+
+    function renderSquads() {
+      var container = document.getElementById('squadsContainer');
+      if (!currentSquads.length) {
+        container.innerHTML = '<div class="squad-empty">🎯 No squads yet. <br><span class="text-xs">Create one to enable call transfers between agents!</span></div>';
+        return;
+      }
+      var html = '';
+      currentSquads.forEach(function(s) {
+        var memberList = (s.members || []).map(function(m) {
+          var badgeClass = m.vapi_assistant_id ? 'vapi-ok' : 'vapi-no';
+          var badgeText = m.vapi_assistant_id ? 'VAPI ✓' : 'No VAPI';
+          return '<span class="squad-member-tag">🤖 ' + escHtml(m.name) + ' <span class="vapi-badge ' + badgeClass + '">' + badgeText + '</span></span>';
+        }).join(' ') || '<span class="text-xs text-[#5c5c70]">No members yet</span>';
+
+        html += '<div class="squad-card">' +
+          '<div class="flex items-center justify-between mb-3">' +
+            '<div>' +
+              '<h4 class="font-semibold">' + escHtml(s.name || 'Unnamed Squad') + '</h4>' +
+              '<span class="text-xs text-[#5c5c70]">' + s.member_count + ' agent(s) • ' + (s.vapi_squad_id ? '🔗 VAPI synced' : '⚠️ Not synced') + '</span>' +
+            '</div>' +
+            '<button onclick="openDetailModal(\'' + s.id + '\')" class="btn-sm btn-outline">Manage</button>' +
+          '</div>' +
+          '<div class="flex flex-wrap gap-2">' + memberList + '</div>' +
+        '</div>';
+      });
+      container.innerHTML = html;
+    }
+
+    function showCreateSquadModal() {
+      document.getElementById('createSquadModal').classList.add('show');
+      document.getElementById('newSquadName').value = '';
+      fetch('/api/squads/list')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var agents = data.available_agents || [];
+          var html = '';
+          if (!agents.length) {
+            html = '<div class="text-xs text-[#5c5c70] p-2">No agents available. Create agents first.</div>';
+          } else {
+            agents.forEach(function(a) {
+              html += '<label class="squad-agent-row" style="cursor:pointer">' +
+                '<span>🤖 ' + escHtml(a.name) + '</span>' +
+                '<span class="vapi-badge ' + (a.vapi_assistant_id ? 'vapi-ok' : 'vapi-no') + '">' + (a.vapi_assistant_id ? 'VAPI ✓' : 'No VAPI') + '</span>' +
+                '<input type="checkbox" value="' + a.id + '" class="create-agent-check" style="accent-color:#a855f7">' +
+              '</label>';
+            });
+          }
+          document.getElementById('createAgentList').innerHTML = html;
+        });
+    }
+
+    function closeCreateModal() {
+      document.getElementById('createSquadModal').classList.remove('show');
+    }
+
+    function createSquad() {
+      var name = document.getElementById('newSquadName').value.trim();
+      var checks = document.querySelectorAll('.create-agent-check:checked');
+      var agentIds = [];
+      checks.forEach(function(c) { agentIds.push(c.value); });
+
+      fetch('/api/squads/create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name: name, agent_ids: agentIds})
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.success) {
+          closeCreateModal();
+          loadSquads();
+        } else {
+          alert('Error: ' + (d.error || 'Unknown'));
+        }
+      });
+    }
+
+    function openDetailModal(squadId) {
+      currentDetailSquadId = squadId;
+      var squad = null;
+      currentSquads.forEach(function(s) { if (s.id === squadId) squad = s; });
+      if (!squad) return;
+
+      document.getElementById('detailSquadName').textContent = squad.name || 'Unnamed Squad';
+      document.getElementById('detailSquadModal').classList.add('show');
+
+      var members = squad.members || [];
+      var mhtml = '';
+      if (!members.length) {
+        mhtml = '<div class="text-xs text-[#5c5c70] p-2">No members yet</div>';
+      } else {
+        members.forEach(function(m) {
+          mhtml += '<div class="squad-agent-row">' +
+            '<span>🤖 ' + escHtml(m.name) + '</span>' +
+            '<span class="vapi-badge ' + (m.vapi_assistant_id ? 'vapi-ok' : 'vapi-no') + '">' + (m.vapi_assistant_id ? 'VAPI ✓' : 'No VAPI') + '</span>' +
+            '<button onclick="removeMember(\'' + m.id + '\')" class="btn-sm btn-danger-squad" style="padding:3px 8px;font-size:0.65rem">✕</button>' +
+          '</div>';
+        });
+      }
+      document.getElementById('detailSquadMembers').innerHTML = mhtml;
+
+      fetch('/api/squads/list')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var allAgents = data.available_agents || [];
+          var memberIds = members.map(function(m) { return m.id; });
+          var available = allAgents.filter(function(a) { return memberIds.indexOf(a.id) === -1; });
+          var ahtml = '';
+          if (!available.length) {
+            ahtml = '<div class="text-xs text-[#5c5c70]">All agents are already in this squad</div>';
+          } else {
+            available.forEach(function(a) {
+              ahtml += '<div class="squad-agent-row">' +
+                '<span>🤖 ' + escHtml(a.name) + '</span>' +
+                '<span class="vapi-badge ' + (a.vapi_assistant_id ? 'vapi-ok' : 'vapi-no') + '">' + (a.vapi_assistant_id ? 'VAPI ✓' : 'No VAPI') + '</span>' +
+                '<button onclick="addMember(\'' + a.id + '\')" class="btn-sm btn-purple" style="padding:3px 10px;font-size:0.65rem">+ Add</button>' +
+              '</div>';
+            });
+          }
+          document.getElementById('detailAddAgentList').innerHTML = ahtml;
+        });
+    }
+
+    function closeDetailModal() {
+      document.getElementById('detailSquadModal').classList.remove('show');
+      currentDetailSquadId = null;
+    }
+
+    function addMember(agentId) {
+      if (!currentDetailSquadId) return;
+      fetch('/api/squads/add-member', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({squad_id: currentDetailSquadId, agent_id: agentId})
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.success) {
+          loadSquads();
+          setTimeout(function() { openDetailModal(currentDetailSquadId); }, 300);
+        } else {
+          alert('Error: ' + (d.error || 'Unknown'));
+        }
+      });
+    }
+
+    function removeMember(agentId) {
+      if (!confirm('Remove this agent from the squad?')) return;
+      fetch('/api/squads/remove-member', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({squad_id: currentDetailSquadId, agent_id: agentId})
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.success) {
+          loadSquads();
+          setTimeout(function() { openDetailModal(currentDetailSquadId); }, 300);
+        } else {
+          alert('Error: ' + (d.error || 'Unknown'));
+        }
+      });
+    }
+
+    function deleteCurrentSquad() {
+      if (!confirm('Delete this squad? This cannot be undone.')) return;
+      fetch('/api/squads/delete/' + currentDetailSquadId, { method: 'DELETE' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (d.success) {
+            closeDetailModal();
+            loadSquads();
+          } else {
+            alert('Error: ' + (d.error || 'Unknown'));
+          }
+        });
+    }
+
+    function escHtml(s) {
+      var d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    loadSquads();
   </script>
 
   <!-- ======== TAB: SETTINGS ======== -->

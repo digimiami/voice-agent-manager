@@ -2249,6 +2249,307 @@ def api_agent_buy_number():
     return jsonify({'success': True, 'message': f'✅ {bought_number} bought & assigned to {agent["name"]}!',
                     'phone_number': bought_number})
 
+# ── SQUAD MANAGEMENT API ──
+
+def _ensure_squad_tables(db):
+    """Lazily create squad tables if they don't exist."""
+    db.execute("""CREATE TABLE IF NOT EXISTS squads (
+        id TEXT PRIMARY KEY,
+        business_id TEXT NOT NULL,
+        name TEXT DEFAULT '',
+        vapi_squad_id TEXT DEFAULT '',
+        status TEXT DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""")
+    db.execute("""CREATE TABLE IF NOT EXISTS squad_members (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        squad_id TEXT NOT NULL,
+        agent_id TEXT NOT NULL,
+        FOREIGN KEY (squad_id) REFERENCES squads(id),
+        FOREIGN KEY (agent_id) REFERENCES agents(id),
+        UNIQUE(squad_id, agent_id)
+    )""")
+    db.commit()
+
+def _sync_squad_to_vapi(squad_id, db):
+    """Sync a local squad to VAPI (create or update). Returns (vapi_squad_id, error)."""
+    squad = db.execute("SELECT * FROM squads WHERE id=?", (squad_id,)).fetchone()
+    if not squad:
+        return None, "Squad not found"
+    
+    # Get all members with VAPI assistant IDs
+    members = db.execute("""
+        SELECT a.vapi_assistant_id, a.name FROM squad_members sm
+        JOIN agents a ON sm.agent_id = a.id
+        WHERE sm.squad_id = ? AND a.vapi_assistant_id != ''
+    """, (squad_id,)).fetchall()
+    
+    if not members:
+        member_payload = []
+    else:
+        member_payload = [{"assistantId": m["vapi_assistant_id"]} for m in members]
+    
+    import subprocess, json
+    
+    if squad["vapi_squad_id"]:
+        # Update existing: delete and recreate (VAPI PATCH may not support members)
+        subprocess.run([
+            "curl", "-s", "-4", "--http1.1", "-X", "DELETE",
+            f"https://api.vapi.ai/squad/{squad['vapi_squad_id']}",
+            "-H", f"Authorization: Bearer {VAPI_API_KEY}",
+            "-H", "User-Agent: curl/8.0"
+        ], capture_output=True, timeout=15)
+    
+    payload = json.dumps({
+        "name": squad["name"] or f"Squad {squad_id[:6]}",
+        "members": member_payload
+    })
+    
+    result = subprocess.run([
+        "curl", "-s", "-4", "--http1.1", "-X", "POST",
+        "https://api.vapi.ai/squad",
+        "-H", f"Authorization: Bearer {VAPI_API_KEY}",
+        "-H", "Content-Type: application/json",
+        "-H", "User-Agent: curl/8.0",
+        "-d", payload
+    ], capture_output=True, text=True, timeout=15)
+    
+    try:
+        data = json.loads(result.stdout)
+        if "id" in data:
+            vapi_id = data["id"]
+            db.execute("UPDATE squads SET vapi_squad_id=? WHERE id=?", (vapi_id, squad_id))
+            db.commit()
+            return vapi_id, None
+        else:
+            err = data.get("message", result.stdout[:200])
+            return None, str(err)
+    except Exception as e:
+        return None, f"VAPI sync error: {e}"
+
+@app.route('/api/squads/list')
+@login_required
+def api_squads_list():
+    """List all squads for this business with member details."""
+    bid = session.get('business_id', '')
+    db = get_db()
+    _ensure_squad_tables(db)
+    c = db.cursor()
+    
+    squads = c.execute("SELECT * FROM squads WHERE business_id=? AND status='active' ORDER BY created_at DESC", (bid,)).fetchall()
+    result = []
+    for s in squads:
+        members = c.execute("""
+            SELECT a.id, a.name, a.vapi_assistant_id, a.phone_number 
+            FROM squad_members sm
+            JOIN agents a ON sm.agent_id = a.id
+            WHERE sm.squad_id = ?
+        """, (s["id"],)).fetchall()
+        result.append({
+            "id": s["id"],
+            "name": s["name"],
+            "vapi_squad_id": s["vapi_squad_id"],
+            "created_at": s["created_at"],
+            "member_count": len(members),
+            "members": [dict(m) for m in members]
+        })
+    
+    all_agents = c.execute("SELECT id, name, vapi_assistant_id, phone_number FROM agents WHERE business_id=? AND status='active'", (bid,)).fetchall()
+    
+    db.close()
+    return jsonify({
+        "success": True, 
+        "squads": result,
+        "available_agents": [dict(a) for a in all_agents]
+    })
+
+@app.route('/api/squads/create', methods=['POST'])
+@login_required
+def api_squad_create():
+    """Create a new squad, optionally with initial members."""
+    bid = session.get('business_id', '')
+    data = request.get_json(silent=True) or {}
+    name = data.get('name', '').strip()
+    initial_members = data.get('agent_ids', [])
+    
+    db = get_db()
+    _ensure_squad_tables(db)
+    c = db.cursor()
+    
+    import uuid
+    squad_id = 'sqd-' + str(uuid.uuid4())[:10]
+    
+    c.execute("INSERT INTO squads (id, business_id, name) VALUES (?, ?, ?)",
+              (squad_id, bid, name))
+    
+    added = 0
+    for aid in initial_members:
+        agent = c.execute("SELECT id FROM agents WHERE id=? AND business_id=?", (aid, bid)).fetchone()
+        if agent:
+            try:
+                c.execute("INSERT INTO squad_members (squad_id, agent_id) VALUES (?, ?)", (squad_id, aid))
+                added += 1
+            except:
+                pass
+    
+    db.commit()
+    
+    vapi_id, error = _sync_squad_to_vapi(squad_id, db)
+    
+    db.close()
+    
+    if error:
+        return jsonify({
+            "success": True, 
+            "squad_id": squad_id, 
+            "members_added": added,
+            "vapi_warning": f"Created locally but VAPI sync failed: {error}"
+        })
+    
+    return jsonify({
+        "success": True, 
+        "squad_id": squad_id, 
+        "vapi_squad_id": vapi_id,
+        "members_added": added,
+        "message": f'✅ Squad "{name or squad_id[:6]}" created with {added} agent(s)!'
+    })
+
+@app.route('/api/squads/delete/<squad_id>', methods=['DELETE'])
+@login_required
+def api_squad_delete(squad_id):
+    """Delete a squad (local + VAPI)."""
+    bid = session.get('business_id', '')
+    db = get_db()
+    _ensure_squad_tables(db)
+    c = db.cursor()
+    
+    squad = c.execute("SELECT * FROM squads WHERE id=? AND business_id=?", (squad_id, bid)).fetchone()
+    if not squad:
+        db.close()
+        return jsonify({"success": False, "error": "Squad not found"}), 404
+    
+    if squad["vapi_squad_id"]:
+        import subprocess
+        subprocess.run([
+            "curl", "-s", "-4", "--http1.1", "-X", "DELETE",
+            f"https://api.vapi.ai/squad/{squad['vapi_squad_id']}",
+            "-H", f"Authorization: Bearer {VAPI_API_KEY}",
+            "-H", "User-Agent: curl/8.0"
+        ], capture_output=True, timeout=15)
+    
+    c.execute("DELETE FROM squad_members WHERE squad_id=?", (squad_id,))
+    c.execute("DELETE FROM squads WHERE id=?", (squad_id,))
+    db.commit()
+    db.close()
+    
+    return jsonify({"success": True, "message": "Squad deleted"})
+
+@app.route('/api/squads/add-member', methods=['POST'])
+@login_required
+def api_squad_add_member():
+    """Add an agent to a squad."""
+    bid = session.get('business_id', '')
+    data = request.get_json(silent=True) or {}
+    squad_id = data.get('squad_id', '')
+    agent_id = data.get('agent_id', '')
+    
+    if not squad_id or not agent_id:
+        return jsonify({"success": False, "error": "squad_id and agent_id are required"}), 400
+    
+    db = get_db()
+    _ensure_squad_tables(db)
+    c = db.cursor()
+    
+    squad = c.execute("SELECT * FROM squads WHERE id=? AND business_id=?", (squad_id, bid)).fetchone()
+    if not squad:
+        db.close()
+        return jsonify({"success": False, "error": "Squad not found"}), 404
+    
+    agent = c.execute("SELECT id, name, vapi_assistant_id FROM agents WHERE id=? AND business_id=?", (agent_id, bid)).fetchone()
+    if not agent:
+        db.close()
+        return jsonify({"success": False, "error": "Agent not found"}), 404
+    
+    try:
+        c.execute("INSERT INTO squad_members (squad_id, agent_id) VALUES (?, ?)", (squad_id, agent_id))
+        db.commit()
+    except:
+        db.close()
+        return jsonify({"success": False, "error": "Agent is already in this squad"}), 400
+    
+    vapi_id, error = _sync_squad_to_vapi(squad_id, db)
+    db.close()
+    
+    if error:
+        return jsonify({"success": True, "message": f"{agent['name']} added! Warning: VAPI sync: {error}"})
+    
+    return jsonify({"success": True, "message": f"{agent['name']} added to squad!"})
+
+@app.route('/api/squads/remove-member', methods=['POST'])
+@login_required
+def api_squad_remove_member():
+    """Remove an agent from a squad."""
+    bid = session.get('business_id', '')
+    data = request.get_json(silent=True) or {}
+    squad_id = data.get('squad_id', '')
+    agent_id = data.get('agent_id', '')
+    
+    if not squad_id or not agent_id:
+        return jsonify({"success": False, "error": "squad_id and agent_id are required"}), 400
+    
+    db = get_db()
+    _ensure_squad_tables(db)
+    c = db.cursor()
+    
+    squad = c.execute("SELECT * FROM squads WHERE id=? AND business_id=?", (squad_id, bid)).fetchone()
+    if not squad:
+        db.close()
+        return jsonify({"success": False, "error": "Squad not found"}), 404
+    
+    agent = c.execute("SELECT name FROM agents WHERE id=? AND business_id=?", (agent_id, bid)).fetchone()
+    
+    c.execute("DELETE FROM squad_members WHERE squad_id=? AND agent_id=?", (squad_id, agent_id))
+    db.commit()
+    
+    vapi_id, error = _sync_squad_to_vapi(squad_id, db)
+    db.close()
+    
+    agent_name = agent["name"] if agent else "Agent"
+    if error:
+        return jsonify({"success": True, "message": f"{agent_name} removed! Warning: VAPI sync: {error}"})
+    
+    return jsonify({"success": True, "message": f"{agent_name} removed from squad!"})
+
+@app.route('/api/squads/rename', methods=['POST'])
+@login_required
+def api_squad_rename():
+    """Rename a squad."""
+    bid = session.get('business_id', '')
+    data = request.get_json(silent=True) or {}
+    squad_id = data.get('squad_id', '')
+    new_name = data.get('name', '').strip()
+    
+    if not squad_id or not new_name:
+        return jsonify({"success": False, "error": "squad_id and name are required"}), 400
+    
+    db = get_db()
+    _ensure_squad_tables(db)
+    c = db.cursor()
+    
+    squad = c.execute("SELECT * FROM squads WHERE id=? AND business_id=?", (squad_id, bid)).fetchone()
+    if not squad:
+        db.close()
+        return jsonify({"success": False, "error": "Squad not found"}), 404
+    
+    c.execute("UPDATE squads SET name=? WHERE id=?", (new_name, squad_id))
+    db.commit()
+    
+    if squad["vapi_squad_id"]:
+        _sync_squad_to_vapi(squad_id, db)
+    
+    db.close()
+    return jsonify({"success": True, "message": f"Squad renamed to '{new_name}'!"})
+
 # ── AI CHATBOT API (Multi-Provider) ──
 
 CHATBOT_PROMPT = """You are a sales assistant for Diazites, a Voice AI SaaS platform. Answer questions about:
