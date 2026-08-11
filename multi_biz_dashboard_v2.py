@@ -1762,6 +1762,12 @@ def api_generate_call_scripts():
     except Exception as e:
         return jsonify({'success': False, 'error': f'Generation failed: {str(e)[:120]}'}), 500
 
+
+@app.route('/twiml-answer')
+def twiml_answer():
+    from flask import Response as FResponse
+    return FResponse('<Response><Pause length="40"/></Response>', mimetype='text/xml')
+
 @app.route('/api/numbers/assign', methods=['POST'])
 def api_number_assign():
     """Buy the chosen Twilio number and assign it to the new business."""
