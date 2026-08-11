@@ -1137,6 +1137,10 @@ def api_provision_phone(api_key, bid):
             "silenceTimeoutSeconds": 40,
             "maxDurationSeconds": 300,
             "backgroundSound": "off",
+            # Hang up automatically: end the call when the conversation is over
+                        "endCallPhrases": ["goodbye", "bye", "have a great day", "thank you for calling", "talk to you soon", "see you later", "have a good one"],
+            "endCallMessage": "Thanks for calling! Have a great day. Goodbye.",
+
             # CRITICAL: 8083 webhook (vapi_webhook_server.py) does the email/SMS/calendar
             # confirmations. The /api/v1/vapi-webhook route on 8086 only logs calls.
             "serverUrl": "https://diazites.online/api/vapi/webhook",

@@ -3063,7 +3063,10 @@ def setup_vapi(bid):
             "firstMessageMode": "assistant-speaks-first",
             "silenceTimeoutSeconds": 40,
             "maxDurationSeconds": 300,
-            "backgroundSound": "off"
+            "backgroundSound": "off",
+            # Hang up automatically: end the call when the conversation is over
+                        "endCallPhrases": ["goodbye", "bye", "have a great day", "thank you for calling", "talk to you soon", "see you later", "have a good one"],
+            "endCallMessage": "Thanks for calling! Have a great day. Goodbye.",
         })
     ], capture_output=True, text=True)
     

@@ -1295,7 +1295,9 @@ def provision_first_number(bid, priority_area=None):
                     "firstMessageMode": "assistant-speaks-first",
                     "silenceTimeoutSeconds": 40,
                     "maxDurationSeconds": 300,
-                    "backgroundSound": "off"
+                    "backgroundSound": "off",
+                                        "endCallPhrases": ["goodbye", "bye", "have a great day", "thank you for calling", "talk to you soon", "see you later", "have a good one"],
+                    "endCallMessage": "Thanks for calling! Have a great day. Goodbye.",
                 })], capture_output=True, text=True, timeout=30)
             try:
                 assistant_id = json.loads(r.stdout).get('id')
