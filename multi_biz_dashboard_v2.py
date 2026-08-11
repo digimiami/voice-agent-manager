@@ -72,13 +72,20 @@ def api_ga_config():
         return jsonify({'ga_id': '', 'sc_key': ''})
 
 def gsc_meta_tag():
-    """Server-side Google Search Console verification meta tag (no JS needed)."""
+    """Server-side Google Search Console + GA4 tracking (no JS fetch needed)."""
     try:
         with open(GA_CONFIG_PATH) as f:
             cfg = json.load(f)
-        key = cfg.get('sc_key', '').strip()
-        if key:
-            return f'<meta name="google-site-verification" content="{key}" />'
+        sc_key = cfg.get('sc_key', '').strip()
+        ga_id = cfg.get('ga_id', '').strip()
+        
+        parts = []
+        if sc_key:
+            parts.append(f'<meta name="google-site-verification" content="{sc_key}" />')
+        if ga_id and ga_id.startswith('G-'):
+            parts.append(f'''<script async src="https://www.googletagmanager.com/gtag/js?id={ga_id}"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments)}}gtag('js',new Date());gtag('config','{ga_id}');</script>''')
+        return '\n'.join(parts)
     except Exception:
         pass
     return ''
