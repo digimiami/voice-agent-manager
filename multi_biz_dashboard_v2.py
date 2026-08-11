@@ -922,6 +922,23 @@ def admin_required(f):
 
 @app.route('/')
 def index():
+    # Server-side GA4 tracking (Hostinger strips script tags at network level)
+    cid = request.cookies.get('_ga_cid', str(uuid.uuid4()))
+    try:
+        ga_url = f"https://www.google-analytics.com/mp/collect?measurement_id=G-LK2JXDNXCT&api_secret=YMbVhLh0SOWpE8KDv4jJ8g"
+        ga_payload = json.dumps({
+            "client_id": cid,
+            "events": [{"name": "page_view", "params": {
+                "page_title": "Diazites Landing",
+                "page_location": request.url,
+                "engagement_time_msec": 100
+            }}]
+        }).encode()
+        ga_req = urllib.request.Request(ga_url, data=ga_payload, headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(ga_req, timeout=3)
+    except Exception:
+        pass
+    
     if 'business_id' in session:
         return dashboard()
     # Affiliate tracking: ?ref=CODE sets a 30-day cookie + records a click
@@ -930,6 +947,7 @@ def index():
     if aff:
         resp = make_response(render_template_string(LANDING_PAGE.replace('<!-- GSC_META -->', gsc_meta_tag())))
         resp.set_cookie('diazites_ref', aff['code'], max_age=60 * 60 * 24 * 90, samesite='Lax')
+        resp.set_cookie('_ga_cid', cid, max_age=60*60*24*365*2)
         try:
             db = get_db()
             c = db.cursor()
@@ -941,7 +959,9 @@ def index():
         except Exception:
             pass
         return resp
-    return render_template_string(LANDING_PAGE.replace('<!-- GSC_META -->', gsc_meta_tag()))
+    resp = make_response(render_template_string(LANDING_PAGE.replace('<!-- GSC_META -->', gsc_meta_tag())))
+    resp.set_cookie('_ga_cid', cid, max_age=60*60*24*365*2, samesite='Lax')
+    return resp
 
 
 LEGAL_PAGES = {
