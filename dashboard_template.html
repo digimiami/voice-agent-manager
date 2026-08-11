@@ -1311,21 +1311,19 @@ setTimeout(refreshMonitor, 500);
   }
 
   function buyAgentNumber(aid, name) {
-    if (!confirm('Buy a new phone number for "' + name + '"? This costs $1-2/mo and is assigned to this agent instantly.')) return;
-    var btn = event.target;
-    btn.disabled = true;
-    btn.textContent = '⏳ Buying...';
-    fetch('/api/agents/buy-number', {
+    // Stripe checkout for $9.99 phone number
+    fetch('/api/buy-phone-checkout', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({agent_id: aid, area_code: ''})
+      body: JSON.stringify({})
     }).then(function(r){return r.json()}).then(function(d){
-      if (d.success) { alert(d.message); loadAgents(); }
-      else { alert(d.error || 'Error buying number'); btn.disabled = false; btn.textContent = '📱 Get Number'; }
+      if (d.success && d.checkout_url) {
+        window.location.href = d.checkout_url;
+      } else {
+        alert(d.error || 'Checkout failed. Please try again.');
+      }
     }).catch(function(){
-      alert('Error buying number');
-      btn.disabled = false;
-      btn.textContent = '📱 Get Number';
+      alert('Error starting checkout. Please try again.');
     });
   }
 
@@ -1335,23 +1333,47 @@ setTimeout(refreshMonitor, 500);
     btn.disabled = true;
     btn.textContent = '⏳ Generating...';
     status.className = 'text-xs mt-1 text-[#c084fc]';
-    status.textContent = 'Generating knowledge base...';
+    status.textContent = 'Generating knowledge base + scripts via AI...';
     status.style.display = 'block';
 
+    // Step 1: Generate KB
     fetch('/api/generate-kb', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({type: 'outbound'})
+      body: JSON.stringify({method: 'venice', kind: 'kb', type: 'outbound'})
     }).then(function(r){return r.json()}).then(function(d){
-      status.textContent = d.success ? '✅ KB generated!' : (d.error || 'Failed');
-      status.style.color = d.success ? '#4ade80' : '#ef4444';
-      if (d.success && d.knowledge_base) {
-        document.getElementById('agentKB').value = d.knowledge_base;
+      if (d.success) {
+        var kbContent = d.knowledge_base || d.content || '';
+        if (kbContent) {
+          document.getElementById('agentKB').value = kbContent;
+          status.textContent = '✅ KB generated! Now generating inbound script...';
+        } else {
+          status.textContent = '⚠️ KB empty. Generating script...';
+          status.style.color = '#f59e0b';
+        }
+      } else {
+        status.textContent = '⚠️ KB failed: ' + (d.message || d.error || '');
+        status.style.color = '#f59e0b';
+      }
+      // Step 2: Generate inbound script
+      return fetch('/api/generate-kb', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({method: 'venice', kind: 'script', type: 'inbound'})
+      });
+    }).then(function(r){return r.json()}).then(function(d){
+      if (d.success && d.content) {
+        document.getElementById('agentScript').value = d.content;
+        status.textContent = '✅ KB + Scripts generated!';
+        status.style.color = '#4ade80';
+      } else {
+        status.textContent = status.textContent.replace('Now generating inbound script...', '') + ' Script generation failed.';
+        status.style.color = '#f59e0b';
       }
       btn.disabled = false;
       btn.textContent = '🤖 Auto-Generate KB';
     }).catch(function(){
-      status.textContent = '❌ Error generating KB';
+      status.textContent = '❌ Error generating';
       status.style.color = '#ef4444';
       btn.disabled = false;
       btn.textContent = '🤖 Auto-Generate KB';

@@ -2121,23 +2121,46 @@ def stripe_signup_webhook():
                 db.commit()
                 return 'OK', 200
             
-            # Handle phone number purchase ($9.99/mo)
-            plan_name = session_data.get('metadata', {}).get('plan', '')
-            biz_id = session_data.get('metadata', {}).get('business_id', '')
-            if plan_name and biz_id and ('phone' in plan_name.lower() or 'number' in plan_name.lower()):
-                c.execute("UPDATE businesses SET number_paid=1, stripe_subscription_id=? WHERE id=?",
-                          (stripe_session_id, biz_id))
-                db.commit()
-                print(f"✅ Number purchase confirmed for business {biz_id}")
-                # Send welcome credentials (AgentMail email + SMS)
-                try:
-                    send_welcome_credentials(
-                        pending['name'], pending['email'], pending['phone'] or '',
-                        bid, pending['price'], request.host_url, trial=False)
-                except Exception as e:
-                    print(f"Credentials send error (stripe webhook): {e}")
+            # Handle phone number purchase ($9.99 one-time)
+            metadata = session_data.get('metadata', {}) or {}
+            purchase_purpose = metadata.get('purpose', '')
+            biz_id = metadata.get('business_id', '') or client_ref
+            
+            if purchase_purpose == 'buy_phone_number' and biz_id:
+                print(f"📱 Stripe webhook: Phone purchase confirmed for {biz_id}")
                 
-                return jsonify({'received': True, 'business_id': bid})
+                # Mark payment as received
+                try:
+                    c.execute("ALTER TABLE businesses ADD COLUMN number_paid INTEGER DEFAULT 0")
+                except:
+                    pass
+                c.execute("UPDATE businesses SET number_paid=1 WHERE id=?", (biz_id,))
+                
+                # Buy and assign the phone number
+                c.execute("SELECT name, vapi_assistant_id, vapi_phone_id FROM businesses WHERE id=?", (biz_id,))
+                biz_info = c.fetchone()
+                db.commit()
+                
+                if biz_info and biz_info['vapi_assistant_id'] and not biz_info['vapi_phone_id']:
+                    try:
+                        from twilio_helper import buy_and_assign_number
+                        phone_id, phone_number, error = buy_and_assign_number(biz_info['vapi_assistant_id'])
+                        if phone_id and phone_number:
+                            c.execute("UPDATE businesses SET vapi_phone_id=? WHERE id=?", (phone_id, biz_id))
+                            db.commit()
+                            print(f"📱 Phone {phone_number} purchased & assigned to {biz_info['name']} ({biz_id})")
+                        elif phone_number:
+                            print(f"⚠️ Bought {phone_number} but VAPI registration failed: {error}")
+                        else:
+                            print(f"❌ Phone purchase failed: {error}")
+                    except Exception as e:
+                        print(f"❌ Phone buy error: {e}")
+                elif biz_info and biz_info['vapi_phone_id']:
+                    print(f"ℹ️ {biz_info['name']} already has a phone number")
+                else:
+                    print(f"⚠️ No VAPI assistant for {biz_id} — phone will be assigned later")
+                
+                return jsonify({'received': True, 'business_id': biz_id, 'purpose': 'buy_phone_number'})
         
         return jsonify({'received': True})
     except Exception as e:
@@ -5196,7 +5219,7 @@ def api_generate_kb():
             except:
                 pass
         
-        if api_key and method == 'venice':
+        if api_key and method in ('venice', 'ai'):
             try:
                 kind = data.get('kind', 'kb')
                 # Optional: fetch the business website so the AI generates real content
@@ -5247,7 +5270,7 @@ def api_generate_kb():
                 else:
                     label = "Inbound Call KB" if kb_type == 'inbound' else "Knowledge Base"
                 src = " from your website" if site_text else ""
-                return jsonify({'success': True, 'content': content, 'message': f'{label} generated{src} via AI!'})
+                return jsonify({'success': True, 'content': content, 'knowledge_base': content if kind != 'script' else '', 'script': content if kind == 'script' else '', 'message': f'{label} generated{src} via AI!'})
             except Exception as e:
                 return jsonify({'success': False, 'message': f'AI generation failed: {str(e)}'}), 500
         
@@ -5297,7 +5320,7 @@ Booking Process:
 2. Collect contact info (name, phone, email)
 3. Schedule appointment
 4. Send confirmation"""
-        return jsonify({'success': True, 'content': kb, 'message': f'Template KB generated!'})
+        return jsonify({'success': True, 'content': kb, 'knowledge_base': kb, 'message': f'Template KB generated!'})
     
     # Method: Templates
     if method == 'template':
@@ -8164,6 +8187,63 @@ def api_buy_minutes():
         return jsonify({'success': True, 'checkout_url': checkout_url})
     
     return jsonify({'success': False, 'error': 'Failed to create payment checkout. Try again later.'}), 500
+
+@app.route('/api/buy-phone-checkout', methods=['POST'])
+@login_required
+def api_buy_phone_checkout():
+    """Create $9.99 Stripe checkout for buying a phone number."""
+    from premium_features import load_stripe_config
+    import stripe as stripe_mod
+    cfg = load_stripe_config()
+    if not cfg.get('enabled'):
+        return jsonify({'success': False, 'error': 'Stripe not configured. Contact admin.'}), 400
+
+    stripe_mod.api_key = cfg.get('secret_key', '')
+    bid = session['business_id']
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT name, email, vapi_assistant_id, vapi_phone_id FROM businesses WHERE id=?", (bid,))
+    biz = c.fetchone()
+    db.close()
+
+    if not biz:
+        return jsonify({'success': False, 'error': 'Business not found'}), 404
+
+    if biz['vapi_phone_id']:
+        return jsonify({'success': False, 'error': 'You already have a phone number assigned!'}), 400
+
+    base = request.host_url.rstrip('/')
+    success_url = f"{base}/?tab=agents&phone_paid=success"
+    cancel_url = f"{base}/?tab=agents&phone_paid=cancel"
+
+    try:
+        checkout = stripe_mod.checkout.Session.create(
+            payment_method_types=['card'],
+            mode='payment',
+            client_reference_id=bid,
+            customer_email=biz['email'] or '',
+            line_items=[{
+                'price_data': {
+                    'currency': 'usd',
+                    'product_data': {
+                        'name': 'Phone Number — Diazites Voice Agent',
+                        'description': f'One-time $9.99 for a dedicated phone number assigned to your AI voice agent. Business: {biz["name"]}',
+                    },
+                    'unit_amount': 999,  # $9.99
+                },
+                'quantity': 1,
+            }],
+            metadata={
+                'business_id': bid,
+                'purpose': 'buy_phone_number',
+                'business_name': biz['name'] or '',
+            },
+            success_url=success_url,
+            cancel_url=cancel_url,
+        )
+        return jsonify({'success': True, 'checkout_url': checkout.url})
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Stripe error: {str(e)}'}), 500
 
 @app.route('/clone-voice', methods=['POST'])
 @login_required
