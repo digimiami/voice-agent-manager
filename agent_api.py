@@ -458,7 +458,7 @@ def api_me_get_settings(api_key):
 
     pricing_tiers = {
         "starter": {"name": "Starter", "minutes": 250, "price": 97},
-        "pro": {"name": "Professional", "minutes": 500, "price": 197},
+        "pro": {"name": "Professional", "minutes": 550, "price": 197},
         "premium": {"name": "Premium", "minutes": 1000, "price": 250},
         "enterprise": {"name": "Enterprise", "minutes": 5000, "price": 497},
     }

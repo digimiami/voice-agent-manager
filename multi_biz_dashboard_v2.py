@@ -565,7 +565,7 @@ body{background:#08080f;color:#f1f1f5;overflow-x:hidden}
         <ul class="text-left space-y-3 text-sm mb-8">
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> 2 AI Voice Agents</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> 2 Phone Numbers</li>
-          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> <strong>1,000</strong> Call Minutes</li>
+          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> <strong>550</strong> Call Minutes</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Advanced Analytics & Reports</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Priority Support</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Outbound Campaigns</li>
@@ -2736,7 +2736,7 @@ def dashboard():
     plan_key = biz.get('plan', 'starter') or 'starter'
     pricing_tiers = {
         "starter": {"name": "Starter", "price": 97, "minutes_limit": 250, "features": ["1 AI Agent", "1 Number", "250 min", "Booking", "Analytics", "Email Support"]},
-        "pro": {"name": "Professional", "price": 197, "minutes_limit": 1000, "features": ["2 AI Agents", "2 Numbers", "1000 min", "Campaigns", "SMS", "Calendar", "Priority Support"]},
+        "pro": {"name": "Professional", "price": 197, "minutes_limit": 550, "features": ["2 AI Agents", "2 Numbers", "550 min", "Campaigns", "SMS", "Calendar", "Priority Support"]},
         "premium": {"name": "Premium", "price": 297, "minutes_limit": 2500, "features": ["3 AI Agents", "3 Numbers", "2500 min", "Forwarding", "Priority Support"]},
         "enterprise": {"name": "Enterprise", "price": 497, "minutes_limit": 7500, "features": ["5 AI Agents", "5 Numbers", "7500 min", "API", "White-Label", "Dedicated Manager"]},
         "custom": {"name": "Custom", "price": 997, "minutes_limit": 0, "features": ["Custom config"]}

@@ -118,7 +118,7 @@ INDUSTRY_PRESETS = {
 
 PRICING_TIERS = {
     "starter": {"name": "Starter", "price": 97, "calls_included": 500, "minutes_limit": 250, "features": "1 AI agent, 1 number, unlimited calls, 250 min, booking, email support"},
-    "pro": {"name": "Professional", "price": 197, "calls_included": 2000, "minutes_limit": 500, "features": "2 AI agents, 2 numbers, unlimited calls, 500 min, campaigns, SMS, calendar"},
+    "pro": {"name": "Professional", "price": 197, "calls_included": 2000, "minutes_limit": 550, "features": "2 AI agents, 2 numbers, unlimited calls, 550 min, campaigns, SMS, calendar"},
     "premium": {"name": "Premium", "price": 250, "calls_included": 5000, "minutes_limit": 1000, "features": "3 AI agents, 3 numbers, unlimited calls, 1000 min, forwarding, priority support"},
     "enterprise": {"name": "Enterprise", "price": 497, "calls_included": 15000, "minutes_limit": 5000, "features": "5 AI agents, 5 numbers, unlimited calls, 5000 min, white-label, API"},
     "custom": {"name": "Custom", "price": 997, "calls_included": 0, "minutes_limit": 0, "features": "Fully customizable package"}
