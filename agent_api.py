@@ -1430,6 +1430,41 @@ def vapi_webhook():
 
     git_auto_commit(f'vapi webhook: call {vapi_call_id} {status}')
 
+    # ── Trial enforcement: end trial if 50+ minutes used ──
+    try:
+        db2 = sqlite3.connect(DB_PATH)
+        c2 = db2.cursor()
+        # Find business by call log
+        c2.execute("SELECT business_id FROM call_log WHERE vapi_call_id = ?", (vapi_call_id,))
+        bid_row = c2.fetchone()
+        if bid_row and bid_row[0]:
+            bid_val = bid_row[0]
+            c2.execute("SELECT plan, subscription_status, trial_end FROM businesses WHERE id = ?", (bid_val,))
+            biz_row = c2.fetchone()
+            if biz_row:
+                plan_name = str(biz_row[0] or '')
+                sub_status = str(biz_row[1] or '')
+                trial_end = biz_row[2]
+                is_trial = (sub_status == 'trialing') or (plan_name == 'starter' and not sub_status) or bool(trial_end)
+                if is_trial and trial_end:
+                    try:
+                        te = datetime.fromisoformat(str(trial_end).replace('Z', ''))
+                        still_in_trial = te > datetime.utcnow()
+                    except:
+                        still_in_trial = False
+                    if still_in_trial:
+                        c2.execute("SELECT COALESCE(SUM(duration),0) FROM call_log WHERE business_id = ?", (bid_val,))
+                        total_secs = c2.fetchone()[0] or 0
+                        total_mins = total_secs / 60
+                        if total_mins >= 50:
+                            c2.execute("UPDATE businesses SET trial_end = datetime('now'), subscription_status = 'trial_expired_minutes', plan = 'starter' WHERE id = ?", (bid_val,))
+                            db2.commit()
+                            print(f"[TRIAL] Business {bid_val} exceeded 50 min trial cap ({total_mins:.0f} min) — trial ended")
+                    db2.close()
+    except Exception as e:
+        try: db2.close()
+        except: pass
+
     # Real-time Review-AI outcome sync → auto demo/package SMS+email on 'interested'
     if status in ('ended', 'completed') or 'ended' in str(status) or call.get('status') in ('ended', 'completed'):
         try:

@@ -2899,6 +2899,24 @@ setTimeout(refreshMonitor, 500);
       <p class="text-xs text-[#7a7a8e] mt-2">Change your mind? Subscribe anytime and your account keeps working.</p>
       {% else %}
       <p class="text-xs text-[#7a7a8e] mb-3">Your 3-day trial ends <strong class="text-[#fbbf24]">{{ trial_end_display }}</strong>. <strong>Cancel before then and you won't be charged.</strong></p>
+      {% if trial_minutes_exceeded %}
+      <div class="p-3 rounded-xl mb-3 flex items-start gap-2" style="background:#ef444410;border:1px solid #ef444440">
+        <span class="text-lg flex-shrink-0">⚠️</span>
+        <div>
+          <p class="text-xs font-semibold text-[#f87171]">Trial minutes limit reached!</p>
+          <p class="text-xs text-[#7a7a8e] mt-1">You've used <strong class="text-[#fbbf24]">{{ "%.1f"|format(trial_minutes_used) }} / 50 min</strong>. Your trial has ended — subscribe to continue using your AI voice agent.</p>
+        </div>
+      </div>
+      {% else %}
+      <div class="mb-3">
+        <p class="text-xs text-[#7a7a8e]">
+          📊 Minutes used: <strong class="text-[#fbbf24]">{{ "%.1f"|format(trial_minutes_used) }}/50</strong>
+          <span class="ml-2 inline-block h-2 rounded-full bg-[#1a1a28]" style="height:4px;width:120px;vertical-align:middle">
+            <span class="inline-block h-2 rounded-full" style="height:4px;width:{{ [trial_minutes_used/50*120, 120]|min|int }}px;background:linear-gradient(90deg,#fbbf24,#f59e0b);vertical-align:top"></span>
+          </span>
+        </p>
+      </div>
+      {% endif %}
       <div class="flex items-center gap-3 flex-wrap">
         <button onclick="cancelTrial()" class="px-5 py-2 rounded-xl text-xs font-semibold" style="background:#1a1a28;border:1px solid #ef444455;color:#f87171">🚫 Cancel Trial</button>
         <button onclick="createCheckout()" class="px-5 py-2 rounded-xl text-xs font-semibold" style="background:linear-gradient(135deg,#a855f7,#ec4899);color:white">💜 Keep My Account — Subscribe</button>

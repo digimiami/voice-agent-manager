@@ -2775,12 +2775,19 @@ def dashboard():
     # Trial info for the Billing tab (cancel-trial card)
     trial_end_display = ''
     trial_days_left = 0
+    trial_minutes_used = 0
+    trial_minutes_exceeded = False
     try:
         te = datetime.fromisoformat(str(biz.get('trial_end') or '').replace('Z', ''))
         if te.tzinfo is not None:
             te = te.replace(tzinfo=None)
         trial_end_display = te.strftime('%B %d, %Y')
         trial_days_left = max(1, (te - datetime.utcnow()).days + 1)
+        # Check trial minutes usage
+        c.execute("SELECT COALESCE(SUM(duration),0) FROM call_log WHERE business_id = ?", (bid,))
+        trial_minutes_used = (c.fetchone()[0] or 0) / 60
+        if trial_minutes_used >= 50:
+            trial_minutes_exceeded = True
     except Exception:
         pass
     
@@ -3068,6 +3075,7 @@ def dashboard():
         total_duration=total_duration, user_tier=user_tier,
         extra_minutes=extra_minutes, total_minutes_limit=total_minutes_limit,
         trial_end_display=trial_end_display, trial_days_left=trial_days_left,
+        trial_minutes_used=trial_minutes_used, trial_minutes_exceeded=trial_minutes_exceeded,
         user_2fa=u2fa)
 
 # ── CONVERSATIONS API ROUTES ──

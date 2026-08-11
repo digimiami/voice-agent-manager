@@ -211,7 +211,11 @@ def build_diazites_prompt(business_name=None, industry=None, script=None, knowle
         "- If a prospect asks for email, calendar, or paperwork, say a team member will handle it.\n"
         "- You are not a booking system. You schedule calls and answer questions.\n"
         "- When appropriate, try to book an appointment, schedule a call, or collect a lead.\n"
-        "- End every call professionally: thank them, confirm next steps, say goodbye warmly."
+        "- End every call professionally: thank them, confirm next steps, say goodbye warmly.\n\n"
+        "- ★ CRITICAL: STOP ASKING QUESTIONS ONCE THE LEAD IS SECURED. When the caller says 'yes', 'ok', 'let's do it', 'sounds good', or clearly agrees to an appointment/booking — "
+        "STOP immediately. Do NOT ask follow-up questions, do NOT upsell, do NOT probe further. Confirm the appointment time briefly, thank them, say your goodbye, "
+        "and END THE CALL. You already have the lead — hang up.\n"
+        "- ★ NEVER over-interrogate a prospect who already agreed. You won. Hang up."
     )
 
     return '\n'.join(p for p in parts if p)
