@@ -1042,6 +1042,29 @@ def refund_page():
 def signup_redirect():
     return redirect('/#signup-form')
 
+# === BLOG ROUTES ===
+import os as _os
+BLOG_DIR = '/root/voice-agent-manager/static/blog'
+
+@app.route('/blog/')
+@app.route('/blog')
+def blog_index():
+    """Serve blog index page."""
+    index_path = _os.path.join(BLOG_DIR, 'index.html')
+    if _os.path.exists(index_path):
+        with open(index_path) as f:
+            return f.read()
+    return '<h1>Blog</h1><p>Coming soon!</p>', 200
+
+@app.route('/blog/<path:filename>')
+def blog_article(filename):
+    """Serve individual blog articles."""
+    filepath = _os.path.join(BLOG_DIR, filename)
+    if _os.path.exists(filepath) and filepath.endswith('.html'):
+        with open(filepath) as f:
+            return f.read()
+    return '<h1>404</h1><p>Article not found</p>', 404
+
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
     # ── Step 2: TOTP / backup code ──
@@ -1921,7 +1944,7 @@ def api_signup_checkout():
         return jsonify({'success': False, 'error': 'Name and email required'}), 400
     
     import uuid
-    price_map = {'starter': 9700, 'pro': 19700, 'premium': 49700}
+    price_map = {'starter': 9700, 'pro': 19700, 'premium': 25000}
     price_cents = price_map.get(plan, 19700)
     sid = str(uuid.uuid4())[:12]
     

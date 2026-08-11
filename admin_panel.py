@@ -117,10 +117,10 @@ INDUSTRY_PRESETS = {
 }
 
 PRICING_TIERS = {
-    "starter": {"name": "Starter", "price": 97, "calls_included": 500, "minutes_limit": 250, "features": "1 AI agent, 1 number, 500 calls/mo, 250 min, booking, email support"},
-    "pro": {"name": "Professional", "price": 197, "calls_included": 2000, "minutes_limit": 1000, "features": "2 AI agents, 2 numbers, 2K calls/mo, 1000 min, campaigns, SMS, calendar"},
-    "premium": {"name": "Premium", "price": 297, "calls_included": 5000, "minutes_limit": 2500, "features": "3 AI agents, 3 numbers, 5K calls/mo, 2500 min, forwarding, priority support"},
-    "enterprise": {"name": "Enterprise", "price": 497, "calls_included": 15000, "minutes_limit": 7500, "features": "5 AI agents, 5 numbers, 15K calls/mo, 7500 min, white-label, API"},
+    "starter": {"name": "Starter", "price": 97, "calls_included": 500, "minutes_limit": 250, "features": "1 AI agent, 1 number, unlimited calls, 250 min, booking, email support"},
+    "pro": {"name": "Professional", "price": 197, "calls_included": 2000, "minutes_limit": 500, "features": "2 AI agents, 2 numbers, unlimited calls, 500 min, campaigns, SMS, calendar"},
+    "premium": {"name": "Premium", "price": 250, "calls_included": 5000, "minutes_limit": 1000, "features": "3 AI agents, 3 numbers, unlimited calls, 1000 min, forwarding, priority support"},
+    "enterprise": {"name": "Enterprise", "price": 497, "calls_included": 15000, "minutes_limit": 5000, "features": "5 AI agents, 5 numbers, unlimited calls, 5000 min, white-label, API"},
     "custom": {"name": "Custom", "price": 997, "calls_included": 0, "minutes_limit": 0, "features": "Fully customizable package"}
 }
 
@@ -4349,8 +4349,8 @@ def update_chatbot():
 import shutil, threading, base64, io as _io
 import datetime as _dt
 
-PLAN_LIMITS = {'starter': 500, 'pro': 2000, 'premium': 10000, 'enterprise': 99999}
-PLAN_PRICES = {'starter': 97, 'pro': 197, 'premium': 497, 'enterprise': 0}
+PLAN_LIMITS = {'starter': 250, 'pro': 500, 'premium': 1000, 'enterprise': 99999}
+PLAN_PRICES = {'starter': 97, 'pro': 197, 'premium': 250, 'enterprise': 0}
 VOICE_COST_PER_MIN = 0.12
 SMS_AI_COST_PER_MSG = 0.006
 BACKUP_DIR = "/root/voice-agent-manager/backups"
