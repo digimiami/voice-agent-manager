@@ -922,20 +922,33 @@ def admin_required(f):
 
 @app.route('/')
 def index():
-    # Server-side GA4 tracking (Hostinger strips script tags at network level)
+    # Server-side GA4 tracking via /g/collect (Hostinger strips client-side scripts)
     cid = request.cookies.get('_ga_cid', str(uuid.uuid4()))
+    _ga_url = request.url
+    _ga_ua = request.headers.get("User-Agent", "Diazites/1.0")
     try:
-        ga_url = f"https://www.google-analytics.com/mp/collect?measurement_id=G-LK2JXDNXCT&api_secret=YMbVhLh0SOWpE8KDv4jJ8g"
-        ga_payload = json.dumps({
-            "client_id": cid,
-            "events": [{"name": "page_view", "params": {
-                "page_title": "Diazites Landing",
-                "page_location": request.url,
-                "engagement_time_msec": 100
-            }}]
-        }).encode()
-        ga_req = urllib.request.Request(ga_url, data=ga_payload, headers={"Content-Type": "application/json"})
-        urllib.request.urlopen(ga_req, timeout=3)
+        import threading
+        def _send_ga():
+            try:
+                import urllib.request as _ur
+                ga_url = "https://www.google-analytics.com/g/collect"
+                params = {
+                    "v": "2",
+                    "tid": "G-LK2JXDNXCT",
+                    "cid": cid,
+                    "en": "page_view",
+                    "dl": _ga_url,
+                    "dt": "Diazites Landing",
+                    "ul": "en-us",
+                }
+                body = "&".join(f"{k}={_ur.quote(str(v))}" for k, v in params.items()).encode()
+                _ur.urlopen(_ur.Request(ga_url, data=body, headers={
+                    "User-Agent": _ga_ua,
+                    "Content-Type": "application/x-www-form-urlencoded"
+                }), timeout=3)
+            except Exception:
+                pass
+        threading.Thread(target=_send_ga, daemon=True).start()
     except Exception:
         pass
     
