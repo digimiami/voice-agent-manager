@@ -1240,7 +1240,7 @@ def _assistant_model(name, full_script, max_tokens, industry='', bid=''):
     """Build the VAPI model config for a new assistant. All assistants get the
     appointment-booking tool; dealerships additionally get the live-inventory
     search tool."""
-    model = {"provider": "xai", "model": "grok-4.3",
+    model = {"provider": "openai", "model": "openai-gpt-4o-2024-11-20",
              "temperature": 0.3, "maxTokens": max_tokens,
              "systemPrompt": full_script}
     tools = booking_tool(bid)
@@ -1714,12 +1714,12 @@ def api_generate_call_scripts():
         return jsonify({'success': False, 'error': 'Please select your business type.'}), 400
 
     cfg = get_chatbot_config()
-    provider_name = cfg.get('chatbot_provider', 'xai')
-    api_key = cfg.get('chatbot_api_key', '') or get_xai_api_key()
+    provider_name = cfg.get('chatbot_provider', 'venice')
+    api_key = cfg.get('chatbot_api_key', '') or os.environ.get('VENICE_API_KEY', '') or get_xai_api_key()
     model = cfg.get('chatbot_model', '')
     provider = CHATBOT_PROVIDERS.get(provider_name)
     if not provider:
-        provider = CHATBOT_PROVIDERS['xai']
+        provider = CHATBOT_PROVIDERS['venice']
     if not model:
         model = provider['default_model']
     if not api_key:
@@ -2403,8 +2403,8 @@ def api_chatbot():
     
     # Get config from DB
     cfg = get_chatbot_config()
-    provider_name = cfg.get('chatbot_provider', 'xai')
-    api_key = cfg.get('chatbot_api_key', '') or get_xai_api_key()
+    provider_name = cfg.get('chatbot_provider', 'venice')
+    api_key = cfg.get('chatbot_api_key', '') or os.environ.get('VENICE_API_KEY', '') or get_xai_api_key()
     model = cfg.get('chatbot_model', '')
     
     if not api_key:
@@ -2412,7 +2412,7 @@ def api_chatbot():
     
     provider = CHATBOT_PROVIDERS.get(provider_name)
     if not provider:
-        provider = CHATBOT_PROVIDERS['xai']
+        provider = CHATBOT_PROVIDERS['venice']
     
     if not model:
         model = provider['default_model']
@@ -5664,8 +5664,8 @@ def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
             model_provider = model_config.get('provider', 'xai')
             model_name = model_config.get('model', 'grok-4.3')
         except:
-            model_provider = 'xai'
-            model_name = 'grok-4.3'
+            model_provider = 'openai'
+            model_name = 'openai-gpt-4o-2024-11-20'
         
         agent_prompt = biz.get('agent_prompt') or ''
         if agent_prompt or script or kb:
@@ -6301,7 +6301,7 @@ def call_lead(lead_id):
             "assistantId": biz['vapi_assistant_id'],
             "phoneNumberId": biz['vapi_phone_id'],
             "customer": {"number": lead['phone']},
-            "assistantOverrides": {"model": {"maxTokens": 200, "provider": "xai", "model": "grok-4.3"}}
+            "assistantOverrides": {"model": {"maxTokens": 200, "provider": "openai", "model": "openai-gpt-4o-2024-11-20"}}
         }
         # Inject lead knowledge into the AI's context
         knowledge_parts = []
@@ -6735,8 +6735,8 @@ def add_transfer_to_assistant(aid, forward_to):
     except Exception:
         return {"error": "could not fetch assistant"}
     model = cur.get("model") or {}
-    provider = model.get("provider", "xai")
-    model_name = model.get("model", "grok-4.3")
+    provider = model.get("provider", "openai")
+    model_name = model.get("model", "openai-gpt-4o-2024-11-20")
 
     # ── system prompt (messages-style or systemPrompt-style) ──
     if model.get("messages"):
@@ -6795,8 +6795,8 @@ def add_transfer_to_assistant_multi(aid, destinations):
         return {"error": "could not fetch assistant"}
 
     model = cur.get("model") or {}
-    provider = model.get("provider", "xai")
-    model_name = model.get("model", "grok-4.3")
+    provider = model.get("provider", "openai")
+    model_name = model.get("model", "openai-gpt-4o-2024-11-20")
 
     # system prompt
     if model.get("messages"):
