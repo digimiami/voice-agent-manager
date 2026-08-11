@@ -1,0 +1,33 @@
+╔══════════════════════════════════════════════════════════╗
+║  SAAS FOUNDER'S KPI DASHBOARD
+║  Google Sheets Template — User Guide
+╚══════════════════════════════════════════════════════════╝
+
+📋 HOW TO INSTALL
+────────────────────────────────────────────────────────
+1. Open the Google Sheets link (sent separately)
+2. Go to File → Make a copy
+3. Save to your Google Drive
+4. Start entering your data!
+
+📊 INCLUDED METRICS
+────────────────────────────────────────────────────────
+  • MRR (Monthly Recurring Revenue)
+  • ARR (Annual Recurring Revenue)
+  • Churn Rate
+  • Customer Acquisition Cost (CAC)
+  • Lifetime Value (LTV)
+  • LTV:CAC Ratio
+  • Active Users (DAU/MAU)
+  • Revenue Growth Rate
+  • Burn Rate
+  • Runway
+
+🎯 HOW TO USE
+────────────────────────────────────────────────────────
+1. Enter your monthly revenue in the "Revenue" tab
+2. Add customer counts in the "Customers" tab
+3. All KPIs auto-calculate on the dashboard
+4. Use the chart tabs for investor presentations
+
+Need help? Contact: support@shopzario.com

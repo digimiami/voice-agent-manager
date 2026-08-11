@@ -1,0 +1,68 @@
+╔══════════════════════════════════════════════════════════╗
+║  THE CONTENT CREATOR HUB
+║  Notion Template — Setup Guide
+╚══════════════════════════════════════════════════════════╝
+
+📋 HOW TO INSTALL
+────────────────────────────────────────────────────────
+1. Open the Notion template link (sent separately via email)
+2. Click "Duplicate" in the top-right corner
+3. Choose your workspace
+4. Start customizing!
+
+🗄️ INCLUDED DATABASES
+────────────────────────────────────────────────────────
+  • ✅ Tasks
+  • 📋 Projects
+  • 👥 Clients
+  • 💰 Finance
+  • ✍️ Content
+  • 🎯 Goals
+
+      Views: Board by Status, Calendar by Due Date, Table, List by Priority, Gallery
+      Views: Board by Status, Timeline, Table, Calendar, Gallery
+      Views: Table, Board by Status, Gallery
+      Views: Table, Calendar, Board by Type
+      Views: Calendar, Board by Status, Board by Platform, Table
+      Views: Board by Status, Board by Timeframe, Table, Gallery
+
+🎁 BONUS TEMPLATES
+────────────────────────────────────────────────────────
+  • Weekly Review Template
+  • Client Onboarding Checklist
+  • Meeting Notes Template
+  • Quarterly Planning Template
+
+✨ FEATURES
+────────────────────────────────────────────────────────
+  • 6 Linked Databases with 50+ Properties
+  • Master Dashboard with Auto-Updating Widgets
+  • 9 Custom View Types (Board, Calendar, Timeline, Table, List, Gallery)
+  • Automated Rollups for Task Counts and Revenue
+  • Formula Fields for Progress Tracking
+  • 60+ Pre-Configured Tags and Categories
+  • Client Portal View
+  • Mobile-Friendly Layout
+
+🔗 DATABASE RELATIONSHIPS
+────────────────────────────────────────────────────────
+  • Tasks → Projects: Link every task to its parent project
+  • Tasks → Clients: See all tasks per client
+  • Projects → Clients: Track every project per client
+  • Finance → Clients: Revenue and expenses by client
+  • Finance → Projects: Budget tracking per project
+  • Content → Projects: Content calendar aligned with projects
+  • Goals → Projects: Ensure projects drive real goals
+
+📊 DASHBOARD WIDGETS
+────────────────────────────────────────────────────────
+  • Revenue This Month (auto-calculated)
+  • Active Projects Count
+  • Tasks Due Today
+  • Active Clients Count
+  • Overdue Tasks Alert
+  • Upcoming Deadlines (7 days)
+  • Recent Income Transactions
+  • Goal Progress Bars
+
+Need help? Contact: support@shopzario.com

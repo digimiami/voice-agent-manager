@@ -1,0 +1,47 @@
+# secrets & credentials
+.env
+.env.*
+!.env.example
+.agent_api_key.txt
+*_config.json
+stripe_config.json
+api_keys.json*
+smtp_config.json
+twilio_config.json
+ga_config.json
+agent-tars.config.json
+.github_token
+*.key
+*.crt
+*.pem
+user_2fa.json
+*2fa*.json
+
+# databases (customer data)
+*.db
+*.db-*
+*.sqlite*
+
+# call recordings & audio
+call_recordings/
+*.wav
+*.mp3
+*.m4a
+
+# generated assets (regenerable)
+/static/hero_bg.mp4
+/static/hero_bg_poster.jpg
+/static/sample_voice.mp3
+sample_call.mp3
+
+# backups & logs
+*.bak
+*.bak-*
+*.log
+*.txt.bak
+
+# python
+__pycache__/
+*.pyc
+venv/
+.venv/

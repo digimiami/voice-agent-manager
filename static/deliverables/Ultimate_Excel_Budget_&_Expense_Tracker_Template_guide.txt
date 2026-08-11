@@ -1,0 +1,22 @@
+╔══════════════════════════════════════════════════════════╗
+║  ULTIMATE EXCEL BUDGET & EXPENSE TRACKER
+║  Excel Template — User Guide
+╚══════════════════════════════════════════════════════════╝
+
+📋 HOW TO INSTALL
+────────────────────────────────────────────────────────
+1. Open the Excel file
+2. Enable editing (if Protected View appears)
+3. Go to File → Save As → Save to your computer
+4. Start tracking!
+
+📊 INCLUDED SHEETS
+────────────────────────────────────────────────────────
+  • 📊 Dashboard — Overview with charts
+  • 💰 Income Tracker — Log all income sources
+  • 💳 Expense Tracker — Categorize spending
+  • 🎯 Savings Goals — Track progress
+  • 📈 Annual Summary — Year-end view
+
+$7.99 | Premium Digital Product
+© ShopZario.com

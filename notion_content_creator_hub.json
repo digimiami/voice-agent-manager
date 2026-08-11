@@ -1,0 +1,127 @@
+{
+  "name": "The Content Creator Hub",
+  "tagline": "Your complete content creation command center",
+  "description": "An all-in-one content creation workspace for YouTubers, TikTokers, bloggers, and Instagram creators. Streamline your entire workflow from idea to published post, track performance, and maintain brand consistency across every platform.",
+  "price": 15,
+  "benefits": [
+    "Save 10+ hours weekly by centralizing your entire content workflow in one place",
+    "Never miss a posting deadline with visual calendar scheduling and status tracking",
+    "Repurpose content 5x faster with organized idea and script databases",
+    "Track what's working and double down on winning content formats with built-in analytics",
+    "Maintain brand consistency across all platforms with centralized asset storage"
+  ],
+  "whats_included": [
+    "5 interconnected databases with pre-built relations and rollups",
+    "Custom dashboard with 6 performance-tracking widgets",
+    "4 bonus templates for quick content starts",
+    "Platform-specific content templates for YouTube, TikTok, Instagram, and Blog",
+    "Analytics tracking framework with KPI calculations",
+    "Brand guidelines template with visual asset storage",
+    "Content repurposing workflow system",
+    "Video production checklist templates"
+  ],
+  "perfect_for": [
+    "YouTubers managing multiple video series and upload schedules",
+    "TikTok creators posting daily short-form content",
+    "Bloggers maintaining editorial calendars with multiple content types",
+    "Instagram influencers coordinating reels, stories, carousels, and posts"
+  ],
+  "features": [
+    "Cross-platform content calendar with drag-and-drop scheduling",
+    "Idea capture system with virality potential scoring",
+    "Script writing templates with word count and timing targets",
+    "Analytics dashboard with engagement rate and growth calculations",
+    "Brand asset library with color swatches and font previews",
+    "Complete content pipeline from idea to published status",
+    "Repurposing tracker to maximize content ROI across platforms",
+    "Collaboration-ready fields with assignee, due dates, and priority"
+  ],
+  "seo_keywords": [
+    "Notion content creator template",
+    "YouTube creator workspace",
+    "Content calendar Notion template",
+    "Social media planner template",
+    "Creator economy organization tools",
+    "Content management system Notion",
+    "Influencer content planner",
+    "Digital creator dashboard template"
+  ],
+  "linked_databases": [
+    "Content Ideas \u2192 Content Calendar (link ideas to scheduled posts)",
+    "Content Calendar \u2192 Scripts & Captions (connect scheduled posts to scripts)",
+    "Content Calendar \u2192 Analytics (link published content to performance data)",
+    "Brand Assets \u2192 Content Calendar (attach brand elements to scheduled content)",
+    "Scripts & Captions \u2192 Analytics (track which script styles perform best)"
+  ],
+  "dashboard_widgets": [
+    "Upcoming Content This Week (calendar view widget)",
+    "Content Pipeline Status (kanban progress tracker)",
+    "Top Performing Posts (analytics summary with engagement rates)",
+    "Ideas Waiting to Develop (backlog counter with priority tags)",
+    "Platform Distribution (visual breakdown of content by platform)",
+    "Monthly Publishing Goals (progress bars with completion percentages)"
+  ],
+  "bonus_templates": [
+    "YouTube Video Brief Template (pre-production planning)",
+    "TikTok Hook Formula Library (proven opening scripts)",
+    "Instagram Carousel Planner (slide-by-slide outline)",
+    "Blog Post Outline Template (SEO-optimized structure)"
+  ],
+  "databases": [
+    {
+      "name": "Content Ideas",
+      "icon": "\ud83d\udca1",
+      "description": "Capture, score, and develop content ideas before they enter your production pipeline",
+      "views": [
+        "All Ideas (gallery view with cover images)",
+        "Viral Potential (table sorted by score)",
+        "By Platform (board view grouped by YouTube/TikTok/Instagram/Blog)",
+        "Idea Backlog (list view filtered to unstarted ideas)"
+      ]
+    },
+    {
+      "name": "Content Calendar",
+      "icon": "\ud83d\udcc5",
+      "description": "Schedule and track content across YouTube, TikTok, Instagram, and your blog with full status workflow",
+      "views": [
+        "Monthly Calendar (calendar view with date scheduling)",
+        "By Status (board view: Idea \u2192 Scripting \u2192 Filming \u2192 Editing \u2192 Scheduled \u2192 Published)",
+        "Upcoming 7 Days (timeline view of near-term content)",
+        "All Platforms (table view with filters and sorting)"
+      ]
+    },
+    {
+      "name": "Scripts & Captions",
+      "icon": "\u270d\ufe0f",
+      "description": "Write, store, and version your scripts and captions with platform-specific formatting and word counts",
+      "views": [
+        "All Scripts (table view with word count and status)",
+        "By Content Type (board view: Video Script/Reel Caption/Blog Post/Story Series)",
+        "Draft Scripts (gallery view of works in progress)",
+        "Final Versions (list view filtered to approved scripts)"
+      ]
+    },
+    {
+      "name": "Analytics",
+      "icon": "\ud83d\udcca",
+      "description": "Track performance metrics across platforms to identify what content resonates with your audience",
+      "views": [
+        "Performance Dashboard (table with views, likes, comments, shares, saves)",
+        "Top Performers (table sorted by engagement rate descending)",
+        "By Platform (board view grouped by platform with averages)",
+        "Monthly Trends (timeline view showing performance over time)"
+      ]
+    },
+    {
+      "name": "Brand Assets",
+      "icon": "\ud83c\udfa8",
+      "description": "Centralize your brand colors, fonts, logos, templates, and visual guidelines for consistent branding across all content",
+      "views": [
+        "All Assets (gallery view with visual previews)",
+        "By Category (board view: Colors/Fonts/Logos/Templates/Graphics)",
+        "Color Palette (gallery view filtered to hex codes and swatches)",
+        "Templates (table view of reusable content templates)"
+      ]
+    }
+  ]
+}

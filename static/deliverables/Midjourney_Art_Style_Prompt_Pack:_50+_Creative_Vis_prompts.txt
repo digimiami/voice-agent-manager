@@ -1,0 +1,171 @@
+╔══════════════════════════════════════════════════════════╗
+║  MIDJOURNEY ART STYLE PROMPT PACK: 50+ CREATIVE VISUAL AESTHETICS
+║  ShopZario.com — Premium Digital Product
+╚══════════════════════════════════════════════════════════╝
+
+## Midjourney Art Style Prompt Pack
+
+Use these prompts with `/imagine` in Midjourney. Replace [subject] with your own idea (e.g., a cat, a warrior, a landscape).
+
+### 1. Surrealism
+- **Prompt:** [subject] in the style of Salvador Dali, melting clocks, dreamlike landscape, surrealist, soft colors, ethereal light, intricate details --ar 16:9 --v 6
+
+### 2. Cyberpunk Neon
+- **Prompt:** [subject] cyberpunk style, neon lights, rain-slicked streets, holographic reflections, blade runner aesthetic, high contrast, vivid magenta and cyan --ar 3:2 --v 6
+
+### 3. Watercolor Fantasy
+- **Prompt:** [subject] watercolor painting, soft washes, paper texture, whimsical fantasy, pastel tones, loose brushstrokes, magical atmosphere --ar 4:3 --v 6
+
+### 4. Steampunk
+- **Prompt:** [subject] steampunk, brass and copper gears, victorian era, mechanical details, sepia tones, intricate machinery, warm lighting --ar 16:9 --v 6
+
+### 5. Minimalist Line Art
+- **Prompt:** [subject] minimalist line art, black and white, clean contours, negative space, elegant simplicity, vector style, geometric --ar 1:1 --v 6
+
+### 6. Oil Painting Masterpiece
+- **Prompt:** [subject] oil painting, impasto texture, rich colors, dramatic chiaroscuro, classical composition, golden hour lighting, masterpiece --ar 4:3 --v 6
+
+### 7. Retro 80s Vaporwave
+- **Prompt:** [subject] vaporwave, 1980s retro, neon grid, purple and pink gradients, glitch effects, sunset, nostalgic, synthwave --ar 16:9 --v 6
+
+### 8. Ethereal Celestial
+- **Prompt:** [subject] celestial, cosmic, stars, nebula, glowing, ethereal, dreamy, soft light, galaxy, mystical --ar 16:9 --v 6
+
+### 9. Dark Gothic
+- **Prompt:** [subject] gothic, dark fantasy, medieval, candlelight, stone textures, stained glass, dramatic shadows, moody atmosphere --ar 4:3 --v 6
+
+### 10. Pop Art Comic
+- **Prompt:** [subject] pop art, comic book style, bold outlines, halftone dots, bright primary colors, ben-day dots, Roy Lichtenstein influence --ar 1:1 --v 6
+
+### 11. Japanese Ukiyo-e
+- **Prompt:** [subject] ukiyo-e, woodblock print, Hokusai style, japanese art, flowing lines, traditional colors, wave and mountain motif --ar 3:2 --v 6
+
+### 12. Glitch Art
+- **Prompt:** [subject] glitch art, digital distortion, RGB split, pixelated errors, corrupted data, neon, abstract techno --ar 16:9 --v 6
+
+### 13. Renaissance Portrait
+- **Prompt:** [subject] renaissance portrait, oil on canvas, sfumato, golden light, rich drapery, classical, Leonardo da Vinci style --ar 3:4 --v 6
+
+### 14. Psychedelic
+- **Prompt:** [subject] psychedelic, vibrant colors, swirling patterns, trippy, optical illusion, 1960s, kaleidoscopic, abstract --ar 1:1 --v 6
+
+### 15. Ink Wash
+- **Prompt:** [subject] sumi-e ink wash, black ink, white background, expressive brushwork, zen, simplicity, asian calligraphy --ar 4:3 --v 6
+
+### 16. Art Nouveau
+- **Prompt:** [subject] art nouveau, Alphonse Mucha style, decorative curves, floral motifs, gold accents, elegant, ornate --ar 3:4 --v 6
+
+### 17. Post-Apocalyptic
+- **Prompt:** [subject] post-apocalyptic, wasteland, ruins, overgrown, rusted, desolate, brown and green tones, gritty --ar 16:9 --v 6
+
+### 18. Neon Noir
+- **Prompt:** [subject] neon noir, dark city, rain, neon signs, detective atmosphere, moody shadows, blue and red light --ar 16:9 --v 6
+
+### 19. Claymation Stop Motion
+- **Prompt:** [subject] claymation, stop motion, plasticine, textured, slightly rough, handmade, colorful, Aardman style --ar 4:3 --v 6
+
+### 20. Origami
+- **Prompt:** [subject] origami style, folded paper, geometric, crisp edges, solid colors, white background, paper texture --ar 1:1 --v 6
+
+### 21. Impressionist
+- **Prompt:** [subject] impressionist, Monet style, loose brushstrokes, light and color, outdoor scene, soft focus, vibrant --ar 4:3 --v 6
+
+### 22. Medieval Manuscript
+- **Prompt:** [subject] medieval illuminated manuscript, gold leaf, intricate borders, vellum, religious iconography, rich blues and reds --ar 3:4 --v 6
+
+### 23. Low Poly 3D
+- **Prompt:** [subject] low poly, 3D render, faceted geometry, flat shading, colorful, video game style, modern --ar 16:9 --v 6
+
+### 24. Bauhaus
+- **Prompt:** [subject] bauhaus style, geometric abstraction, primary colors, clean lines, modernism, functional design, bold typography --ar 16:9 --v 6
+
+### 25. Underwater Fantasy
+- **Prompt:** [subject] underwater, coral reef, bioluminescence, deep ocean, mermaid, flowing hair, bubbles, sunlight rays --ar 16:9 --v 6
+
+### 26. Pixel Art
+- **Prompt:** [subject] pixel art, 8-bit, retro game, blocky, limited palette, nostalgic, chunky pixels --ar 1:1 --v 6
+
+### 27. Art Deco
+- **Prompt:** [subject] art deco, 1920s, geometric patterns, gold and black, glamorous, symmetrical, luxurious --ar 4:3 --v 6
+
+### 28. Ethereal Fairy
+- **Prompt:** [subject] fairy, ethereal, glowing wings, magical forest, dewdrops, soft light, translucent, dreamy --ar 3:4 --v 6
+
+### 29. Grunge
+- **Prompt:** [subject] grunge, distressed textures, dirty, chaotic, dark, urban, graffiti, ripped paper, muted colors --ar 4:3 --v 6
+
+### 30. Futurist
+- **Prompt:** [subject] futuristic, sleek, chrome, neon, holograms, flying cars, cityscape, clean lines, utopian --ar 16:9 --v 6
+
+### 31. Woodcut Print
+- **Prompt:** [subject] woodcut print, bold black lines, textured, hand-carved, folk art style, high contrast, traditional --ar 4:3 --v 6
+
+### 32. Fantasy Map
+- **Prompt:** [subject] fantasy map, parchment, aged paper, compass rose, mountains, forests, rivers, medieval cartography --ar 4:3 --v 6
+
+### 33. Double Exposure
+- **Prompt:** [subject] double exposure, silhouette, nature inside, landscape and portrait merged, surreal, black and white --ar 3:4 --v 6
+
+### 34. Neon Sign
+- **Prompt:** [subject] neon sign, glowing, dark background, tube lights, vibrant colors, typography, night scene --ar 16:9 --v 6
+
+### 35. Pastel Dream
+- **Prompt:** [subject] pastel dream, soft pastels, cotton candy colors, fuzzy, gentle, kawaii, cute, airy --ar 1:1 --v 6
+
+### 36. Baroque
+- **Prompt:** [subject] baroque, dramatic lighting, rich colors, ornate, Caravaggio style, tenebrism, opulent --ar 4:3 --v 6
+
+### 37. Vector Flat Design
+- **Prompt:** [subject] flat vector, clean, bright, modern, minimal, no gradients, simple shapes, infographic style --ar 16:9 --v 6
+
+### 38. Tattoo Art
+- **Prompt:** [subject] tattoo design, bold outlines, black and grey, shading, traditional style, sailor jerry, flash art --ar 1:1 --v 6
+
+### 39. Crystallized
+- **Prompt:** [subject] crystallized, gems, diamonds, faceted, shiny, refractive, ethereal, geometric, ice --ar 1:1 --v 6
+
+### 40. Victorian Silhouette
+- **Prompt:** [subject] victorian silhouette, cut paper, black and white, ornate frame, lace, vintage, shadow --ar 3:4 --v 6
+
+### 41. Biopunk
+- **Prompt:** [subject] biopunk, organic, biomechanical, veins, glowing, synthetic biology, futuristic, grotesque, beautiful --ar 16:9 --v 6
+
+### 42. Monochromatic Blue
+- **Prompt:** [subject] monochromatic, shades of blue, cyanotype, deep blue, moody, serene, single color --ar 4:3 --v 6
+
+### 43. Doodle Art
+- **Prompt:** [subject] doodle art, hand-drawn, quirky, whimsical, black ink, white background, intricate patterns, zentangle --ar 1:1 --v 6
+
+### 44. Polaroid
+- **Prompt:** [subject] polaroid photo, instant film, white border, slightly faded, vintage, candid, nostalgic --ar 1:1 --v 6
+
+### 45. Cosmic Horror
+- **Prompt:** [subject] cosmic horror, lovecraftian, tentacles, eldritch, vast void, stars, incomprehensible, dark, purple --ar 16:9 --v 6
+
+### 46. Chibi
+- **Prompt:** [subject] chibi, super deformed, cute, big eyes, small body, anime style, kawaii, colorful --ar 1:1 --v 6
+
+### 47. Ancient Egyptian
+- **Prompt:** [subject] ancient egyptian, hieroglyphics, gold, sandstone, pharaoh, mythology, papyrus, stylized --ar 3:4 --v 6
+
+### 48. Splatter Paint
+- **Prompt:** [subject] splatter paint, abstract, colorful, dynamic, action painting, jackson pollock, chaotic, drip --ar 16:9 --v 6
+
+### 49. Glass Sculpture
+- **Prompt:** [subject] glass sculpture, transparent, translucent, light refraction, fragile, elegant, blown glass, clear --ar 1:1 --v 6
+
+### 50. Nordic Viking
+- **Prompt:** [subject] nordic, viking, runes, longships, fjords, aurora borealis, cold, rugged, historical --ar 16:9 --v 6
+
+### Bonus: Customize Your Style
+Add these modifiers to any prompt:
+- `--s 250` (stylize: 0-1000, higher = more artistic)
+- `--c 10` (chaos: 0-100, higher = more surprising)
+- `--iw 2` (image weight: if using an image reference)
+- `--no [element]` (exclude something, e.g., --no text)
+- `--ar 16:9` (aspect ratio)
+
+**Pro tip:** Combine two styles for unique results, e.g., "cyberpunk + watercolor".
+
+────────────────────────────────────────────────────────
+© ShopZario.com | All Rights Reserved

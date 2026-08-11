@@ -1,0 +1,71 @@
+╔══════════════════════════════════════════════════════════╗
+║  SOCIAL MEDIA MARKETING MASTERY: CHATGPT PROMPT PACK FOR VIRAL CONTENT & ENGAGEMENT
+║  ShopZario.com — Premium Digital Product
+╚══════════════════════════════════════════════════════════╝
+
+## Social Media Marketing Prompt Pack
+
+### 1. Content Ideation & Strategy
+- **Brainstorm 10 viral post ideas** for a [niche] brand on [platform] targeting [audience]. Focus on trends, pain points, and emotional hooks.
+- **Create a 30-day content calendar** for [brand] covering [topics]. Include post formats (carousel, reel, story, poll) and optimal posting times.
+- **Analyze competitor [competitor name]'s top 5 posts** and suggest 3 unique angles to differentiate our content.
+- **Generate 5 interactive story ideas** (polls, quizzes, Q&As) to boost engagement for [brand].
+- **Repurpose this blog post [URL] into** 5 social media captions for [platform] with different tones (educational, funny, inspirational).
+
+### 2. Caption & Copywriting
+- **Write a 150-character caption** for a [product/service] photo on Instagram. Include 3 relevant hashtags and a CTA.
+- **Create 5 hook variations** for a video about [topic]. Each hook should be under 10 words and spark curiosity.
+- **Draft a LinkedIn thought leadership post** on [industry trend]. Use a professional yet conversational tone, and end with a question.
+- **Write a Twitter thread** (10 tweets) explaining [concept]. Each tweet must be under 280 characters and build on the last.
+- **Generate 3 A/B test captions** for a Facebook ad promoting [offer]. Include emotional, logical, and urgency-driven angles.
+
+### 3. Hashtag & SEO Optimization
+- **Research 20 high-traffic, low-competition hashtags** for [niche] on Instagram. Group them by size (small, medium, large).
+- **Create a hashtag strategy** for a [campaign] on TikTok. Include branded, trending, and niche tags.
+- **Optimize this caption [caption] for SEO** on LinkedIn. Suggest 5 keywords to naturally incorporate.
+- **Analyze the best posting time** for [audience] on [platform] based on typical engagement patterns.
+
+### 4. Audience & Engagement
+- **Define the top 3 pain points** of [target audience] regarding [topic]. Then write a poll question addressing each.
+- **Draft 10 comment replies** for common questions under a post about [product]. Keep replies brand-consistent and helpful.
+- **Create a customer persona** for [brand] including demographics, interests, and online behavior. Then suggest content that resonates.
+- **Write a script for a 60-second Instagram Reel** that educates viewers on [topic] while subtly promoting [product].
+- **Generate 5 user-generated content (UGC) prompts** to encourage followers to share their own stories with [brand].
+
+### 5. Analytics & Improvement
+- **Analyze this post's performance [data: likes, shares, comments, saves]** and suggest 3 changes to improve future posts.
+- **Create a monthly report template** for social media metrics (reach, engagement rate, click-through rate). Include insights and recommendations.
+- **Identify 3 underperforming post types** in our recent campaign and propose 5 alternative formats to test.
+- **Write a strategy to increase followers by 20%** in 60 days for [brand] on [platform]. Include specific tactics and KPIs.
+
+### 6. Platform-Specific Prompts
+- **Instagram:** Write a carousel post script (5 slides) explaining [step-by-step process]. Include visuals descriptions.
+- **TikTok:** Generate a trending sound-based video idea for [niche] with a twist that aligns with brand voice.
+- **LinkedIn:** Draft a case study post (300 words) highlighting how [client] achieved [result] with [product].
+- **Twitter:** Create a poll about [industry debate] and a follow-up tweet with results analysis.
+- **YouTube:** Outline a 10-minute video script on [topic] with intro, key points, and CTA to subscribe.
+
+### 7. Crisis & Community Management
+- **Draft a response** to a negative comment about [issue]. Apologize, offer a solution, and take the conversation to DM.
+- **Create a pre-written FAQ** for common complaints about [product]. Include empathetic and solution-oriented replies.
+- **Write a crisis communication post** for a brand facing [scenario]. Tone should be transparent and reassuring.
+
+### 8. Advanced & Creative
+- **Use the PAS framework** (Problem-Agitate-Solution) to write a sales caption for [product].
+- **Generate 10 meme ideas** related to [niche] that are shareable and on-brand.
+- **Create a challenge or giveaway** concept for [platform] with rules, prizes, and promotion plan.
+- **Write a brand story post** (500 words) that humanizes the company and builds emotional connection with the audience.
+
+### How to Use This Pack
+1. **Copy a prompt** and paste into ChatGPT.
+2. **Replace variables** (e.g., [niche], [brand], [platform]) with your specific details.
+3. **Refine the output** by asking follow-up questions or requesting tone adjustments.
+4. **Implement** the generated content in your social media schedule.
+
+### Pro Tips
+- For best results, provide as much context as possible in your prompt (e.g., brand voice, target demographics, previous successes).
+- Use these prompts as a starting point; always humanize and fact-check AI-generated content.
+- Combine multiple prompts to create comprehensive campaigns.
+
+────────────────────────────────────────────────────────
+© ShopZario.com | All Rights Reserved

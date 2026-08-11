@@ -1,0 +1,177 @@
+[17:35:44] 📞 Campaign started (website mode, assistant a75aeb76…, up to 5 calls, delay 90s)
+[17:35:45]   ✅ Miami Electrical Services → call 019fcdd8…
+[17:37:15]   ✅ T&S Roofing Systems → call 019fcdd9…
+[17:38:45]   ✅ Roofers Core Builders → call 019fcddb…
+[17:40:18]   ✅ Martinez Roofing Miami → call 019fcddc…
+[17:41:50]   ✅ Elite Roofing Company LLC → call 019fcdde…
+[17:41:50] 📞 Campaign complete: 5 calls placed
+[17:43:51]   📊 Miami Electrical Services: customer-ended-call → called
+[17:43:51]   📊 T&S Roofing Systems: customer-ended-call → called
+[17:43:51]   📊 Roofers Core Builders: customer-did-not-answer → called
+[17:43:51]   📊 Martinez Roofing Miami: customer-ended-call → called
+[17:43:51]   📊 Elite Roofing Company LLC: customer-ended-call → called
+[17:43:51] 📊 Synced 5 call outcome(s)
+[17:55:35] 📞 Campaign started (website mode, assistant a75aeb76…, up to 3 calls, delay 90s)
+[17:55:35]   ✅ Musca Law → call 019fcdea…
+[17:57:06]   ✅ The Russo Firm → call 019fcdec…
+[17:58:36]   ✅ Freidin Brown, P.A. → call 019fcded…
+[18:00:06] 📞 Campaign complete: 3 calls placed
+[18:02:06]   📊 Musca Law: customer-ended-call → interested
+[18:02:09]   📊 The Russo Firm:  → called
+[18:02:09]   📊 Freidin Brown, P.A.: customer-ended-call → called
+[18:02:10]   📤 Auto-package → Musca Law: ✅ Package SMS sent (website mode, demo + signup page)
+[18:02:10] 📊 Synced 3 call outcome(s)
+[23:14:10] 📱 Number verification: 138 numbers classified
+[23:21:01] 📱 Number verification: 0 numbers classified
+[02:21:11] 🎨 Painter assistant created: 2ff5c7fb-169b-43f0-adca-acfcad424311
+[02:21:19] 🔍 Searching: painting contractor in Miami, FL
+[02:22:27]   ✅ Florida Painting Company | +17867244880 | ⭐4.8 (283) | 🌐yes
+[02:23:00]   ✅ That 1 Painter Miami | +17866525095 | ⭐5.0 (198) | 🌐yes
+[02:23:32]   ✅ Pro Painting And Sons | +17865543438 | ⭐4.9 (115) | 🌐yes
+[02:24:05]   ✅ Precision Painting Plus of Miami | +17864160007 | ⭐4.9 (179) | 🌐yes
+[02:24:37]   ✅ Michael Grant Painting LLC | +19036238518 | ⭐5.0 (185) | 🌐yes
+[02:25:10]   ✅ Paint Proz | +17865431059 | ⭐4.8 (76) | 🌐yes
+[02:25:42]   ✅ Superior Painting Services Miami | +13055974546 | ⭐4.8 (52) | 🌐yes
+[02:26:15]   ✅ FLAMINGO PAINTING | +17862804811 | ⭐5.0 (54) | 🌐yes
+[02:26:47]   ✅ Miami House Painters Painting Comp | +17867333598 | ⭐5.0 (10) | 🌐yes
+[02:27:20]   ✅ Gables & Grove Painting | +13059081838 | ⭐4.8 (138) | 🌐yes
+[02:27:52]   ✅ A Class Painting | +17862377956 | ⭐4.9 (50) | 🌐yes
+[02:28:25]   ✅ CertaPro Painters of North Miami | +13053402004 | ⭐4.8 (106) | 🌐NO
+[02:28:57]   ✅ Painting and restoration company i | +17865574282 | ⭐5.0 (48) | 🌐NO
+[02:29:30]   ✅ Fresh Coat Painters of Miami Beach | +17867418583 | ⭐4.9 (61) | 🌐yes
+[02:30:02]   ✅ ROCO PAINTING SERVICES INC | +13057137240 | ⭐4.9 (143) | 🌐NO
+[02:30:35]   ✅ Miami Home Exterior Painters | +17866287484 | ⭐4.8 (74) | 🌐NO
+[02:31:07]   ✅ JRG Painting Corp | +17867813550 | ⭐5.0 (115) | 🌐yes
+[15:31:00] 🔍 Searching: dentist in Miami, FL
+[15:31:09] 📞 Campaign started (website mode, up to 0 calls, delay 90s)
+[15:31:09] 📞 Campaign complete: 0 calls placed
+[15:32:08]   ✅ BOND Aesthetic | Aventura, FL | +13057036494 | ⭐5.0 (118) | 🌐yes
+[15:32:41]   ✅ Aspen Dental - Miami, FL (River La | +13057021807 | ⭐4.5 (572) | 🌐NO
+[15:32:54] 📞 Campaign started (website mode, up to 0 calls, delay 90s)
+[15:32:54] 📞 Campaign complete: 0 calls placed
+[15:33:13]   ✅ Relax and Smile Dental Care | +17869834812 | ⭐4.9 (913) | 🌐yes
+[15:33:46]   ✅ Ultra Smile Miami | +13053721020 | ⭐4.8 (848) | 🌐yes
+[15:34:18]   ✅ Midtown Dental Miami | +13055986070 | ⭐4.3 (149) | 🌐yes
+[15:34:51]   ✅ Dentists at Midtown | +17867240418 | ⭐4.2 (501) | 🌐yes
+[15:35:24]   ✅ Dentists in Brickell - HQ Dontics  | +12295080551 | ⭐4.9 (745) | 🌐yes
+[15:35:56]   ✅ ONE Dental Miami | +13052855150 | ⭐4.8 (365) | 🌐yes
+[15:36:29]   ✅ Super Dentist Miami | +13056428499 | ⭐4.9 (296) | 🌐yes
+[15:37:01]   ✅ Alfonso Dental Miami | +13056424142 | ⭐5.0 (1014) | 🌐yes
+[15:37:34]   ✅ Smile Dental Center Miami | Porcel | +17865607567 | ⭐4.5 (1023) | 🌐yes
+[15:38:06]   ✅ All Smiles Dentistry Miami | +13053716064 | ⭐4.9 (405) | 🌐yes
+[15:38:39]   ✅ Brickell Dental Care | +13056144423 | ⭐4.6 (332) | 🌐yes
+[15:39:11]   ✅ Amaya Dental | +13052642711 | ⭐4.9 (972) | 🌐NO
+[15:39:44]   ✅ Bayfront Dental - Dr. Taylor Light | +13055301866 | ⭐4.9 (524) | 🌐yes
+[15:39:45] 🔍 Searching: plumber in Miami, FL
+[15:40:52]   ✅ Miami 24/7 Plumbing - Miami Emerge | +13054400878 | ⭐4.8 (236) | 🌐yes
+[15:41:25]   ✅ Main Plumbing Services | +17862693783 | ⭐4.9 (236) | 🌐yes
+[15:41:58]   ✅ Empire Plumbing | +13055317017 | ⭐4.6 (336) | 🌐yes
+[15:42:30]   ✅ AAAPLUMBINGSERVICES COM | +13055043504 | ⭐4.9 (126) | 🌐yes
+[15:43:03]   ✅ Roto-Rooter Plumbing & Water Clean | +13056617838 | ⭐4.7 (2311) | 🌐NO
+[15:43:35]   ✅ AKO Plumbing Corp. | +13052698033 | ⭐4.8 (36) | 🌐yes
+[15:44:08]   ✅ Oasis Plumbing | +13058344321 | ⭐4.9 (578) | 🌐yes
+[15:44:40]   ✅ Just 1 Plumbing | +17866778200 | ⭐4.8 (67) | 🌐yes
+[15:45:13]   ✅ MIAMI SERVICE PLUMBERS | Emergency | +13058518853 | ⭐4.9 (51) | 🌐yes
+[15:45:45]   ✅ Coastal Plumbing of Brickell Inc | +17864990799 | ⭐4.9 (97) | 🌐yes
+[15:46:18]   ✅ Hernandez Plumbing Co. | +13054283782 | ⭐4.8 (572) | 🌐yes
+[15:46:50]   ✅ Miami Dade Plumbing | +17867563185 | ⭐4.9 (151) | 🌐yes
+[15:47:23]   ✅ Oasis Plumbing | +13059008224 | ⭐4.9 (148) | 🌐NO
+[15:47:55]   ✅ Sunny Bliss Plumbing & Air | +13054400621 | ⭐4.9 (779) | 🌐yes
+[15:48:28]   ✅ Ez Plumbing Repair Services | +17862396529 | ⭐4.9 (53) | 🌐yes
+[15:48:29] 🔍 Searching: auto repair in Miami, FL
+[15:49:36]   ✅ MoparServiceSpecials | +18886964703 | ⭐4.3 (12) | 🌐yes
+[15:50:09]   ✅ Rey's Auto Repair Shop | +13055417339 | ⭐4.9 (689) | 🌐yes
+[15:50:42]   ✅ Fast Tire & Auto Repair Miami | +13054335005 | ⭐4.7 (239) | 🌐yes
+[15:51:14]   ✅ Green's Garage | +13054448881 | ⭐4.6 (831) | 🌐yes
+[15:51:47]   ✅ Mario's Auto Repair | +13058151067 | ⭐4.9 (132) | 🌐yes
+[15:52:19]   ✅ E T Auto Repair | +13056378492 | ⭐4.7 (307) | 🌐yes
+[15:52:52]   ✅ AutoVice | +13055637272 | ⭐4.6 (599) | 🌐yes
+[15:53:24]   ✅ Tony’s Vehicle Solutions | +17867039084 | ⭐4.8 (1242) | 🌐yes
+[15:53:57]   ✅ Miami's Quality Auto Repair | +13055749099 | ⭐4.7 (893) | 🌐yes
+[15:54:29]   ✅ ALFA GARAGE MIAMI | +13058715551 | ⭐4.9 (553) | 🌐yes
+[15:55:02]   ✅ J C Car Care Center | +13056331824 | ⭐4.9 (1483) | 🌐NO
+[15:55:34]   ✅ Auto Repair Miami Llc | +14079129803 | ⭐4.8 (410) | 🌐yes
+[15:56:07]   ✅ Mobile Mechanic R&R | +13052189761 | ⭐4.8 (252) | 🌐NO
+[15:56:39]   ✅ Manny's Auto Service, Inc. | +13052629921 | ⭐4.5 (216) | 🌐yes
+[15:57:12]   ✅ Leader Service | +13058581020 | ⭐4.9 (417) | 🌐yes
+[15:57:13] 🔍 Searching: hair salon in Miami, FL
+[15:58:20]   ✅ Valash Studio | +17867418538 | ⭐5.0 (104) | 🌐yes
+[15:58:53]   ✅ Unique Barbershop Doral | +17864854864 | ⭐4.8 (310) | 🌐yes
+[15:59:26]   ✅ Salon Ethos | +17865749609 | ⭐4.9 (1098) | 🌐yes
+[15:59:58]   ✅ Studio-D Brickell | +13053494969 | ⭐4.9 (1271) | 🌐yes
+[16:00:31]   ✅ Europa Hair Studio Miami | +13057202277 | ⭐4.7 (723) | 🌐yes
+[16:01:03]   ✅ Gabriel Samra Hair Salon | +13057741449 | ⭐4.8 (943) | 🌐yes
+[16:01:36]   ✅ YSV Hair Salon & Spa | +17865749850 | ⭐4.7 (201) | 🌐yes
+[16:02:08]   ✅ Hair Healers Beauty Salon | +13056432252 | ⭐4.6 (165) | 🌐yes
+[16:02:41]   ✅ True Hair Miami Salon | +13059214238 | ⭐4.9 (179) | 🌐NO
+[16:03:13]   ✅ LAB Salon Miami | +13054480540 | ⭐4.8 (207) | 🌐yes
+[16:03:46]   ✅ Beach Hair Salon | Hair Salon Miam | +17863555468 | ⭐4.8 (288) | 🌐yes
+[16:04:18]   ✅ Avant-Garde Salon & Spa | +13054428136 | ⭐4.9 (1543) | 🌐yes
+[16:04:51]   ✅ Le Hair Salon | +17868035246 | ⭐4.8 (470) | 🌐yes
+[16:05:24]   ✅ PLT Beauty Salon | +17862754561 | ⭐4.7 (488) | 🌐yes
+[16:05:56]   ✅ IGK SALON | +13055735520 | ⭐4.8 (977) | 🌐yes
+[16:05:57] 🔍 Searching: chiropractor in Miami, FL
+[16:07:05]   ✅ County Line Chiropractic | +13059406161 | ⭐5.0 (411) | 🌐yes
+[16:07:37]   ✅ Massage Envy | +13056487149 | ⭐4.5 (956) | 🌐yes
+[16:08:10]   ✅ Miami Chiropractic & Wellness | +13053224007 | ⭐4.9 (117) | 🌐yes
+[16:08:43]   ✅ Chirofit Miami | +17868103468 | ⭐4.9 (220) | 🌐yes
+[16:09:15]   ✅ Miami Chiropractic | +17867321323 | ⭐4.9 (118) | 🌐yes
+[16:09:48]   ✅ Awesome Chiropractic Center | +13059810899 | ⭐4.9 (480) | 🌐yes
+[16:10:20]   ✅ Miami Spine Clinic | +17866610906 | ⭐4.9 (304) | 🌐yes
+[16:10:53]   ✅ On The Go Wellness | +13054399779 | ⭐5.0 (234) | 🌐yes
+[16:11:25]   ✅ Downtown Miami Chiropractor | +13056674567 | ⭐5.0 (63) | 🌐yes
+[16:11:58]   ✅ East Side Chiropractic | +13054032595 | ⭐4.9 (173) | 🌐yes
+[16:12:30]   ✅ iCare Chiropractic, P.A. | +17863913868 | ⭐4.9 (350) | 🌐yes
+[16:13:03]   ✅ DR BE | +13056993723 | ⭐4.7 (233) | 🌐yes
+[16:13:35]   ✅ Dr. Martin Grossman, DC - Coral Ga | +13054461095 | ⭐4.8 (265) | 🌐yes
+[16:14:08]   ✅ WynWellness | +17868990595 | ⭐5.0 (260) | 🌐yes
+[16:14:40]   ✅ Shin Wellness | +13055719090 | ⭐4.9 (195) | 🌐yes
+[16:14:41] 🔍 Searching: electrician in Miami, FL
+[16:15:49]   ✅ Elekron Electric Inc | +17864235230 | ⭐5.0 (240) | 🌐yes
+[16:16:22]   ✅ Electrical Services fl | +17864877441 | ⭐4.9 (399) | 🌐yes
+[16:16:54]   ✅ Miami Electrical Contractors llc | +13056102998 | ⭐5.0 (13) | 🌐yes
+[16:17:27]   ✅ Mister Sparky | +13052030964 | ⭐4.7 (2141) | 🌐yes
+[16:17:59]   ✅ S.E. Bates Electric | +17863042328 | ⭐4.8 (385) | 🌐yes
+[16:18:32]   ✅ Electrical Solution us llc | +16786187924 | ⭐4.9 (137) | 🌐yes
+[16:19:04]   ✅ E&P Electrical services | +17862294448 | ⭐5.0 (160) | 🌐yes
+[16:19:37]   ✅ Miami Electrical Services | +18449879393 | ⭐4.7 (20) | 🌐NO
+[16:20:09]   ✅ Smart Electrical Company Llc | +17868580907 | ⭐4.9 (62) | 🌐yes
+[16:20:42]   ✅ Alex All Electric | +17863629679 | ⭐4.9 (121) | 🌐yes
+[16:21:14]   ✅ Rizo Electric Inc | +13054315712 | ⭐5.0 (111) | 🌐yes
+[16:21:47]   ✅ Miami Speedy Commercial Electricia | +13057873971 | ⭐4.9 (167) | 🌐NO
+[16:22:19]   ✅ First Choice Electrical of Miami | +17863158688 | ⭐5.0 (22) | 🌐yes
+[16:22:52]   ✅ Miami Electric Masters | +17863389173 | ⭐4.7 (349) | 🌐yes
+[16:23:24]   ✅ DES ELECTRICAL LLC | +17863809432 | ⭐5.0 (102) | 🌐yes
+[16:23:25] 🔍 Searching: roofing contractor in Miami, FL
+[16:24:33]   ✅ Simon Roofing | +13214465330 | ⭐5.0 (1) | 🌐yes
+[16:25:06]   ✅ Robson Industrial Group | +19545464161 | ⭐5.0 (2) | 🌐yes
+[16:25:38]   ✅ T&S Roofing Systems | +13056767043 | ⭐4.8 (1222) | 🌐NO
+[16:26:11]   ✅ Miami Roof-Tech | +13057227606 | ⭐4.9 (143) | 🌐yes
+[16:26:43]   ✅ Top Hat Roofing | +17869339660 | ⭐4.9 (113) | 🌐yes
+[16:27:16]   ✅ A&E Brothers Roofing | +13058157208 | ⭐4.9 (563) | 🌐yes
+[16:27:48]   ✅ Best Roofing Miami | +18885116027 | ⭐5.0 (40) | 🌐yes
+[16:28:21]   ✅ Palma Roofing | +17868035439 | ⭐4.9 (88) | 🌐yes
+[16:28:53]   ✅ Top Roofer Miami | +16452414258 | ⭐5.0 (4) | 🌐yes
+[16:29:26]   ✅ Mainland Roofing Company | +13056967663 | ⭐4.8 (80) | 🌐yes
+[16:29:59]   ✅ T & E Roofing Inc | +17863158352 | ⭐4.9 (178) | 🌐yes
+[16:30:31]   ✅ Atlantic Roofing Miami | +17864018964 | ⭐4.9 (43) | 🌐yes
+[16:31:04]   ✅ A-1 Commercial Roofing Contractor | +17869525012 | ⭐4.5 (117) | 🌐yes
+[16:31:36]   ✅ Ultra Roof Repair Miami | +13056768110 | ⭐4.9 (36) | 🌐yes
+[16:32:09]   ✅ MRT Construction | +17863751725 | ⭐5.0 (111) | 🌐yes
+[16:32:10] 🔍 Searching: law firm in Miami, FL
+[16:33:17]   ✅ Pensky & Kim, P.A. | +13055719800 | ⭐4.8 (166) | 🌐yes
+[16:33:50]   ✅ Neuman Jonathan M | +13053771611 | ⭐5.0 (3) | 🌐yes
+[16:34:23]   ✅ Goldberg & Rosen | +13053744200 | ⭐4.9 (1005) | 🌐yes
+[16:34:55]   ✅ Morgan & Morgan | +13059291900 | ⭐4.7 (4848) | 🌐yes
+[16:35:28]   ✅ Wolfson & Leon | +13052851115 | ⭐4.9 (702) | 🌐yes
+[16:36:00]   ✅ Albert Quirantes, Esq. Criminal DU | +13056441800 | ⭐4.9 (1417) | 🌐yes
+[16:36:33]   ✅ JMLAW, P.A. | +13055079092 | ⭐4.9 (73) | 🌐yes
+[16:37:05]   ✅ Law Offices of Armando G. Hernande | +13055173540 | ⭐4.8 (109) | 🌐yes
+[16:37:38]   ✅ The Lions' Den, Attorneys at Law | +13056995466 | ⭐5.0 (105) | 🌐yes
+[16:38:10]   ✅ De la Rosa Law | +13057873175 | ⭐4.5 (375) | 🌐yes
+[16:38:13]   ✅ Lacayo Law Firm, P.A. | +17866714878 | ⭐4.6 (191) | 🌐yes
+[16:38:45]   ✅ lowercase, a law firm | +13052578037 | ⭐4.9 (187) | 🌐yes
+[16:39:18]   ✅ Miami Law® | +13054441533 | ⭐5.0 (26) | 🌐yes
+[16:39:50]   ✅ Ayala Law PA | +13055702208 | ⭐4.9 (102) | 🌐yes
+[16:40:23]   ✅ The Russo Firm | +17866882800 | ⭐4.9 (981) | 🌐NO
+[16:40:24] 📦 Scrape done: 120 found, 21 new prospects

@@ -1,0 +1,268 @@
+{
+  "name": "The Freelance Client Manager",
+  "tagline": "Streamline your freelance business from pitch to payment",
+  "description": "A complete client management system for freelancers to track proposals, projects, invoices, and contracts. This premium Notion template consolidates your entire freelance workflow into one organized workspace, eliminating the chaos of scattered spreadsheets and lost emails. From first contact to final payment, every interaction, deliverable, and dollar is tracked seamlessly.",
+  "price": 24,
+  "benefits": [
+    "Never lose track of a client conversation or project detail again with centralized record-keeping",
+    "Get paid faster by monitoring invoice statuses and automatically flagging overdue payments",
+    "Win more proposals by analyzing your success rate and identifying patterns in what works",
+    "Save hours each month on admin tasks with automated calculations and status tracking",
+    "Impress clients with professional organization that sets you apart from competitors"
+  ],
+  "whats_included": [
+    "5 fully linked relational databases with pre-built properties and formulas",
+    "Executive dashboard with real-time business metrics and quick-access views",
+    "Proposal tracking with win/loss analysis and conversion rate calculations",
+    "Project management with timeline views and deliverable checklists",
+    "Invoice system with automatic total calculations and payment status tracking",
+    "Expense logger with category tagging and tax-ready summaries",
+    "Client CRM with communication history and relationship scoring",
+    "4 bonus templates for onboarding, contracts, meeting notes, and weekly reviews"
+  ],
+  "perfect_for": [
+    "Freelance designers and creatives managing multiple client projects simultaneously",
+    "Independent consultants who need to track proposals and maintain client relationships",
+    "Freelance writers and content creators juggling various assignments and deadlines",
+    "Solopreneurs and small agency owners wanting to professionalize their operations"
+  ],
+  "features": [
+    "Relational database architecture connecting clients, proposals, projects, invoices, and expenses",
+    "Automatic financial calculations including project profitability and monthly income tracking",
+    "Kanban boards for visual project and proposal pipeline management",
+    "Calendar views for deadline tracking and timeline visualization",
+    "Filtered gallery views for quick client and project scanning",
+    "Status automation with conditional formatting for at-a-glance priority identification",
+    "Template buttons for rapid data entry across all databases",
+    "Mobile-optimized layouts for managing your business on the go"
+  ],
+  "seo_keywords": [
+    "freelance client management Notion template",
+    "freelancer CRM Notion",
+    "freelance invoice tracker",
+    "proposal tracking template Notion",
+    "freelance business dashboard",
+    "Notion template for freelancers",
+    "client management system for solopreneurs",
+    "freelance project management Notion"
+  ],
+  "linked_databases": [
+    {
+      "source": "Clients",
+      "target": "Proposals",
+      "relation": "Client to Proposals (one-to-many)"
+    },
+    {
+      "source": "Proposals",
+      "target": "Projects",
+      "relation": "Won Proposal to Project (one-to-one)"
+    },
+    {
+      "source": "Clients",
+      "target": "Projects",
+      "relation": "Client to Projects (one-to-many)"
+    },
+    {
+      "source": "Projects",
+      "target": "Invoices",
+      "relation": "Project to Invoices (one-to-many)"
+    },
+    {
+      "source": "Clients",
+      "target": "Invoices",
+      "relation": "Client to Invoices (one-to-many)"
+    },
+    {
+      "source": "Projects",
+      "target": "Expenses",
+      "relation": "Project to Expenses (one-to-many)"
+    }
+  ],
+  "dashboard_widgets": [
+    {
+      "name": "Revenue Overview",
+      "type": "Number summary",
+      "description": "Total revenue, pending payments, and overdue amounts at a glance"
+    },
+    {
+      "name": "Active Projects Pipeline",
+      "type": "Kanban preview",
+      "description": "Visual board showing projects by status: Not Started, In Progress, Review, Complete"
+    },
+    {
+      "name": "Proposal Conversion Rate",
+      "type": "Progress bar",
+      "description": "Win rate percentage calculated from sent vs. won proposals"
+    },
+    {
+      "name": "Upcoming Deadlines",
+      "type": "Timeline preview",
+      "description": "Next 7 days of project milestones and invoice due dates"
+    },
+    {
+      "name": "Client Snapshot",
+      "type": "Gallery preview",
+      "description": "Top 5 active clients with quick links to their full profiles"
+    },
+    {
+      "name": "Monthly Expense Breakdown",
+      "type": "Bar chart",
+      "description": "Visual spending by category for the current month"
+    }
+  ],
+  "bonus_templates": [
+    {
+      "name": "Client Onboarding Checklist",
+      "description": "Step-by-step template for welcoming new clients and gathering requirements"
+    },
+    {
+      "name": "Simple Service Contract",
+      "description": "Basic contract template with scope, timeline, payment terms, and revision policy"
+    },
+    {
+      "name": "Meeting Notes Template",
+      "description": "Structured format for client calls with action items and follow-up tracking"
+    },
+    {
+      "name": "Weekly Business Review",
+      "description": "Reflection template to review progress, income, and priorities each week"
+    }
+  ],
+  "databases": [
+    {
+      "name": "Clients",
+      "icon": "\ud83d\udc64",
+      "description": "Complete CRM database for storing all client contact information, communication history, project history, and relationship status. Track every interaction and maintain a 360-degree view of each client relationship.",
+      "views": [
+        {
+          "name": "All Clients",
+          "type": "Gallery",
+          "description": "Card-based view with client photo, company, and quick status indicator"
+        },
+        {
+          "name": "Active Clients",
+          "type": "Table",
+          "description": "Filtered table showing only clients with active projects or recent activity"
+        },
+        {
+          "name": "By Status",
+          "type": "Kanban",
+          "description": "Board view organizing clients by status: Active, Inactive, Prospect, Churned"
+        },
+        {
+          "name": "Client Timeline",
+          "type": "Timeline",
+          "description": "Chronological view of client relationships based on first contact date"
+        }
+      ]
+    },
+    {
+      "name": "Proposals",
+      "icon": "\ud83d\udccb",
+      "description": "Track every proposal you send with detailed status monitoring, value calculations, win/loss analysis, and conversion rate metrics. Learn what works and continuously improve your pitch success rate.",
+      "views": [
+        {
+          "name": "Proposal Pipeline",
+          "type": "Kanban",
+          "description": "Visual pipeline: Draft, Sent, Follow-up, Won, Lost, Expired"
+        },
+        {
+          "name": "All Proposals",
+          "type": "Table",
+          "description": "Comprehensive table with all proposal details, values, and outcomes"
+        },
+        {
+          "name": "Won Proposals",
+          "type": "Table",
+          "description": "Filtered view of successful proposals for reference and pattern analysis"
+        },
+        {
+          "name": "By Value",
+          "type": "Board",
+          "description": "Grouped by proposal value ranges to identify your most lucrative opportunities"
+        }
+      ]
+    },
+    {
+      "name": "Projects",
+      "icon": "\ud83d\ude80",
+      "description": "Manage all active and completed projects with scope documentation, timeline tracking, milestone management, deliverable checklists, and progress monitoring. Keep every project on track and within scope.",
+      "views": [
+        {
+          "name": "Active Projects",
+          "type": "Table",
+          "description": "Current projects with progress bars, deadlines, and linked client info"
+        },
+        {
+          "name": "Project Board",
+          "type": "Kanban",
+          "description": "Status-based board: Not Started, In Progress, In Review, Completed, On Hold"
+        },
+        {
+          "name": "Project Timeline",
+          "type": "Timeline",
+          "description": "Gantt-style view of project schedules and milestone dates"
+        },
+        {
+          "name": "By Client",
+          "type": "Gallery",
+          "description": "Projects grouped and displayed by client for easy per-client navigation"
+        }
+      ]
+    },
+    {
+      "name": "Invoices",
+      "icon": "\ud83d\udcb0",
+      "description": "Complete invoicing system with automatic total calculations, payment status tracking, due date monitoring, and overdue alerts. Know exactly what you're owed and when to follow up on outstanding payments.",
+      "views": [
+        {
+          "name": "Invoice Tracker",
+          "type": "Table",
+          "description": "Master table with all invoice details, amounts, and payment statuses"
+        },
+        {
+          "name": "Overdue Invoices",
+          "type": "Table",
+          "description": "Urgent filtered view showing only past-due invoices requiring action"
+        },
+        {
+          "name": "Payment Status Board",
+          "type": "Kanban",
+          "description": "Visual board: Draft, Sent, Partially Paid, Paid, Overdue, Void"
+        },
+        {
+          "name": "Monthly Summary",
+          "type": "Calendar",
+          "description": "Calendar view of invoices by due date for monthly cash flow planning"
+        }
+      ]
+    },
+    {
+      "name": "Expenses",
+      "icon": "\ud83e\uddfe",
+      "description": "Log all business expenses with category tagging, receipt tracking, project association, and tax-ready summaries. Never scramble at tax time again with a complete, organized expense record.",
+      "views": [
+        {
+          "name": "All Expenses",
+          "type": "Table",
+          "description": "Complete expense log with dates, amounts, categories, and project links"
+        },
+        {
+          "name": "By Category",
+          "type": "Board",
+          "description": "Expenses grouped by type: Software, Equipment, Travel, Marketing, Office, Other"
+        },
+        {
+          "name": "Tax Deductions",
+          "type": "Table",
+          "description": "Filtered view of tax-deductible expenses with running total"
+        },
+        {
+          "name": "Expense Calendar",
+          "type": "Calendar",
+          "description": "Date-based view of expenses for monthly spending pattern analysis"
+        }
+      ]
+    }
+  ]
+}

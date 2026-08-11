@@ -1,0 +1,81 @@
+╔══════════════════════════════════════════════════════════╗
+║  INDEPENDENT CONTRACTOR AGREEMENT TEMPLATE PACK (5 TEMPLATES)
+║  ShopZario.com — Premium Digital Product
+╚══════════════════════════════════════════════════════════╝
+
+## Product Overview
+This pack includes 5 complete contractor agreement templates (Short Form, Long Form, Creative/IP Intensive, Service-Based, and International) plus 15+ supporting clauses and checklists.
+
+### Template 1: Short Form Agreement (Single Project)
+- **Scope of Work Clause**: Define deliverables, milestones, and deadlines.
+- **Payment Terms**: Fixed fee, payment schedule (e.g., 50% upfront, 50% upon completion), late payment penalty (1.5% monthly).
+- **IP Rights**: Work-for-hire assignment; contractor retains pre-existing IP.
+- **Confidentiality**: Mutual NDA clause with 2-year term.
+- **Termination**: Either party may terminate with 7 days' written notice; payment for work completed.
+- **Independent Contractor Status**: No benefits, taxes, or insurance provided.
+- **Governing Law**: State of [State].
+
+### Template 2: Long Form Agreement (Ongoing/Retainer)
+- **Scope of Work**: Detailed description with change order process.
+- **Payment Terms**: Hourly rate or retainer ($X/month for Y hours), invoicing net-15, expense reimbursement.
+- **IP Rights**: Assignment of all work product; contractor retains license to portfolio use.
+- **Confidentiality**: Broad definition of confidential info; survival 3 years.
+- **Termination**: 30-day notice; for cause (breach, insolvency).
+- **Non-Solicitation**: 12-month restriction on hiring each other's employees.
+- **Dispute Resolution**: Mandatory mediation before litigation.
+
+### Template 3: Creative/IP Intensive Agreement (Designers, Writers, Developers)
+- **Scope of Work**: Deliverables acceptance criteria and revision limits (3 rounds).
+- **Payment Terms**: Milestone payments tied to approval.
+- **IP Rights**: Grant of license (non-exclusive, worldwide) to use deliverables; contractor retains copyright.
+- **Moral Rights Waiver**: Client may modify work.
+- **Confidentiality**: Limited to client business secrets.
+- **Termination**: Automatic upon non-payment.
+
+### Template 4: Service-Based Agreement (Consultants, Coaches, Virtual Assistants)
+- **Scope of Work**: Service description, availability (e.g., 10 hours/week), communication methods.
+- **Payment Terms**: Monthly retainer, auto-renewal clause.
+- **IP Rights**: Client owns materials created; contractor owns methodology.
+- **Confidentiality**: Client data protection clause.
+- **Termination**: 30-day notice; refund for unused retainer.
+- **Non-Compete**: Limited to direct competitors within 50 miles.
+
+### Template 5: International Contractor Agreement
+- **Scope of Work**: Multi-language deliverables.
+- **Payment Terms**: Currency (USD/EUR), wire transfer fees, tax withholding responsibility.
+- **IP Rights**: Compliance with local IP laws (e.g., EU copyright).
+- **Confidentiality**: GDPR-compliant data processing addendum.
+- **Termination**: Force majeure clause.
+- **Governing Law**: UNCITRAL arbitration.
+
+### 15+ Supporting Items
+1. **Checklist**: Pre-signing due diligence (verify contractor's business license, insurance).
+2. **Change Order Form**: Template for scope changes with cost adjustment.
+3. **Invoice Template**: Contractor's invoice with required fields.
+4. **W-9 Request Form**: US tax info collection.
+5. **NDA Addendum**: Separate mutual NDA for negotiations.
+6. **IP Assignment Addendum**: For specific projects.
+7. **Non-Disclosure Addendum**: Extended confidentiality.
+8. **Work Product Acceptance Form**: Formal sign-off.
+9. **Termination Letter Template**: For client or contractor.
+10. **Dispute Resolution Agreement**: Mediation/arbitration clause.
+11. **Data Protection Addendum**: GDPR-specific.
+12. **Insurance Requirements Clause**: Liability, workers' comp.
+13. **Indemnification Clause**: Mutual or one-way.
+14. **Force Majeure Clause**: Pandemic, natural disasters.
+15. **Entire Agreement Clause**: Supersedes prior agreements.
+16. **Severability Clause**: If part invalid, rest stands.
+17. **Waiver Clause**: No waiver unless written.
+18. **Notices Clause**: Email and physical address for legal notices.
+
+### How to Use
+- Fill in bracketed fields (e.g., [Client Name], [Date]).
+- Choose template based on project type.
+- Consult a lawyer for high-value or complex contracts.
+- Keep signed copies for 7 years.
+
+### Legal Disclaimer
+This pack is a template and does not constitute legal advice. Laws vary by jurisdiction. Always have a qualified attorney review your final agreement.
+
+────────────────────────────────────────────────────────
+© ShopZario.com | All Rights Reserved

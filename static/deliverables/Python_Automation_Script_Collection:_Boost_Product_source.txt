@@ -1,0 +1,181 @@
+╔══════════════════════════════════════════════════════════╗
+║  PYTHON AUTOMATION SCRIPT COLLECTION: BOOST PRODUCTIVITY WITH 10 READY-TO-USE SCRIPTS
+║  ShopZario.com — Premium Digital Product
+╚══════════════════════════════════════════════════════════╝
+
+# Python Automation Script Collection
+
+## Overview
+This collection provides 10 production-ready Python scripts for common automation tasks. Each script includes detailed comments, error handling, and configuration instructions.
+
+---
+
+### Script 1: File Organizer
+```python
+import os
+import shutil
+from pathlib import Path
+
+def organize_files(directory):
+    """Organize files by extension into subfolders."""
+    path = Path(directory)
+    for file in path.iterdir():
+        if file.is_file():
+            ext = file.suffix.lower()
+            target_dir = path / ext.lstrip('.')
+            target_dir.mkdir(exist_ok=True)
+            shutil.move(str(file), str(target_dir / file.name))
+    print(f"Files in {directory} organized.")
+```
+
+### Script 2: Email Sender (SMTP)
+```python
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+def send_email(sender_email, sender_password, recipient_email, subject, body):
+    """Send an email via SMTP (Gmail example)."""
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = recipient_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+    
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    server.login(sender_email, sender_password)
+    server.send_message(msg)
+    server.quit()
+    print("Email sent successfully.")
+```
+
+### Script 3: Web Scraper (BeautifulSoup)
+```python
+import requests
+from bs4 import BeautifulSoup
+
+def scrape_titles(url):
+    """Scrape all h1 titles from a webpage."""
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    titles = [h1.get_text(strip=True) for h1 in soup.find_all('h1')]
+    return titles
+```
+
+### Script 4: CSV to JSON Converter
+```python
+import csv
+import json
+
+def csv_to_json(csv_file, json_file):
+    """Convert CSV file to JSON."""
+    data = []
+    with open(csv_file, 'r') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            data.append(row)
+    with open(json_file, 'w') as f:
+        json.dump(data, f, indent=4)
+    print(f"Converted {csv_file} to {json_file}.")
+```
+
+### Script 5: Image Resizer
+```python
+from PIL import Image
+import os
+
+def resize_images(directory, size=(800, 600)):
+    """Resize all images in a directory."""
+    for filename in os.listdir(directory):
+        if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+            img = Image.open(os.path.join(directory, filename))
+            img = img.resize(size, Image.Resampling.LANCZOS)
+            img.save(os.path.join(directory, f"resized_{filename}"))
+    print("Images resized.")
+```
+
+### Script 6: PDF Merger
+```python
+from PyPDF2 import PdfMerger
+
+def merge_pdfs(pdf_list, output):
+    """Merge multiple PDFs into one."""
+    merger = PdfMerger()
+    for pdf in pdf_list:
+        merger.append(pdf)
+    merger.write(output)
+    merger.close()
+    print(f"Merged into {output}.")
+```
+
+### Script 7: Backup Files
+```python
+import shutil
+from datetime import datetime
+
+def backup_directory(source, backup_root):
+    """Create timestamped backup of a directory."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = f"{backup_root}/backup_{timestamp}"
+    shutil.copytree(source, backup_path)
+    print(f"Backup created at {backup_path}.")
+```
+
+### Script 8: Text File Word Counter
+```python
+from collections import Counter
+import re
+
+def word_count(file_path):
+    """Count word frequency in a text file."""
+    with open(file_path, 'r') as f:
+        text = f.read().lower()
+    words = re.findall(r'\b\w+\b', text)
+    return Counter(words).most_common(10)
+```
+
+### Script 9: System Cleaner (Temp Files)
+```python
+import tempfile
+import shutil
+import os
+
+def clean_temp_files():
+    """Delete temporary files (cross-platform)."""
+    temp_dir = tempfile.gettempdir()
+    for root, dirs, files in os.walk(temp_dir):
+        for file in files:
+            try:
+                os.remove(os.path.join(root, file))
+            except Exception:
+                pass
+    print("Temporary files cleaned.")
+```
+
+### Script 10: URL Shortener (Bitly API)
+```python
+import requests
+
+def shorten_url(long_url, access_token):
+    """Shorten a URL using Bitly API."""
+    headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+    data = {"long_url": long_url}
+    response = requests.post("https://api-ssl.bitly.com/v4/shorten", json=data, headers=headers)
+    return response.json().get("link")
+```
+
+## Requirements
+Install dependencies via: `pip install requests beautifulsoup4 Pillow PyPDF2`
+
+## Usage
+1. Copy the desired script into a `.py` file.
+2. Modify configuration variables (e.g., file paths, credentials).
+3. Run with Python 3.6+.
+
+## License
+MIT - Free to use and modify.
+
+
+────────────────────────────────────────────────────────
+© ShopZario.com | All Rights Reserved

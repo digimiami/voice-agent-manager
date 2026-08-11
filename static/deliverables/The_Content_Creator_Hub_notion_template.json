@@ -1,0 +1,120 @@
+{
+  "template": {
+    "name": "The Ultimate Business OS",
+    "icon": "🚀",
+    "description": "A complete Notion workspace with 6 linked databases, a master dashboard, and everything you need to run your business from one place.",
+    "price": 19,
+    "benefits": [
+      "Replace 5+ tools with one unified dashboard",
+      "Track every client, project, and dollar in real-time",
+      "Never miss a deadline with smart views",
+      "See your entire business at a glance",
+      "Scale from solo to team without switching tools"
+    ],
+    "whats_included": [
+      "6 fully linked databases with 50+ properties",
+      "Master Dashboard with live KPI widgets",
+      "Board, Calendar, Timeline, Table & Gallery views",
+      "Automated rollups and formula calculations",
+      "Custom status workflows for every database",
+      "60+ pre-configured tags and categories",
+      "4 bonus templates: Weekly Review, Client Onboarding, Meeting Notes, Quarterly Planning",
+      "Step-by-step setup video guide"
+    ],
+    "perfect_for": ["Freelancers & Solopreneurs", "Small Business Owners", "Digital Agency Owners", "Coaches & Consultants"],
+    "databases": [
+      {
+        "name": "Tasks",
+        "icon": "✅",
+        "description": "Daily task management with priority tracking. 8 properties including Status, Priority, Project relation, Due Date, Tags, Time Estimate, and Client relation.",
+        "views": ["Board by Status", "Calendar by Due Date", "Table", "List by Priority", "Gallery"],
+        "properties_count": 8,
+        "statuses": ["Not Started", "In Progress", "Done", "Blocked", "Waiting"],
+        "priorities": ["Urgent", "High", "Medium", "Low"]
+      },
+      {
+        "name": "Projects",
+        "icon": "📋",
+        "description": "End-to-end project tracking with Timeline view. 8 properties including Status, Client relation, Deadline, Budget, Task Count rollup, Progress formula, and Category.",
+        "views": ["Board by Status", "Timeline", "Table", "Calendar", "Gallery"],
+        "properties_count": 8,
+        "statuses": ["Planning", "Active", "Review", "Completed", "On Hold"]
+      },
+      {
+        "name": "Clients",
+        "icon": "👥",
+        "description": "Complete CRM built into your workspace. 9 properties including Status, Email, Phone, Company, Value, Active Projects rollup, Last Contact, and Notes.",
+        "views": ["Table", "Board by Status", "Gallery"],
+        "properties_count": 9,
+        "statuses": ["Lead", "Active", "Past", "Archived"]
+      },
+      {
+        "name": "Finance",
+        "icon": "💰",
+        "description": "Track income, expenses, and profitability. 9 properties including Type, Amount, Date, Category, Client & Project relations, Payment Method, and Receipt files.",
+        "views": ["Table", "Calendar", "Board by Type"],
+        "properties_count": 9,
+        "categories": ["Services", "Products", "Software", "Office", "Taxes", "Marketing"]
+      },
+      {
+        "name": "Content",
+        "icon": "✍️",
+        "description": "Plan your entire content calendar. 8 properties including Status, Platform, Project relation, Publish Date, Word Count, URL, and Tags.",
+        "views": ["Calendar", "Board by Status", "Board by Platform", "Table"],
+        "properties_count": 8,
+        "platforms": ["Blog", "Instagram", "Twitter/X", "LinkedIn", "TikTok", "YouTube", "Newsletter"]
+      },
+      {
+        "name": "Goals",
+        "icon": "🎯",
+        "description": "Quarterly and annual goal tracking. 8 properties including Timeframe, Status, Target Date, Measurable Outcome, Progress %, Related Projects, and Priority.",
+        "views": ["Board by Status", "Board by Timeframe", "Table", "Gallery"],
+        "properties_count": 8,
+        "timeframes": ["Q1", "Q2", "Q3", "Q4", "Annual", "Monthly"]
+      }
+    ],
+    "linked_databases": [
+      "Tasks → Projects: Link every task to its parent project",
+      "Tasks → Clients: See all tasks per client",
+      "Projects → Clients: Track every project per client",
+      "Finance → Clients: Revenue and expenses by client",
+      "Finance → Projects: Budget tracking per project",
+      "Content → Projects: Content calendar aligned with projects",
+      "Goals → Projects: Ensure projects drive real goals"
+    ],
+    "dashboard_widgets": [
+      "Revenue This Month (auto-calculated)",
+      "Active Projects Count",
+      "Tasks Due Today",
+      "Active Clients Count",
+      "Overdue Tasks Alert",
+      "Upcoming Deadlines (7 days)",
+      "Recent Income Transactions",
+      "Goal Progress Bars"
+    ],
+    "bonus_templates": [
+      "Weekly Review Template",
+      "Client Onboarding Checklist",
+      "Meeting Notes Template",
+      "Quarterly Planning Template"
+    ],
+    "features": [
+      "6 Linked Databases with 50+ Properties",
+      "Master Dashboard with Auto-Updating Widgets",
+      "9 Custom View Types (Board, Calendar, Timeline, Table, List, Gallery)",
+      "Automated Rollups for Task Counts and Revenue",
+      "Formula Fields for Progress Tracking",
+      "60+ Pre-Configured Tags and Categories",
+      "Client Portal View",
+      "Mobile-Friendly Layout"
+    ],
+    "seo_keywords": [
+      "notion template", "business os", "business dashboard notion",
+      "freelance project management", "notion workspace", "small business template",
+      "notion crm", "notion finance tracker", "notion content calendar"
+    ],
+    "setup_time": "15 minutes",
+    "delivery": "Instant download - PDF guide with Notion template link",
+    "guarantee": "30-day money-back guarantee"
+  }
+}

@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- GSC_META -->
+<title>Diazites Auto — AI Salesperson for Car Dealerships | Never Lose a Deal to a Missed Call</title>
+<meta name="description" content="Put Diazites AI on your dealership's phones. Every call answered 24/7, every lead qualified, test drives booked — plus outbound AI calling that brings in new leads. 3-day free trial.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/landing_tailwind.css">
+<style>
+* { font-family: 'Inter', sans-serif; }
+body { background: #07070d; color: #fff; }
+.gradient-text { background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.gradient-bg { background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); }
+.gradient-border { border: 2px solid transparent; background-clip: padding-box; position: relative; }
+.gradient-border::before { content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); border-radius: inherit; z-index: -1; }
+.card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; }
+.card-premium { background: linear-gradient(135deg, rgba(168,85,247,0.1) 0%, rgba(236,72,153,0.1) 100%); border: 1px solid rgba(168,85,247,0.3); }
+@keyframes wave {
+  0%, 100% { height: 20%; }
+  50% { height: 100%; }
+}
+.waveform-bar { width: 4px; background: #4ade80; border-radius: 2px; display: inline-block; margin: 0 2px; animation: wave 1s ease-in-out infinite; }
+.waveform-bar:nth-child(1) { animation-delay: 0s; }
+.waveform-bar:nth-child(2) { animation-delay: 0.1s; }
+.waveform-bar:nth-child(3) { animation-delay: 0.2s; }
+.waveform-bar:nth-child(4) { animation-delay: 0.3s; }
+.waveform-bar:nth-child(5) { animation-delay: 0.4s; }
+.waveform-bar:nth-child(6) { animation-delay: 0.2s; }
+.waveform-bar:nth-child(7) { animation-delay: 0.1s; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.pulse-dot { animation: pulse 2s ease-in-out infinite; }
+.reveal { opacity: 0; transform: translateY(30px); transition: all 0.8s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+nav { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+/* Industry dropdown: black list, white text */
+#sIndustry { background-color: #000 !important; color: #fff !important; }
+#sIndustry option { background-color: #000 !important; color: #fff !important; }
+/* Plan dropdown: white background, black text */
+#sPlanSelect { background-color: #ffffff !important; color: #000000 !important; }
+#sPlanSelect option { background-color: #ffffff !important; color: #000000 !important; }
+/* State dropdown: same as industry — black bg, white text */
+#sState { background-color: #000 !important; color: #fff !important; }
+#sState option { background-color: #000 !important; color: #fff !important; }
+/* Generator industry dropdown: black bg, white text */
+#genIndustry { background-color: #000 !important; color: #fff !important; }
+#genIndustry option { background-color: #000 !important; color: #fff !important; }
+</style>
+</head>
+<body class="bg-[#0a0a14] text-white antialiased">
+<!-- NAV -->
+<nav class="fixed top-0 w-full z-50 bg-[#0a0a14]/90 backdrop-blur border-b border-white/10">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between items-center h-16">
+<div class="flex items-center space-x-8">
+<a href="/" class="text-xl font-bold flex items-center space-x-2"><span>🚗</span><span>Diazites <span class="gradient-text">Auto</span></span></a>
+<div class="hidden md:flex space-x-6">
+<a href="#why" class="text-sm text-gray-300 hover:text-white transition">Why</a>
+<a href="#how" class="text-sm text-gray-300 hover:text-white transition">How It Works</a>
+<a href="#features" class="text-sm text-gray-300 hover:text-white transition">Features</a>
+<a href="#faq" class="text-sm text-gray-300 hover:text-white transition">FAQ</a>
+</div>
+</div>
+<div class="flex items-center space-x-4">
+<a href="https://diazites.online" class="hidden md:block text-sm text-gray-300 hover:text-white transition">Diazites.online</a>
+<a href="#" onclick="openSignup();return false;" class="px-5 py-2 gradient-bg text-white text-sm font-semibold rounded-lg hover:opacity-90 transition">Start Free Trial</a>
+</div>
+</div>
+</div>
+</nav>
+
+<!-- HERO -->
+<section class="pt-32 pb-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+<video id="heroBgVideo" class="absolute inset-0 w-full h-full object-cover" style="opacity:0.5" muted playsinline webkit-playsinline autoplay loop preload="auto" poster="/static/hero_bg_poster.jpg">
+<source src="/static/hero_bg.mp4" type="video/mp4">
+</video>
+<div class="absolute inset-0" style="background:linear-gradient(180deg,rgba(10,10,20,0.82) 0%,rgba(10,10,20,0.65) 45%,rgba(10,10,20,0.92) 100%)"></div>
+<div class="relative z-10 max-w-3xl mx-auto text-center">
+<div class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm sm:text-base font-extrabold tracking-wide mb-6 card" style="border:1px solid rgba(168,85,247,0.4)">
+<span class="text-lg">🚗</span><span class="gradient-text">AI SALESPERSON FOR CAR DEALERSHIPS</span>
+</div>
+<h1 class="text-5xl sm:text-6xl font-black leading-tight mb-5">The AI Salesperson for <span class="gradient-text">Car Dealerships</span></h1>
+<p class="text-2xl font-bold text-white mb-4">Never lose another deal to a missed call.</p>
+<p class="text-lg md:text-xl text-gray-300 mb-8 leading-relaxed max-w-xl mx-auto">Answer every call 24/7, qualify every buyer, and book test drives automatically — while your AI makes outbound calls that bring new leads through the door.</p>
+<div class="flex flex-col sm:flex-row gap-4 mb-3 justify-center">
+<a href="#" onclick="openSignup();return false;" class="px-8 py-4 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 hover:scale-[1.03] active:scale-95 transition text-center shadow-lg shadow-purple-500/25">🚗 Get Your AI Salesperson</a>
+<a href="tel:+17868084099" class="px-8 py-4 rounded-lg border-2 border-purple-500/60 bg-purple-500/10 text-white font-semibold hover:bg-purple-500/25 hover:border-purple-400 active:scale-95 transition text-center">📞 Hear It Now: (786) 808-4099</a>
+</div>
+<div class="flex flex-col sm:flex-row gap-4 text-sm text-gray-400 justify-center">
+<div class="flex items-center space-x-2"><span class="text-green-400">✓</span><span>Answers 24/7</span></div>
+<div class="flex items-center space-x-2"><span class="text-green-400">✓</span><span>Books test drives</span></div>
+<div class="flex items-center space-x-2"><span class="text-green-400">✓</span><span>Outbound lead calling</span></div>
+<div class="flex items-center space-x-2"><span class="text-green-400">✓</span><span>3-day free trial</span></div>
+</div>
+</div>
+</section>
+
+<!-- WHY -->
+<section id="why" class="py-20 px-4 sm:px-6 lg:px-8">
+<div class="max-w-5xl mx-auto">
+<div class="text-center mb-12 reveal">
+<h2 class="text-4xl sm:text-5xl font-black mb-4">Every Missed Call Is a Car You Don't Sell</h2>
+<p class="text-lg text-gray-400 max-w-2xl mx-auto">After hours. Busy showroom. Salesperson on a test drive. Your buyers call — and nobody answers. They dial the lot down the street instead.</p>
+</div>
+<div class="grid md:grid-cols-3 gap-6">
+<div class="card p-6 reveal"><div class="text-3xl mb-4">🌙</div><h3 class="text-lg font-bold mb-2">Calls at 9 PM</h3><p class="text-sm text-gray-400">Most dealership calls come after hours. Your AI salesperson answers them all — and books the test drive.</p></div>
+<div class="card p-6 reveal"><div class="text-3xl mb-4">📉</div><h3 class="text-lg font-bold mb-2">Leads That Go Cold</h3><p class="text-sm text-gray-400">Trade-in offers and past visitors go stale in days. AI outbound calling reactivates them automatically.</p></div>
+<div class="card p-6 reveal"><div class="text-3xl mb-4">💰</div><h3 class="text-lg font-bold mb-2">Deals That Walk</h3><p class="text-sm text-gray-400">One unanswered call = one buyer at a competitor. Diazites answers in under a second, every time.</p></div>
+</div>
+</div>
+</section>
+
+<!-- WHAT IT DOES -->
+<section class="py-20 px-4 sm:px-6 lg:px-8 bg-white/[0.02]">
+<div class="max-w-6xl mx-auto">
+<div class="text-center mb-12 reveal">
+<h2 class="text-4xl sm:text-5xl font-black mb-4">Your Dealership's Phones, On Autopilot</h2>
+</div>
+<div class="grid md:grid-cols-2 gap-8">
+<div class="card p-8 reveal">
+<div class="text-3xl mb-4">📞</div>
+<h3 class="text-2xl font-bold mb-3 gradient-text">INBOUND — Put the AI Number on Your Ads</h3>
+<p class="text-gray-400 mb-4">Replace your dealership's number with the Diazites AI number on Google, listings, and ads. Every call gets answered — day or night.</p>
+<div class="space-y-2 text-sm text-gray-300">
+<div class="flex items-center space-x-2"><span class="text-green-400">✓</span><span>Answers in under a second, 24/7</span></div>
+<div class="flex items-center space-x-2"><span class="text-green-400">✓</span><span>Qualifies budget, trade-in, financing</span></div>
+<div class="flex items-center space-x-2"><span class="text-green-400">✓</span><span>Books test drives into your calendar</span></div>
+<div class="flex items-center space-x-2"><span class="text-green-400">✓</span><span>Texts buyers directions + details</span></div>
+<div class="flex items-center space-x-2"><span class="text-green-400">✓</span><span>Transfers to a salesperson when needed</span></div>
+</div>
+</div>
+<div class="card p-8 reveal">
+<div class="text-3xl mb-4">📤</div>
+<h3 class="text-2xl font-bold mb-3 gradient-text">OUTBOUND — AI Calls That Bring Buyers In</h3>
+<p class="text-gray-400 mb-4">Your AI salesperson dials your lead list and has real conversations — no scripts, no robocall feel.</p>
+<div class="space-y-2 text-sm text-gray-300">
+<div class="flex items-center space-x-2"><span class="text-green-400">✓</span><span>Reactivates trade-in offers & past visitors</span></div>
+<div class="flex items-center space-x-2"><span class="text-green-400">✓</span><span>Follows up on service customers for the next vehicle</span></div>
+<div class="flex items-center space-x-2"><span class="text-green-400">✓</span><span>Announces new inventory to interested buyers</span></div>
+<div class="flex items-center space-x-2"><span class="text-green-400">✓</span><span>Books appointments while it talks</span></div>
+<div class="flex items-center space-x-2"><span class="text-green-400">✓</span><span>Logs every call + lead score in your dashboard</span></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- HOW -->
+<section id="how" class="py-20 px-4 sm:px-6 lg:px-8">
+<div class="max-w-6xl mx-auto">
+<div class="text-center mb-14 reveal">
+<h2 class="text-4xl sm:text-5xl font-black mb-4">Live in One Afternoon</h2>
+</div>
+<div class="grid md:grid-cols-3 gap-6 mb-12">
+<div class="card p-8 reveal"><div class="text-5xl font-black gradient-text mb-5">01</div><h3 class="text-xl font-bold mb-3">Tell Us About Your Lot</h3><p class="text-gray-400">Inventory, hours, deals, financing options, and how you want calls handled.</p></div>
+<div class="card p-8 reveal"><div class="text-5xl font-black gradient-text mb-5">02</div><h3 class="text-xl font-bold mb-3">We Build Your AI Salesperson</h3><p class="text-gray-400">Your voice, your sales pitch, your qualification questions. It learns your dealership.</p></div>
+<div class="card p-8 reveal"><div class="text-5xl font-black gradient-text mb-5">03</div><h3 class="text-xl font-bold mb-3">Swap Your Number &amp; Go Live</h3><p class="text-gray-400">Put the AI number on your ads and start outbound campaigns. Calls and leads flow in today.</p></div>
+</div>
+<div class="text-center">
+<a href="#" onclick="openSignup();return false;" class="inline-block px-8 py-4 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 hover:scale-[1.03] transition shadow-lg shadow-purple-500/25">Build My AI Salesperson →</a>
+</div>
+</div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" class="py-20 px-4 sm:px-6 lg:px-8 bg-white/[0.02]">
+<div class="max-w-6xl mx-auto">
+<div class="text-center mb-14 reveal">
+<h2 class="text-4xl sm:text-5xl font-black mb-4">More Than a Phone Answerer</h2>
+</div>
+<div class="grid md:grid-cols-3 gap-6">
+<div class="card p-6 reveal"><div class="text-3xl mb-4">📞</div><h3 class="text-lg font-bold mb-2">Answer Every Call</h3><p class="text-sm text-gray-400">24/7 inbound answering — no voicemail, no busy signals, ever.</p></div>
+<div class="card p-6 reveal"><div class="text-3xl mb-4">🎯</div><h3 class="text-lg font-bold mb-2">Qualify Every Buyer</h3><p class="text-sm text-gray-400">Budget, trade-in, financing, timeline — the questions your best closer asks.</p></div>
+<div class="card p-6 reveal"><div class="text-3xl mb-4">📅</div><h3 class="text-lg font-bold mb-2">Book Test Drives</h3><p class="text-sm text-gray-400">Schedules straight into your calendar, confirms by text instantly.</p></div>
+<div class="card p-6 reveal"><div class="text-3xl mb-4">📤</div><h3 class="text-lg font-bold mb-2">Outbound Campaigns</h3><p class="text-sm text-gray-400">Trade-ins, past visitors, new inventory — AI calls that book appointments.</p></div>
+<div class="card p-6 reveal"><div class="text-3xl mb-4">💬</div><h3 class="text-lg font-bold mb-2">SMS Follow-Up</h3><p class="text-sm text-gray-400">Directions, details, reminders — buyers get texts while the deal is hot.</p></div>
+<div class="card p-6 reveal"><div class="text-3xl mb-4">📊</div><h3 class="text-lg font-bold mb-2">Every Lead Logged</h3><p class="text-sm text-gray-400">Full call transcripts + lead scores in your dashboard. No more guessing.</p></div>
+</div>
+</div>
+</section>
+
+<!-- COMPARISON -->
+<section class="py-20 px-4 sm:px-6 lg:px-8">
+<div class="max-w-3xl mx-auto">
+<div class="text-center mb-10 reveal">
+<h2 class="text-4xl sm:text-5xl font-black mb-4">AI Salesperson vs. Missed Calls</h2>
+</div>
+<div class="card overflow-hidden reveal">
+<div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 bg-white/[0.03]">
+<span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Capability</span>
+<div class="flex items-center gap-2">
+<span class="text-[11px] px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/30 font-bold">Diazites AI</span>
+<span class="text-[11px] px-2.5 py-1 rounded-full bg-white/5 text-gray-400 border border-white/10 font-bold">No AI</span>
+</div>
+</div>
+<div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 hover:bg-white/[0.03] transition"><span class="text-sm font-semibold text-gray-200">Answers after 7 PM</span><div class="flex items-center gap-2"><span class="text-xs px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/30 font-bold">✓</span><span class="text-xs px-2.5 py-1 rounded-full bg-white/5 text-gray-500 border border-white/10">—</span></div></div>
+<div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 hover:bg-white/[0.03] transition"><span class="text-sm font-semibold text-gray-200">Answers during a test drive</span><div class="flex items-center gap-2"><span class="text-xs px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/30 font-bold">✓</span><span class="text-xs px-2.5 py-1 rounded-full bg-white/5 text-gray-500 border border-white/10">—</span></div></div>
+<div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 hover:bg-white/[0.03] transition"><span class="text-sm font-semibold text-gray-200">Books test drives</span><div class="flex items-center gap-2"><span class="text-xs px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/30 font-bold">✓</span><span class="text-xs px-2.5 py-1 rounded-full bg-white/5 text-gray-400 border border-white/10">Sometimes</span></div></div>
+<div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 hover:bg-white/[0.03] transition"><span class="text-sm font-semibold text-gray-200">Calls back leads</span><div class="flex items-center gap-2"><span class="text-xs px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/30 font-bold">✓</span><span class="text-xs px-2.5 py-1 rounded-full bg-white/5 text-gray-500 border border-white/10">—</span></div></div>
+<div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 hover:bg-white/[0.03] transition"><span class="text-sm font-semibold text-gray-200">Outbound lead calling</span><div class="flex items-center gap-2"><span class="text-xs px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/30 font-bold">✓</span><span class="text-xs px-2.5 py-1 rounded-full bg-white/5 text-gray-500 border border-white/10">—</span></div></div>
+<div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 hover:bg-white/[0.03] transition"><span class="text-sm font-semibold text-gray-200">Calls out sick</span><div class="flex items-center gap-2"><span class="text-xs px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/30 font-bold">Never</span><span class="text-xs px-2.5 py-1 rounded-full bg-white/5 text-gray-400 border border-white/10">Sometimes</span></div></div>
+<div class="flex items-center justify-between gap-2 px-4 py-3 hover:bg-white/[0.03] transition"><span class="text-sm font-semibold text-gray-200">Ready every day</span><div class="flex items-center gap-2"><span class="text-xs px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/30 font-bold">✓</span><span class="text-xs px-2.5 py-1 rounded-full bg-white/5 text-gray-400 border border-white/10">✓</span></div></div>
+</div>
+<p class="text-center text-sm text-white font-bold mt-10 reveal">Your buyers don't stop shopping when the lot closes. Neither does your AI salesperson.</p>
+</div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" class="py-20 px-4 sm:px-6 lg:px-8 bg-white/[0.02]">
+<div class="max-w-3xl mx-auto">
+<div class="text-center mb-12 reveal">
+<h2 class="text-4xl sm:text-5xl font-black mb-4">Questions, Answered</h2>
+</div>
+<div class="space-y-3">
+<div class="card p-5 reveal"><h3 class="font-bold mb-1">Can it handle real negotiations?</h3><p class="text-sm text-gray-400">It handles the first 80% — qualification, inventory questions, test-drive booking, trade-in basics — then transfers to your closer at the right moment.</p></div>
+<div class="card p-5 reveal"><h3 class="font-bold mb-1">Do I put the AI number instead of my dealership number?</h3><p class="text-sm text-gray-400">Yes — on ads, Google, and listings, the AI number answers every call 24/7. Or forward your existing number. Your choice.</p></div>
+<div class="card p-5 reveal"><h3 class="font-bold mb-1">How does outbound calling work?</h3><p class="text-sm text-gray-400">Upload your lead list (trade-ins, past visitors, service customers). Your AI calls them with real conversations and books appointments.</p></div>
+<div class="card p-5 reveal"><h3 class="font-bold mb-1">Can it book test drives?</h3><p class="text-sm text-gray-400">Yes — directly into your calendar with automatic text confirmations and directions.</p></div>
+<div class="card p-5 reveal"><h3 class="font-bold mb-1">How fast can I get started?</h3><p class="text-sm text-gray-400">Live in minutes. 3-day free trial, no credit card required.</p></div>
+</div>
+</div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="py-24 px-4 sm:px-6 lg:px-8">
+<div class="max-w-4xl mx-auto text-center reveal">
+<h2 class="text-4xl sm:text-5xl font-black mb-4">The Buyer Is Calling Right Now.<br>Make Sure Someone Answers.</h2>
+<p class="text-xl text-gray-400 mb-10">Start your 3-day free trial — live in minutes, no credit card required.</p>
+<div class="flex flex-col sm:flex-row gap-4 justify-center">
+<a href="#" onclick="openSignup();return false;" class="px-8 py-4 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 hover:scale-[1.03] active:scale-95 transition text-lg shadow-lg shadow-purple-500/25">🚗 Get Your AI Salesperson</a>
+<a href="tel:+17868084099" class="px-8 py-4 rounded-lg border-2 border-purple-500/60 bg-purple-500/10 text-white font-semibold hover:bg-purple-500/25 hover:border-purple-400 active:scale-95 transition text-lg">📞 Hear It Now: (786) 808-4099</a>
+</div>
+</div>
+</section>
+
+<!-- SIGNUP MODAL -->
+<div id="signupModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeSignup()"></div>
+  <div class="relative card p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" style="border:1px solid #232332;background:#0c0c18;border-radius:20px">
+    <button onclick="closeSignup()" class="absolute top-4 right-5 text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close">&times;</button>
+    <div class="text-center mb-6">
+      <div class="text-3xl mb-2">✨</div>
+      <h3 class="text-2xl font-bold">Start Your 3-Day Free Trial</h3>
+      <p class="text-gray-400 text-sm mt-1">No credit card required to start. Cancel anytime.</p>
+    </div>
+
+    <!-- STEP 2: pick a number -->
+    <div id="numStep" class="hidden">
+      <div class="text-center mb-4">
+        <div class="text-3xl mb-2">📱</div>
+        <h3 class="text-xl font-bold">Pick Your Business Number</h3>
+        <p class="text-gray-400 text-sm mt-1">Available numbers in <span id="numArea" class="text-white font-semibold"></span> — free with your trial.</p>
+      </div>
+      <div id="numList" class="space-y-2.5 mb-4 max-h-56 overflow-y-auto"></div>
+      <p class="text-center text-xs text-gray-500 mt-2"><button onclick="backToForm()" class="text-purple-400 hover:text-purple-300">← Back</button></p>
+    </div>
+
+    <!-- STEP 1: signup form -->
+    <div id="formStep">
+      <form id="signupFormLanding" onsubmit="return submitLandingSignup(event)" class="space-y-4">
+        <input type="hidden" id="sPlan" value="pro">
+        <div>
+          <label class="block text-sm font-semibold mb-2">Choose Your Plan</label>
+          <select id="sPlanSelect" onchange="syncPlan()" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+            <option value="starter">Starter — $97/mo</option>
+            <option value="pro" selected>Professional — $197/mo</option>
+            <option value="enterprise">Enterprise — Custom</option>
+          </select>
+          <div class="text-center text-xs text-gray-400 mt-2">Selected: <span id="sPlanLabel" class="font-bold gradient-text">Professional — $197/mo</span> · 3-day free trial</div>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-2">Business Name *</label>
+          <input type="text" id="sBizName" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-2">Your Full Name *</label>
+          <input type="text" id="sContactName" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-2">Email *</label>
+          <input type="email" id="sEmail" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-2">Phone *</label>
+          <input type="tel" id="sPhone" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-2">Industry</label>
+          <select id="sIndustry" onchange="toggleIndustryOther()" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+            <option value="">Select your business type…</option>
+            <option value="restaurant">Restaurant</option><option value="bar">Bar / Nightlife</option><option value="foodtruck">Food Truck</option><option value="cafe">Café / Coffee Shop</option><option value="bakery">Bakery</option><option value="pizzeria">Pizzeria</option><option value="catering">Catering</option><option value="plumber">Plumber</option><option value="electrician">Electrician</option><option value="hvac">HVAC / Air Conditioning</option><option value="roofing">Roofing</option><option value="painter">Painter</option><option value="landscaping">Landscaping / Lawn Care</option><option value="cleaning">Cleaning Service</option><option value="pestcontrol">Pest Control</option><option value="moving">Moving Company</option><option value="junkremoval">Junk Removal</option><option value="autodealer">Auto Dealership</option><option value="autorepair">Auto Repair / Mechanic</option><option value="autobody">Auto Body Shop</option><option value="tires">Tire Shop</option><option value="carwash">Car Wash</option><option value="towing">Towing</option><option value="motorcycle">Motorcycle / Powersports</option><option value="dentist">Dentist</option><option value="medical">Medical Clinic / Doctor</option><option value="chiropractor">Chiropractor</option><option value="optometrist">Optometrist</option><option value="vet">Veterinarian</option><option value="pharmacy">Pharmacy</option><option value="physicaltherapy">Physical Therapy</option><option value="urgentcare">Urgent Care</option><option value="salon">Salon</option><option value="barbershop">Barbershop</option><option value="nails">Nail Salon</option><option value="spa">Spa / Massage</option><option value="tattoo">Tattoo Shop</option><option value="gym">Gym / Fitness Studio</option><option value="realestate">Real Estate</option><option value="propertymgmt">Property Management</option><option value="law">Law Firm / Attorney</option><option value="insurance">Insurance Agency</option><option value="accounting">Accountant / Tax</option><option value="financial">Financial Advisor</option><option value="mortgage">Mortgage Broker</option><option value="travel">Travel Agency</option><option value="hotel">Hotel / Motel</option><option value="eventvenue">Event Venue</option><option value="wedding">Wedding Planner</option><option value="photography">Photographer</option><option value="marketing">Marketing / Ad Agency</option><option value="webdesign">Web Design / IT Services</option><option value="security">Security Services</option><option value="staffing">Staffing Agency</option><option value="logistics">Warehousing / Logistics</option><option value="manufacturing">Manufacturing</option><option value="wholesale">Wholesale / Distribution</option><option value="retail">Retail Store / Boutique</option><option value="grocery">Grocery / Supermarket</option><option value="convenience">Convenience Store</option><option value="liquor">Liquor Store</option><option value="florist">Florist</option><option value="laundromat">Laundromat</option><option value="dryclean">Dry Cleaner</option><option value="printshop">Print / Sign Shop</option><option value="petgrooming">Pet Grooming / Kennel</option><option value="daycare">Daycare</option><option value="tutoring">Tutoring / Learning Center</option><option value="church">Church / Nonprofit</option><option value="funeral">Funeral Home</option><option value="contractor">General Contractor / Builder</option><option value="homedecor">Home Decor / Furniture</option><option value="electronics">Electronics Repair</option><option value="appliancerepair">Appliance Repair</option><option value="locksmith">Locksmith</option><option value="glass">Glass / Window Replacement</option><option value="pool">Pool Service</option><option value="snowremoval">Snow Removal</option><option value="storage">Self-Storage</option><option value="__other__">🤔 Other — not on the list</option>
+          </select>
+          <input type="text" id="sIndustryOther" placeholder="What kind of business? (e.g. Dispensary, Car Rental…)" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white hidden">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-semibold mb-2">City * <span class="text-gray-500 font-normal">(number area)</span></label>
+            <input type="text" id="sCity" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white" placeholder="e.g. Miami">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold mb-2">State *</label>
+            <select id="sState" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+              <option value="">Select…</option>
+              <option value="AL">Alabama</option><option value="AK">Alaska</option><option value="AZ">Arizona</option><option value="AR">Arkansas</option><option value="CA">California</option><option value="CO">Colorado</option><option value="CT">Connecticut</option><option value="DE">Delaware</option><option value="DC">Washington DC</option><option value="FL">Florida</option><option value="GA">Georgia</option><option value="HI">Hawaii</option><option value="ID">Idaho</option><option value="IL">Illinois</option><option value="IN">Indiana</option><option value="IA">Iowa</option><option value="KS">Kansas</option><option value="KY">Kentucky</option><option value="LA">Louisiana</option><option value="ME">Maine</option><option value="MD">Maryland</option><option value="MA">Massachusetts</option><option value="MI">Michigan</option><option value="MN">Minnesota</option><option value="MS">Mississippi</option><option value="MO">Missouri</option><option value="MT">Montana</option><option value="NE">Nebraska</option><option value="NV">Nevada</option><option value="NH">New Hampshire</option><option value="NJ">New Jersey</option><option value="NM">New Mexico</option><option value="NY">New York</option><option value="NC">North Carolina</option><option value="ND">North Dakota</option><option value="OH">Ohio</option><option value="OK">Oklahoma</option><option value="OR">Oregon</option><option value="PA">Pennsylvania</option><option value="RI">Rhode Island</option><option value="SC">South Carolina</option><option value="SD">South Dakota</option><option value="TN">Tennessee</option><option value="TX">Texas</option><option value="UT">Utah</option><option value="VT">Vermont</option><option value="VA">Virginia</option><option value="WA">Washington</option><option value="WV">West Virginia</option><option value="WI">Wisconsin</option><option value="WY">Wyoming</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" id="sBtn" class="w-full px-6 py-3 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 transition">
+          🚀 Build Your AI Employee
+        </button>
+        <div id="sResult"></div>
+      </form>
+    </div>
+    <p class="text-center text-xs text-gray-500 mt-4">Existing client? <a href="/login" class="text-purple-400 hover:text-purple-300 font-semibold">Login to Dashboard</a></p>
+  </div>
+</div>
+
+<!-- FOOTER -->
+
+
+<footer class="border-t border-white/10 py-12 px-4 sm:px-6 lg:px-8">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+<span class="font-bold">🚗 Diazites <span class="gradient-text">Auto</span></span>
+<div class="text-sm text-gray-500">
+<a href="https://diazites.online" class="hover:text-white transition">Diazites.online</a>
+<span class="mx-2">·</span>
+© 2026 Diazites. AI voice employees for local businesses.
+</div>
+</div>
+</footer>
+
+<script>
+// Force hero background video to autoplay (incl. mobile/iOS)
+(function(){
+  var v = document.getElementById('heroBgVideo');
+  if (!v) return;
+  function playBg() {
+    v.muted = true; v.defaultMuted = true; v.setAttribute('muted', '');
+    v.playsInline = true; v.setAttribute('playsinline', '');
+    var pr = v.play(); if (pr && pr.catch) pr.catch(function(){});
+  }
+  playBg();
+  document.addEventListener('DOMContentLoaded', playBg);
+  window.addEventListener('load', playBg);
+  var tries = 0;
+  var iv = setInterval(function(){ if (v.paused && tries < 5) { playBg(); tries++; } else if (!v.paused) { clearInterval(iv); } }, 800);
+  ['touchstart', 'pointerdown', 'click'].forEach(function(ev){
+    document.addEventListener(ev, function once(){ playBg(); }, { once: true });
+  });
+})();
+
+// Signup modal
+function openSignup() {
+  var m = document.getElementById('signupModal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+  document.body.style.overflow = 'hidden';
+  var f = document.getElementById('sBizName');
+  if (f) setTimeout(function(){ f.focus(); }, 150);
+}
+function closeSignup() {
+  var m = document.getElementById('signupModal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') { closeSignup(); closeDemo(); } });
+
+// Plan selection (pricing cards)
+function selectPlan(p) {
+  var labels = { starter: 'Starter — $97/mo', pro: 'Professional — $197/mo', enterprise: 'Enterprise — Custom' };
+  document.getElementById('sPlan').value = p;
+  var sel = document.getElementById('sPlanSelect');
+  if (sel) sel.value = p;
+  var l = document.getElementById('sPlanLabel');
+  if (l) l.textContent = labels[p] || p;
+}
+function syncPlan() {
+  var p = document.getElementById('sPlanSelect').value;
+  document.getElementById('sPlan').value = p;
+  var labels = { starter: 'Starter — $97/mo', pro: 'Professional — $197/mo', enterprise: 'Enterprise — Custom' };
+  var l = document.getElementById('sPlanLabel');
+  if (l) l.textContent = labels[p] || p;
+}
+
+// Industry "other" toggle
+function toggleIndustryOther() {
+  var sel = document.getElementById('sIndustry');
+  var other = document.getElementById('sIndustryOther');
+  if (sel.value === '__other__') { other.classList.remove('hidden'); other.focus(); }
+  else { other.classList.add('hidden'); }
+}
+
+// Number picker step
+var pendingCheckout = null, pendingBid = null;
+function fmtNum(p) {
+  var d = (p || '').replace(/[^0-9]/g, '');
+  if (d.length === 11) d = d.slice(1);
+  return d.length === 10 ? '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6) : p;
+}
+function showNumStep(d) {
+  pendingCheckout = d.checkout_url; pendingBid = d.business_id;
+  document.getElementById('formStep').classList.add('hidden');
+  var city = document.getElementById('sCity').value.trim();
+  var state = document.getElementById('sState').value;
+  var stName = '';
+  var ssel = document.getElementById('sState');
+  if (ssel.selectedOptions.length) stName = ssel.selectedOptions[0].text;
+  document.getElementById('numArea').textContent = (city ? city + ', ' : '') + (stName || state);
+  var list = document.getElementById('numList');
+  list.innerHTML = '';
+  d.numbers.forEach(function(n){
+    var el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'w-full text-left px-4 py-3 rounded-lg border border-white/10 bg-white/5 hover:border-purple-500 hover:bg-white/10 transition flex items-center gap-3';
+    var sub = (n.locality ? n.locality + ', ' : '') + (n.region || '');
+    el.innerHTML = '<span class="text-lg">📞</span><span><span class="font-bold block">' + fmtNum(n.phone_number) + '</span>' + (sub ? '<span class="text-xs text-gray-400">' + sub + '</span>' : '') + '</span>';
+    el.onclick = function(){ pickNumber(n.phone_number); };
+    list.appendChild(el);
+  });
+  document.getElementById('numStep').classList.remove('hidden');
+}
+function pickNumber(phone) {
+  if (!pendingBid) return;
+  var btns = document.querySelectorAll('#numList button');
+  btns.forEach(function(b){ b.disabled = true; b.style.opacity = 0.5; });
+  fetch('/api/numbers/assign', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ business_id: pendingBid, phone_number: phone })
+  }).then(function(r){ return r.json(); })
+  .then(function(d){
+    if (pendingCheckout) window.location.href = pendingCheckout;
+    else {
+      var res = document.getElementById('sResult');
+      res.innerHTML = '<div style="background: rgba(74,222,128,0.1); border: 1px solid #4ade80; color: #4ade80; padding: 12px; border-radius: 8px; margin-top: 16px;">✅ Number assigned: ' + fmtNum(d.phone_number || phone) + '. Your 3-day free trial is active!</div>';
+      document.getElementById('numStep').classList.add('hidden');
+      document.getElementById('formStep').classList.remove('hidden');
+    }
+  }).catch(function(){
+    if (pendingCheckout) window.location.href = pendingCheckout;
+  });
+}
+function backToForm() {
+  document.getElementById('numStep').classList.add('hidden');
+  document.getElementById('formStep').classList.remove('hidden');
+}
+
+
+// Signup form submission
+function submitLandingSignup(e) {
+  e.preventDefault();
+  const btn = document.getElementById('sBtn');
+  const result = document.getElementById('sResult');
+  const name = document.getElementById('sBizName').value.trim();
+  const email = document.getElementById('sEmail').value.trim();
+  const phone = document.getElementById('sPhone').value.trim();
+  let industry = document.getElementById('sIndustry').value;
+  if (industry === '__other__') { industry = document.getElementById('sIndustryOther').value.trim() || 'Other'; }
+  
+  btn.disabled = true;
+  btn.textContent = 'Processing...';
+  result.innerHTML = '';
+  
+  fetch('/api/signup-stripe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, contact_name: document.getElementById('sContactName').value.trim(), email, phone, industry, plan: document.getElementById('sPlan').value, city: document.getElementById('sCity').value.trim(), state: document.getElementById('sState').value })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success && d.numbers && d.numbers.length) {
+      showNumStep(d);
+    } else if (d.checkout_url) {
+      window.location.href = d.checkout_url;
+    } else {
+      result.innerHTML = '<div style="background: rgba(74,222,128,0.1); border: 1px solid #4ade80; color: #4ade80; padding: 12px; border-radius: 8px; margin-top: 16px;">Account created! Business ID: ' + (d.business_id || 'N/A') + '. <a href="/login" style="text-decoration: underline;">Login here</a></div>';
+      btn.disabled = false;
+      btn.textContent = '🚀 Build Your AI Employee';
+    }
+  })
+  .catch(err => {
+    result.innerHTML = '<div style="background: rgba(239,68,68,0.1); border: 1px solid #ef4444; color: #ef4444; padding: 12px; border-radius: 8px; margin-top: 16px;">Error: ' + err.message + '</div>';
+    btn.disabled = false;
+    btn.textContent = '🚀 Build Your AI Employee';
+  });
+  
+  return false;
+}
+
+// Count-up animation
+function animateCount(el) {
+  const target = parseFloat(el.dataset.count);
+  const duration = 2000;
+  const step = target / (duration / 16);
+  let current = 0;
+  const isDecimal = target % 1 !== 0;
+  
+  const timer = setInterval(() => {
+    current += step;
+    if (current >= target) {
+      el.textContent = isDecimal ? target.toFixed(1) : Math.round(target);
+      clearInterval(timer);
+    } else {
+      el.textContent = isDecimal ? current.toFixed(1) : Math.round(current);
+    }
+  }, 16);
+}
+
+
+
+// preset industry to Auto Dealership on load
+document.addEventListener('DOMContentLoaded', function(){
+  var ind = document.getElementById('sIndustry');
+  if (ind) ind.value = 'autodealer';
+});
+
+// Scroll reveal
+var revealObserver = new IntersectionObserver(function(entries){
+  entries.forEach(function(en){ if (en.isIntersecting) en.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(function(el){ revealObserver.observe(el); });
+
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeSignup(); });
+</script>
+</body>
+</html>

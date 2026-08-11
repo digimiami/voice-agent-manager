@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- GSC_META -->
+<title>Diazites — AI Voice Employees for Local Businesses | Never Miss Another Call</title>
+<meta name="description" content="AI voice employees that answer every call 24/7, qualify customers, book appointments, and follow up — without adding staff. 3-day free trial.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/landing_tailwind.css">
+<style>
+* { font-family: 'Inter', sans-serif; }
+body { background: #07070d; color: #fff; }
+.gradient-text { background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.gradient-bg { background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); }
+.gradient-border { border: 2px solid transparent; background-clip: padding-box; position: relative; }
+.gradient-border::before { content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); border-radius: inherit; z-index: -1; }
+.card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; }
+.card-premium { background: linear-gradient(135deg, rgba(168,85,247,0.1) 0%, rgba(236,72,153,0.1) 100%); border: 1px solid rgba(168,85,247,0.3); }
+@keyframes wave {
+  0%, 100% { height: 20%; }
+  50% { height: 100%; }
+}
+.waveform-bar { width: 4px; background: #4ade80; border-radius: 2px; display: inline-block; margin: 0 2px; animation: wave 1s ease-in-out infinite; }
+.waveform-bar:nth-child(1) { animation-delay: 0s; }
+.waveform-bar:nth-child(2) { animation-delay: 0.1s; }
+.waveform-bar:nth-child(3) { animation-delay: 0.2s; }
+.waveform-bar:nth-child(4) { animation-delay: 0.3s; }
+.waveform-bar:nth-child(5) { animation-delay: 0.4s; }
+.waveform-bar:nth-child(6) { animation-delay: 0.2s; }
+.waveform-bar:nth-child(7) { animation-delay: 0.1s; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.pulse-dot { animation: pulse 2s ease-in-out infinite; }
+.reveal { opacity: 0; transform: translateY(30px); transition: all 0.8s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+nav { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+/* Industry dropdown: black list, white text */
+#sIndustry { background-color: #000 !important; color: #fff !important; }
+#sIndustry option { background-color: #000 !important; color: #fff !important; }
+/* Plan dropdown: white background, black text */
+#sPlanSelect { background-color: #ffffff !important; color: #000000 !important; }
+#sPlanSelect option { background-color: #ffffff !important; color: #000000 !important; }
+/* State dropdown: same as industry — black bg, white text */
+#sState { background-color: #000 !important; color: #fff !important; }
+#sState option { background-color: #000 !important; color: #fff !important; }
+/* Generator industry dropdown: black bg, white text */
+#genIndustry { background-color: #000 !important; color: #fff !important; }
+#genIndustry option { background-color: #000 !important; color: #fff !important; }
+</style>
+</head>
+<body class="antialiased">
+
+<audio id="demoPlayer" style="display:none;"></audio>
+
+<!-- STICKY NAV -->
+<nav class="fixed top-0 left-0 right-0 z-50 border-b border-white/10" style="background: rgba(7,7,13,0.8);">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between items-center h-16">
+<div class="flex items-center space-x-8">
+<a href="/" class="text-xl font-bold flex items-center space-x-2">
+<span>🎙️</span>
+<span>Diazites</span>
+</a>
+<div class="hidden md:flex space-x-6">
+<a href="#capabilities" class="text-sm text-gray-300 hover:text-white transition">Product</a>
+<a href="#industries" class="text-sm text-gray-300 hover:text-white transition">Solutions</a>
+<a href="#how-it-works" class="text-sm text-gray-300 hover:text-white transition">How It Works</a>
+<a href="#pricing" class="text-sm text-gray-300 hover:text-white transition">Pricing</a>
+</div>
+</div>
+<div class="flex items-center space-x-4">
+<a href="/login" class="hidden md:block text-sm text-gray-300 hover:text-white transition">Login</a>
+<a href="#" onclick="openSignup();return false;" class="px-5 py-2 gradient-bg text-white text-sm font-semibold rounded-lg hover:opacity-90 transition">Get Started</a>
+<button id="mobileMenuBtn" class="md:hidden text-gray-300 hover:text-white">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+</svg>
+</button>
+</div>
+</div>
+<div id="mobileMenu" class="hidden md:hidden pb-4 space-y-3">
+<a href="#capabilities" class="block text-sm text-gray-300 hover:text-white transition">Product</a>
+<a href="#industries" class="block text-sm text-gray-300 hover:text-white transition">Solutions</a>
+<a href="#how-it-works" class="block text-sm text-gray-300 hover:text-white transition">How It Works</a>
+<a href="#pricing" class="block text-sm text-gray-300 hover:text-white transition">Pricing</a>
+<a href="/login" class="block text-sm text-gray-300 hover:text-white transition">Login</a>
+</div>
+</div>
+</nav>
+
+<!-- HERO -->
+<section class="pt-32 pb-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+<video id="heroBgVideo" class="absolute inset-0 w-full h-full object-cover" style="opacity:0.55" muted playsinline webkit-playsinline autoplay loop preload="auto" poster="/static/hero_bg_poster.jpg">
+<source src="/static/hero_bg.mp4" type="video/mp4">
+</video>
+<div class="absolute inset-0" style="background:linear-gradient(180deg,rgba(10,10,20,0.82) 0%,rgba(10,10,20,0.65) 45%,rgba(10,10,20,0.92) 100%)"></div>
+<div class="relative z-10 max-w-7xl mx-auto">
+<div class="max-w-3xl mx-auto text-center">
+<div class="reveal">
+<div class="inline-flex items-center px-4 py-2 rounded-full text-xs font-semibold mb-6 card">
+<span class="gradient-text">AI RECEPTIONISTS • INBOUND + OUTBOUND</span>
+</div>
+<h1 class="text-5xl sm:text-6xl lg:text-7xl font-black leading-tight mb-6">
+Never Miss Another <span class="gradient-text">Customer Call</span>
+</h1>
+<p class="text-lg md:text-xl text-gray-300 mb-8 leading-relaxed max-w-xl mx-auto">
+Answer every call. Qualify leads. Book appointments. Follow up automatically — 24/7.
+</p>
+<div class="flex flex-col sm:flex-row gap-4 mb-3 justify-center">
+<a href="#" onclick="openSignup();return false;" class="px-8 py-4 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 hover:scale-[1.03] active:scale-95 transition text-center shadow-lg shadow-purple-500/25">
+🤖 Build Your AI Receptionist
+</a>
+<a href="tel:+17868084099" class="px-8 py-4 rounded-lg border-2 border-purple-500/60 bg-purple-500/10 text-white font-semibold hover:bg-purple-500/25 hover:border-purple-400 active:scale-95 transition text-center">
+📞 Call the AI: (786) 808-4099
+</a>
+</div>
+<p class="text-center mb-8"><a href="#" onclick="openDemo();return false;" class="text-purple-300 hover:text-purple-200 underline underline-offset-4 transition">Prefer a walkthrough? Book a demo →</a></p>
+<div class="flex flex-col sm:flex-row gap-4 text-sm text-gray-400 justify-center">
+<div class="flex items-center space-x-2">
+<span class="text-green-400">✓</span>
+<span>Answers 24/7</span>
+</div>
+<div class="flex items-center space-x-2">
+<span class="text-green-400">✓</span>
+<span>No setup fees</span>
+</div>
+<div class="flex items-center space-x-2">
+<span class="text-green-400">✓</span>
+<span>Cancel anytime</span>
+</div>
+<div class="flex items-center space-x-2">
+<span class="text-green-400">✓</span>
+<span>3-day free trial</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- REAL CALL PROOF -->
+<section id="try-it-live" class="py-20 px-4 sm:px-6 lg:px-8">
+<div class="max-w-7xl mx-auto">
+<div class="text-center mb-12 reveal">
+<h2 class="text-4xl sm:text-5xl font-black mb-4">Hear, Read, or See Diazites Handle Real-World Calls</h2>
+<p class="text-lg text-gray-400 max-w-2xl mx-auto">Listen to our AI receptionist handle the same calls your business receives every day.</p>
+<div class="mt-6 flex items-center justify-center gap-3">
+<button onclick="toggleVoiceSample()" id="voiceSampleBtn" class="inline-flex items-center gap-2 px-6 py-3 rounded-lg border-2 border-purple-500/60 bg-purple-500/10 text-white font-semibold hover:bg-purple-500/25 hover:border-purple-400 active:scale-95 transition">▶️ Play Voice Sample</button>
+<span class="text-xs text-gray-500">AI receptionist · natural voice</span>
+</div>
+<audio id="voiceSampleAudio" src="/static/sample_voice.mp3" preload="none"></audio>
+</div>
+<!-- CALL SCRIPT GENERATOR -->
+<div id="generator" class="max-w-4xl mx-auto mb-12">
+<div class="text-center mb-10 reveal">
+<h3 class="text-3xl sm:text-4xl font-black mb-4">See What Your AI Receptionist Would Say</h3>
+<p class="text-lg text-gray-400 max-w-2xl mx-auto">Pick your business type, hit generate, and preview the exact calls your AI will handle — inbound and outbound.</p>
+</div>
+<div class="card p-6 mb-6 reveal">
+<div class="grid md:grid-cols-[1fr_auto] gap-4 items-end">
+<div>
+<label class="block text-sm font-semibold mb-2">Your Business Type</label>
+<select id="genIndustry" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+<option value="">Select your business type…</option>
+</select>
+</div>
+<button onclick="generateCallScripts()" id="genScriptsBtn" class="px-8 py-3 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 hover:scale-[1.02] active:scale-95 transition whitespace-nowrap">🤖 AI Auto Generate</button>
+</div>
+</div>
+<div id="genResult" class="hidden">
+<div class="grid md:grid-cols-2 gap-6 mb-8">
+<div class="card p-6 reveal">
+<div class="flex items-center gap-2 mb-4"><span class="text-2xl">📞</span><h3 class="text-lg font-bold">Inbound Call</h3><span class="text-[10px] px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/30">CUSTOMER CALLS YOU</span></div>
+<p id="genInbound" class="text-sm text-gray-300 whitespace-pre-line leading-relaxed"></p>
+</div>
+<div class="card p-6 reveal">
+<div class="flex items-center gap-2 mb-4"><span class="text-2xl">📤</span><h3 class="text-lg font-bold">Outbound Call</h3><span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30">YOU CALL LEADS</span></div>
+<p id="genOutbound" class="text-sm text-gray-300 whitespace-pre-line leading-relaxed"></p>
+</div>
+</div>
+<div class="text-center">
+<a href="#" onclick="openSignup();return false;" class="inline-block px-8 py-4 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 hover:scale-[1.03] transition shadow-lg shadow-purple-500/25">Build My AI Receptionist →</a>
+<button onclick="generateCallScripts()" class="ml-3 px-6 py-4 rounded-lg border-2 border-white/20 bg-white/5 text-white font-semibold hover:bg-white/15 transition">🔄 Regenerate</button>
+</div>
+</div>
+</div>
+
+<div style="max-width:340px;margin:0 auto;margin-bottom:3rem">
+<div id="ytPlayerWrap" class="relative overflow-hidden rounded-xl cursor-pointer" style="aspect-ratio:1/1;border:1px solid rgba(255,255,255,0.1);background:#000">
+<iframe id="ytFrame" class="absolute inset-0 w-full h-full" src="https://www.youtube.com/embed/0LT64_mgkro?rel=0&playsinline=1" title="AI Voice Agent Demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%"></iframe>
+<div id="ytMuteHint" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:11px;color:#bbb;pointer-events:none;text-shadow:0 1px 3px #000">🔇 Hover to play · muted</div>
+</div>
+<p class="text-center text-xs text-gray-500 mt-2">Hover to play · AI receptionist in action</p>
+</div>
+
+</div>
+</section>
+
+<!-- INDUSTRIES -->
+<section id="industries" class="py-20 px-4 sm:px-6 lg:px-8">
+<div class="max-w-6xl mx-auto">
+<div class="text-center mb-10 reveal">
+<h2 class="text-4xl sm:text-5xl font-black mb-4">Built for Businesses That Depend on the Phone</h2>
+<p class="text-lg text-gray-400 max-w-2xl mx-auto">If a missed call costs you money, Diazites is built for you.</p>
+</div>
+<div class="grid md:grid-cols-3 gap-4" style="margin-bottom:128px">
+<div class="card p-5 reveal"><div class="text-2xl mb-2">🔧</div><h3 class="text-base font-bold mb-1">Plumbing &amp; HVAC</h3><p class="text-xs text-gray-400">Emergency calls, dispatching, estimates.</p></div>
+<div class="card p-5 reveal"><div class="text-2xl mb-2">🦷</div><h3 class="text-base font-bold mb-1">Dental &amp; Medical Offices</h3><p class="text-xs text-gray-400">New patients, scheduling, reminders.</p></div>
+<div class="card p-5 reveal"><div class="text-2xl mb-2">🏠</div><h3 class="text-base font-bold mb-1">Real Estate</h3><p class="text-xs text-gray-400">Lead qualification, property inquiries, showings.</p></div>
+<div class="card p-5 reveal"><div class="text-2xl mb-2">🏗️</div><h3 class="text-base font-bold mb-1">Roofing &amp; Contractors</h3><p class="text-xs text-gray-400">Estimate requests, storm leads, follow-up.</p></div>
+<div class="card p-5 reveal"><div class="text-2xl mb-2">⚖️</div><h3 class="text-base font-bold mb-1">Legal Services</h3><p class="text-xs text-gray-400">Intake, qualification, consultations.</p></div>
+<div class="card p-5 reveal"><div class="text-2xl mb-2">🧹</div><h3 class="text-base font-bold mb-1">Home Services</h3><p class="text-xs text-gray-400">New leads, appointments, after-hours calls.</p></div>
+<div class="card p-5 reveal"><div class="text-2xl mb-2">🍽️</div><h3 class="text-base font-bold mb-1">Restaurants</h3><p class="text-xs text-gray-400">Reservations, takeout, party bookings.</p></div>
+<div class="card p-5 reveal"><div class="text-2xl mb-2">🚗</div><h3 class="text-base font-bold mb-1">Auto Dealerships</h3><p class="text-xs text-gray-400">Sales calls, test drives, trade-ins.</p></div>
+<div class="card p-5 reveal"><div class="text-2xl mb-2">💇</div><h3 class="text-base font-bold mb-1">Salons &amp; Barbershops</h3><p class="text-xs text-gray-400">Appointments, walk-ins, reminders.</p></div>
+<div class="card p-5 reveal"><div class="text-2xl mb-2">🛡️</div><h3 class="text-base font-bold mb-1">Insurance Agencies</h3><p class="text-xs text-gray-400">Quotes, claims, policy questions.</p></div>
+<div class="card p-5 reveal"><div class="text-2xl mb-2">🐾</div><h3 class="text-base font-bold mb-1">Veterinarians &amp; Pet Care</h3><p class="text-xs text-gray-400">Appointments, emergencies, boarding.</p></div>
+<div class="card p-5 reveal"><div class="text-2xl mb-2">💊</div><h3 class="text-base font-bold mb-1">Pharmacies</h3><p class="text-xs text-gray-400">Refills, transfers, prescription questions.</p></div>
+</div>
+<div class="text-center" style="margin-top:128px">
+<a href="#" onclick="selectPlan('starter');openSignup();return false;" class="inline-block px-8 py-4 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 hover:scale-[1.03] active:scale-95 transition shadow-lg shadow-purple-500/25">See Solutions for Your Industry →</a>
+</div>
+</div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how-it-works" class="py-20 px-4 sm:px-6 lg:px-8">
+<div class="max-w-6xl mx-auto">
+<div class="text-center mb-14 reveal">
+<h2 class="text-4xl sm:text-5xl font-black mb-4">Meet Your New Receptionist in 3 Steps</h2>
+<p class="text-lg text-gray-400 max-w-2xl mx-auto">No scripts to write. No tech setup. Live in minutes.</p>
+</div>
+<div class="grid md:grid-cols-3 gap-6 mb-12">
+<div class="card p-8 reveal">
+<div class="text-5xl font-black gradient-text mb-5">01</div>
+<h3 class="text-xl font-bold mb-3">Tell Us About Your Business</h3>
+<p class="text-gray-400">Diazites learns your services, hours, pricing, FAQs, locations, and how you want calls handled.</p>
+</div>
+<div class="card p-8 reveal">
+<div class="text-5xl font-black gradient-text mb-5">02</div>
+<h3 class="text-xl font-bold mb-3">We Build Your AI Receptionist</h3>
+<p class="text-gray-400">Choose your voice, call flows, qualification questions, appointment rules, and integrations.</p>
+</div>
+<div class="card p-8 reveal">
+<div class="text-5xl font-black gradient-text mb-5">03</div>
+<h3 class="text-xl font-bold mb-3">Go Live &amp; Start Taking Calls</h3>
+<p class="text-gray-400">Forward your existing number or use a dedicated one. Your AI starts answering, qualifying, booking, and following up 24/7.</p>
+</div>
+</div>
+<div class="text-center">
+<a href="#" onclick="openSignup();return false;" class="inline-block px-8 py-4 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 hover:scale-[1.03] transition shadow-lg shadow-purple-500/25">Build My AI Receptionist →</a>
+</div>
+</div>
+</section>
+
+<!-- CAPABILITIES -->
+<section id="capabilities" class="py-20 px-4 sm:px-6 lg:px-8 bg-white/[0.02]">
+<div class="max-w-6xl mx-auto">
+<div class="text-center mb-14 reveal">
+<h2 class="text-4xl sm:text-5xl font-black mb-4">More Than Just Answering Calls</h2>
+<p class="text-lg text-gray-400 max-w-2xl mx-auto">One AI receptionist handles your entire phone workflow — inbound and outbound.</p>
+</div>
+<div class="grid md:grid-cols-3 gap-6">
+<div class="card p-6 reveal">
+<div class="text-3xl mb-4">📞</div>
+<h3 class="text-lg font-bold mb-2">Answer Every Call</h3>
+<p class="text-sm text-gray-400">Professional 24/7 inbound answering. Never a busy signal or voicemail.</p>
+</div>
+<div class="card p-6 reveal">
+<div class="text-3xl mb-4">🎯</div>
+<h3 class="text-lg font-bold mb-2">Qualify Leads</h3>
+<p class="text-sm text-gray-400">Ask the questions your team would ask — budget, timeline, needs — before they ever reach you.</p>
+</div>
+<div class="card p-6 reveal">
+<div class="text-3xl mb-4">📅</div>
+<h3 class="text-lg font-bold mb-2">Book Appointments</h3>
+<p class="text-sm text-gray-400">Schedule directly into your calendar. Confirmations go out instantly.</p>
+</div>
+<div class="card p-6 reveal">
+<div class="text-3xl mb-4">💬</div>
+<h3 class="text-lg font-bold mb-2">Send Text Messages</h3>
+<p class="text-sm text-gray-400">Confirm appointments, share directions, and send follow-ups by SMS.</p>
+</div>
+<div class="card p-6 reveal">
+<div class="text-3xl mb-4">🔄</div>
+<h3 class="text-lg font-bold mb-2">Follow Up Automatically</h3>
+<p class="text-sm text-gray-400">Call or text leads who haven't converted — no one slips through the cracks.</p>
+</div>
+<div class="card p-6 reveal">
+<div class="text-3xl mb-4">📤</div>
+<h3 class="text-lg font-bold mb-2">Make Outbound Calls</h3>
+<p class="text-sm text-gray-400">Follow up with leads, send confirmations and reminders, and more.</p>
+</div>
+</div>
+</div>
+</section>
+
+<!-- COMPARISON -->
+<section class="py-20 px-4 sm:px-6 lg:px-8 bg-white/[0.02]">
+<div class="max-w-2xl mx-auto">
+<div class="text-center mb-10 reveal">
+<h2 class="text-4xl sm:text-5xl font-black mb-4">Your AI Receptionist vs. A Traditional Receptionist</h2>
+<div class="flex items-center justify-center gap-4 mt-4 text-xs">
+<span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-full" style="background:linear-gradient(90deg,#22c55e,#34d399)"></span><span class="text-green-400 font-bold">Diazites</span></span>
+<span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-full bg-white/30"></span><span class="text-gray-400">Traditional</span></span>
+</div>
+</div>
+<div class="card p-6 reveal">
+<div class="mb-5">
+<div class="text-sm font-semibold text-gray-200 mb-2">Available 24/7</div>
+<div class="flex items-center gap-2 mb-1.5">
+<span class="text-[10px] w-16 text-green-400 font-bold shrink-0">Diazites</span>
+<div class="flex-1 h-5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:100%;background:linear-gradient(90deg,#22c55e,#34d399)"></div></div>
+<span class="text-[10px] w-9 text-right text-green-400 font-bold shrink-0">100%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] w-16 text-gray-500 font-bold shrink-0">Traditional</span>
+<div class="flex-1 h-5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full bg-white/15" style="width:10%"></div></div>
+<span class="text-[10px] w-9 text-right text-gray-500 shrink-0">10%</span>
+</div>
+</div><div class="mb-5">
+<div class="text-sm font-semibold text-gray-200 mb-2">Answers multiple calls</div>
+<div class="flex items-center gap-2 mb-1.5">
+<span class="text-[10px] w-16 text-green-400 font-bold shrink-0">Diazites</span>
+<div class="flex-1 h-5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:100%;background:linear-gradient(90deg,#22c55e,#34d399)"></div></div>
+<span class="text-[10px] w-9 text-right text-green-400 font-bold shrink-0">100%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] w-16 text-gray-500 font-bold shrink-0">Traditional</span>
+<div class="flex-1 h-5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full bg-white/15" style="width:10%"></div></div>
+<span class="text-[10px] w-9 text-right text-gray-500 shrink-0">10%</span>
+</div>
+</div><div class="mb-5">
+<div class="text-sm font-semibold text-gray-200 mb-2">Books appointments</div>
+<div class="flex items-center gap-2 mb-1.5">
+<span class="text-[10px] w-16 text-green-400 font-bold shrink-0">Diazites</span>
+<div class="flex-1 h-5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:100%;background:linear-gradient(90deg,#22c55e,#34d399)"></div></div>
+<span class="text-[10px] w-9 text-right text-green-400 font-bold shrink-0">100%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] w-16 text-gray-500 font-bold shrink-0">Traditional</span>
+<div class="flex-1 h-5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full bg-white/15" style="width:85%"></div></div>
+<span class="text-[10px] w-9 text-right text-gray-500 shrink-0">85%</span>
+</div>
+</div><div class="mb-5">
+<div class="text-sm font-semibold text-gray-200 mb-2">Qualifies leads</div>
+<div class="flex items-center gap-2 mb-1.5">
+<span class="text-[10px] w-16 text-green-400 font-bold shrink-0">Diazites</span>
+<div class="flex-1 h-5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:100%;background:linear-gradient(90deg,#22c55e,#34d399)"></div></div>
+<span class="text-[10px] w-9 text-right text-green-400 font-bold shrink-0">100%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] w-16 text-gray-500 font-bold shrink-0">Traditional</span>
+<div class="flex-1 h-5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full bg-white/15" style="width:85%"></div></div>
+<span class="text-[10px] w-9 text-right text-gray-500 shrink-0">85%</span>
+</div>
+</div><div class="mb-5">
+<div class="text-sm font-semibold text-gray-200 mb-2">Automatic follow-up</div>
+<div class="flex items-center gap-2 mb-1.5">
+<span class="text-[10px] w-16 text-green-400 font-bold shrink-0">Diazites</span>
+<div class="flex-1 h-5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:100%;background:linear-gradient(90deg,#22c55e,#34d399)"></div></div>
+<span class="text-[10px] w-9 text-right text-green-400 font-bold shrink-0">100%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] w-16 text-gray-500 font-bold shrink-0">Traditional</span>
+<div class="flex-1 h-5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full bg-white/15" style="width:15%"></div></div>
+<span class="text-[10px] w-9 text-right text-gray-500 shrink-0">15%</span>
+</div>
+</div><div class="mb-5">
+<div class="text-sm font-semibold text-gray-200 mb-2">Never calls out sick</div>
+<div class="flex items-center gap-2 mb-1.5">
+<span class="text-[10px] w-16 text-green-400 font-bold shrink-0">Diazites</span>
+<div class="flex-1 h-5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:100%;background:linear-gradient(90deg,#22c55e,#34d399)"></div></div>
+<span class="text-[10px] w-9 text-right text-green-400 font-bold shrink-0">100%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] w-16 text-gray-500 font-bold shrink-0">Traditional</span>
+<div class="flex-1 h-5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full bg-white/15" style="width:40%"></div></div>
+<span class="text-[10px] w-9 text-right text-gray-500 shrink-0">40%</span>
+</div>
+</div><div class="mb-5">
+<div class="text-sm font-semibold text-gray-200 mb-2">After-hours coverage</div>
+<div class="flex items-center gap-2 mb-1.5">
+<span class="text-[10px] w-16 text-green-400 font-bold shrink-0">Diazites</span>
+<div class="flex-1 h-5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:100%;background:linear-gradient(90deg,#22c55e,#34d399)"></div></div>
+<span class="text-[10px] w-9 text-right text-green-400 font-bold shrink-0">100%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] w-16 text-gray-500 font-bold shrink-0">Traditional</span>
+<div class="flex-1 h-5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full bg-white/15" style="width:20%"></div></div>
+<span class="text-[10px] w-9 text-right text-gray-500 shrink-0">20%</span>
+</div>
+</div><div class="mb-5">
+<div class="text-sm font-semibold text-gray-200 mb-2">Ready every day</div>
+<div class="flex items-center gap-2 mb-1.5">
+<span class="text-[10px] w-16 text-green-400 font-bold shrink-0">Diazites</span>
+<div class="flex-1 h-5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:100%;background:linear-gradient(90deg,#22c55e,#34d399)"></div></div>
+<span class="text-[10px] w-9 text-right text-green-400 font-bold shrink-0">100%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] w-16 text-gray-500 font-bold shrink-0">Traditional</span>
+<div class="flex-1 h-5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full bg-white/15" style="width:90%"></div></div>
+<span class="text-[10px] w-9 text-right text-gray-500 shrink-0">90%</span>
+</div>
+</div></div>
+<p class="text-center text-sm text-white font-bold mt-10 reveal">Your customers don't stop calling when your office closes. Neither does Diazites.</p>
+<div class="text-center mt-6">
+<a href="#" onclick="openSignup();return false;" class="inline-block px-8 py-4 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 hover:scale-[1.03] transition shadow-lg shadow-purple-500/25">Build Your AI Receptionist →</a>
+</div>
+</div>
+</section>
+
+<!-- INTEGRATIONS -->
+<section class="py-20 px-4 sm:px-6 lg:px-8">
+<div class="max-w-5xl mx-auto text-center">
+<h2 class="text-4xl sm:text-5xl font-black mb-4 reveal">Works With the Tools You Already Use</h2>
+<p class="text-lg text-gray-400 max-w-2xl mx-auto mb-12 reveal">Diazites plugs into the phone, messaging, voice, calendar, and billing stack you already run on.</p>
+<div class="flex flex-wrap justify-center gap-4 reveal">
+<div class="px-6 py-3 card rounded-lg font-semibold text-gray-200">📞 Twilio</div>
+<div class="px-6 py-3 card rounded-lg font-semibold text-gray-200">🎙️ Vapi</div>
+<div class="px-6 py-3 card rounded-lg font-semibold text-gray-200">🗣️ ElevenLabs</div>
+<div class="px-6 py-3 card rounded-lg font-semibold text-gray-200">📅 Cal.com</div>
+<div class="px-6 py-3 card rounded-lg font-semibold text-gray-200">💬 SMS</div>
+<div class="px-6 py-3 card rounded-lg font-semibold text-gray-200">💳 Stripe</div>
+</div>
+</div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing" class="py-20 px-4 sm:px-6 lg:px-8">
+<div class="max-w-7xl mx-auto">
+<div class="text-center mb-12 reveal">
+<a href="#" onclick="openSignup();return false;" class="inline-flex items-center px-6 py-3 rounded-full text-sm font-semibold mb-6 gradient-bg hover:opacity-90 transition">
+🚀 Start Automating Your Calls Today — Plans From $97/mo →
+</a>
+<h2 class="text-4xl sm:text-5xl font-black mb-4">Put Your Phone on Autopilot</h2>
+<p class="text-xl text-gray-400">Start small. Scale when your business grows.</p>
+</div>
+<div class="grid md:grid-cols-3 gap-8 mb-8">
+<div class="card p-8 reveal">
+<h3 class="text-2xl font-bold mb-2">STARTER</h3>
+<div class="text-4xl font-black mb-6">$97<span class="text-lg text-gray-400 font-normal">/mo</span></div>
+<div class="space-y-3 mb-8 text-gray-400">
+<div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>1 AI Voice Agent</span></div>
+<div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>1 Phone Number</span></div>
+<div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>250 Call Minutes</span></div>
+<div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>Booking & Analytics</span></div>
+<div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>Email Support</span></div>
+</div>
+<a href="#" onclick="selectPlan('starter');openSignup();return false;" class="block w-full px-6 py-3 card text-white font-semibold rounded-lg hover:bg-white/10 transition text-center">
+Get Started — 3-Day Trial
+</a>
+</div>
+<div class="card-premium p-8 reveal relative">
+<div class="absolute top-0 right-0 mt-4 mr-4 px-3 py-1 gradient-bg text-xs font-bold rounded-full">★ MOST POPULAR</div>
+<h3 class="text-2xl font-bold mb-2">PROFESSIONAL</h3>
+<div class="text-4xl font-black mb-6">$197<span class="text-lg text-gray-400 font-normal">/mo</span></div>
+<div class="space-y-3 mb-8 text-gray-400">
+<div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>2 AI Voice Agents</span></div>
+<div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>2 Phone Numbers</span></div>
+<div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>1,000 Call Minutes</span></div>
+<div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>Outbound Campaigns</span></div>
+<div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>SMS & Calendar Integration</span></div>
+<div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>Priority Support</span></div>
+</div>
+<a href="#" onclick="selectPlan('pro');openSignup();return false;" class="block w-full px-6 py-3 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 transition text-center">
+Get Started — 3-Day Trial
+</a>
+</div>
+<div class="card p-8 reveal">
+<h3 class="text-2xl font-bold mb-2">ENTERPRISE</h3>
+<div class="text-4xl font-black mb-6">Custom</div>
+<div class="space-y-3 mb-8 text-gray-400">
+<div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>Up to 5 AI Agents</span></div>
+<div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>5 Phone Numbers</span></div>
+<div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>High-Volume Calling</span></div>
+<div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>Custom Integrations</span></div>
+<div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>API & White Label</span></div>
+<div class="flex items-start space-x-2"><span class="text-green-400">✓</span><span>Dedicated Account Manager</span></div>
+</div>
+<a href="#" onclick="selectPlan('enterprise');openSignup();return false;" class="block w-full px-6 py-3 card text-white font-semibold rounded-lg hover:bg-white/10 transition text-center">
+Talk to Sales — No Charge
+</a>
+</div>
+</div>
+<div class="text-center text-gray-400 text-sm reveal">
+No complicated setup. No long-term contract. Upgrade or cancel anytime.
+</div>
+</div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" class="py-20 px-4 sm:px-6 lg:px-8 bg-white/[0.02]">
+<div class="max-w-3xl mx-auto">
+<div class="text-center mb-12 reveal">
+<h2 class="text-4xl sm:text-5xl font-black mb-4">Questions, Answered</h2>
+</div>
+<div class="space-y-3">
+<div class="card p-5 reveal"><h3 class="font-bold mb-1">Can I keep my existing phone number?</h3><p class="text-sm text-gray-400">Yes. Forward your current number to your Diazites AI receptionist, or get a dedicated number in your city.</p></div>
+<div class="card p-5 reveal"><h3 class="font-bold mb-1">How does the AI know about my business?</h3><p class="text-sm text-gray-400">Tell us your services, hours, pricing, and FAQs during setup — the AI learns your business in minutes.</p></div>
+<div class="card p-5 reveal"><h3 class="font-bold mb-1">Can it transfer calls to a real person?</h3><p class="text-sm text-gray-400">Yes. Set the rules — hot transfers, after-hours routing, or escalate when the caller needs a human.</p></div>
+<div class="card p-5 reveal"><h3 class="font-bold mb-1">Can it book directly into my calendar?</h3><p class="text-sm text-gray-400">Yes. Connect your calendar and the AI books appointments directly into your schedule with automatic confirmations.</p></div>
+<div class="card p-5 reveal"><h3 class="font-bold mb-1">Can it make outbound calls?</h3><p class="text-sm text-gray-400">Yes. Follow up with leads, send appointment reminders, and run outbound campaigns.</p></div>
+<div class="card p-5 reveal"><h3 class="font-bold mb-1">What happens if the AI doesn't know an answer?</h3><p class="text-sm text-gray-400">It gracefully takes the caller's info and notifies you — or transfers to your team. It never guesses.</p></div>
+<div class="card p-5 reveal"><h3 class="font-bold mb-1">How quickly can I get started?</h3><p class="text-sm text-gray-400">You can be live in minutes. Pick your number, choose a voice, and your AI starts answering today.</p></div>
+<div class="card p-5 reveal"><h3 class="font-bold mb-1">Can I cancel anytime?</h3><p class="text-sm text-gray-400">Yes. No long-term contracts — start with a 3-day free trial and cancel whenever you like.</p></div>
+</div>
+</div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="py-24 px-4 sm:px-6 lg:px-8">
+<div class="max-w-4xl mx-auto text-center reveal">
+<h2 class="text-4xl sm:text-5xl font-black mb-4">Your Next Customer Is Going to Call.<br>Make Sure Someone Answers.</h2>
+<p class="text-xl text-gray-400 mb-10">Start your 3-day free trial — live in minutes, no credit card required.</p>
+<div class="flex flex-col sm:flex-row gap-4 justify-center">
+<a href="#" onclick="openSignup();return false;" class="px-8 py-4 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 hover:scale-[1.03] active:scale-95 transition text-lg shadow-lg shadow-purple-500/25">
+🤖 Build Your AI Receptionist
+</a>
+<a href="tel:+17868084099" class="px-8 py-4 rounded-lg border-2 border-purple-500/60 bg-purple-500/10 text-white font-semibold hover:bg-purple-500/25 hover:border-purple-400 active:scale-95 transition text-lg">
+📞 Call the AI: (786) 808-4099
+</a>
+</div>
+</div>
+</section>
+
+<!-- BOOK A DEMO MODAL -->
+<div id="demoModal" class="fixed inset-0 z-[110] hidden items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeDemo()"></div>
+  <div class="relative card p-5 w-full max-w-3xl h-[82vh] overflow-hidden" style="border:1px solid #232332;background:#0c0c18;border-radius:20px">
+    <div class="flex items-center justify-between mb-3">
+      <div>
+        <h3 class="text-xl font-bold">📅 Book Your Diazites Demo</h3>
+        <p class="text-gray-400 text-sm">Pick a time — our team will show you the AI receptionist live.</p>
+      </div>
+      <button onclick="closeDemo()" aria-label="Close" class="z-20 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white text-2xl leading-none border border-white/20" title="Close">&times;</button>
+    </div>
+    <div id="calEmbedContainer" class="w-full h-[calc(82vh-150px)] rounded-xl overflow-y-auto"></div>
+    <iframe id="demoCalFrame" src="https://cal.com/pablo-d-i2xmhr/30min?theme=dark" class="hidden w-full h-[calc(82vh-150px)] rounded-xl border border-white/10 bg-white/5" frameborder="0" allow="fullscreen"></iframe>
+    <button onclick="closeDemo()" class="mt-3 w-full px-6 py-3 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 transition text-center">✅ Done — Close</button>
+  </div>
+</div>
+
+<!-- SIGNUP MODAL -->
+<div id="signupModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeSignup()"></div>
+  <div class="relative card p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" style="border:1px solid #232332;background:#0c0c18;border-radius:20px">
+    <button onclick="closeSignup()" class="absolute top-4 right-5 text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close">&times;</button>
+    <div class="text-center mb-6">
+      <div class="text-3xl mb-2">✨</div>
+      <h3 class="text-2xl font-bold">Start Your 3-Day Free Trial</h3>
+      <p class="text-gray-400 text-sm mt-1">No credit card required to start. Cancel anytime.</p>
+    </div>
+
+    <!-- STEP 2: pick a number -->
+    <div id="numStep" class="hidden">
+      <div class="text-center mb-4">
+        <div class="text-3xl mb-2">📱</div>
+        <h3 class="text-xl font-bold">Pick Your Business Number</h3>
+        <p class="text-gray-400 text-sm mt-1">Available numbers in <span id="numArea" class="text-white font-semibold"></span> — free with your trial.</p>
+      </div>
+      <div id="numList" class="space-y-2.5 mb-4 max-h-56 overflow-y-auto"></div>
+      <p class="text-center text-xs text-gray-500 mt-2"><button onclick="backToForm()" class="text-purple-400 hover:text-purple-300">← Back</button></p>
+    </div>
+
+    <!-- STEP 1: signup form -->
+    <div id="formStep">
+      <form id="signupFormLanding" onsubmit="return submitLandingSignup(event)" class="space-y-4">
+        <input type="hidden" id="sPlan" value="pro">
+        <div>
+          <label class="block text-sm font-semibold mb-2">Choose Your Plan</label>
+          <select id="sPlanSelect" onchange="syncPlan()" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+            <option value="starter">Starter — $97/mo</option>
+            <option value="pro" selected>Professional — $197/mo</option>
+            <option value="enterprise">Enterprise — Custom</option>
+          </select>
+          <div class="text-center text-xs text-gray-400 mt-2">Selected: <span id="sPlanLabel" class="font-bold gradient-text">Professional — $197/mo</span> · 3-day free trial</div>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-2">Business Name *</label>
+          <input type="text" id="sBizName" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-2">Your Full Name *</label>
+          <input type="text" id="sContactName" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-2">Email *</label>
+          <input type="email" id="sEmail" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-2">Phone *</label>
+          <input type="tel" id="sPhone" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-2">Industry</label>
+          <select id="sIndustry" onchange="toggleIndustryOther()" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+            <option value="">Select your business type…</option>
+            <option value="restaurant">Restaurant</option><option value="bar">Bar / Nightlife</option><option value="foodtruck">Food Truck</option><option value="cafe">Café / Coffee Shop</option><option value="bakery">Bakery</option><option value="pizzeria">Pizzeria</option><option value="catering">Catering</option><option value="plumber">Plumber</option><option value="electrician">Electrician</option><option value="hvac">HVAC / Air Conditioning</option><option value="roofing">Roofing</option><option value="painter">Painter</option><option value="landscaping">Landscaping / Lawn Care</option><option value="cleaning">Cleaning Service</option><option value="pestcontrol">Pest Control</option><option value="moving">Moving Company</option><option value="junkremoval">Junk Removal</option><option value="autodealer">Auto Dealership</option><option value="autorepair">Auto Repair / Mechanic</option><option value="autobody">Auto Body Shop</option><option value="tires">Tire Shop</option><option value="carwash">Car Wash</option><option value="towing">Towing</option><option value="motorcycle">Motorcycle / Powersports</option><option value="dentist">Dentist</option><option value="medical">Medical Clinic / Doctor</option><option value="chiropractor">Chiropractor</option><option value="optometrist">Optometrist</option><option value="vet">Veterinarian</option><option value="pharmacy">Pharmacy</option><option value="physicaltherapy">Physical Therapy</option><option value="urgentcare">Urgent Care</option><option value="salon">Salon</option><option value="barbershop">Barbershop</option><option value="nails">Nail Salon</option><option value="spa">Spa / Massage</option><option value="tattoo">Tattoo Shop</option><option value="gym">Gym / Fitness Studio</option><option value="realestate">Real Estate</option><option value="propertymgmt">Property Management</option><option value="law">Law Firm / Attorney</option><option value="insurance">Insurance Agency</option><option value="accounting">Accountant / Tax</option><option value="financial">Financial Advisor</option><option value="mortgage">Mortgage Broker</option><option value="travel">Travel Agency</option><option value="hotel">Hotel / Motel</option><option value="eventvenue">Event Venue</option><option value="wedding">Wedding Planner</option><option value="photography">Photographer</option><option value="marketing">Marketing / Ad Agency</option><option value="webdesign">Web Design / IT Services</option><option value="security">Security Services</option><option value="staffing">Staffing Agency</option><option value="logistics">Warehousing / Logistics</option><option value="manufacturing">Manufacturing</option><option value="wholesale">Wholesale / Distribution</option><option value="retail">Retail Store / Boutique</option><option value="grocery">Grocery / Supermarket</option><option value="convenience">Convenience Store</option><option value="liquor">Liquor Store</option><option value="florist">Florist</option><option value="laundromat">Laundromat</option><option value="dryclean">Dry Cleaner</option><option value="printshop">Print / Sign Shop</option><option value="petgrooming">Pet Grooming / Kennel</option><option value="daycare">Daycare</option><option value="tutoring">Tutoring / Learning Center</option><option value="church">Church / Nonprofit</option><option value="funeral">Funeral Home</option><option value="contractor">General Contractor / Builder</option><option value="homedecor">Home Decor / Furniture</option><option value="electronics">Electronics Repair</option><option value="appliancerepair">Appliance Repair</option><option value="locksmith">Locksmith</option><option value="glass">Glass / Window Replacement</option><option value="pool">Pool Service</option><option value="snowremoval">Snow Removal</option><option value="storage">Self-Storage</option><option value="__other__">🤔 Other — not on the list</option>
+          </select>
+          <input type="text" id="sIndustryOther" placeholder="What kind of business? (e.g. Dispensary, Car Rental…)" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white hidden">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-semibold mb-2">City * <span class="text-gray-500 font-normal">(number area)</span></label>
+            <input type="text" id="sCity" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white" placeholder="e.g. Miami">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold mb-2">State *</label>
+            <select id="sState" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 text-white">
+              <option value="">Select…</option>
+              <option value="AL">Alabama</option><option value="AK">Alaska</option><option value="AZ">Arizona</option><option value="AR">Arkansas</option><option value="CA">California</option><option value="CO">Colorado</option><option value="CT">Connecticut</option><option value="DE">Delaware</option><option value="DC">Washington DC</option><option value="FL">Florida</option><option value="GA">Georgia</option><option value="HI">Hawaii</option><option value="ID">Idaho</option><option value="IL">Illinois</option><option value="IN">Indiana</option><option value="IA">Iowa</option><option value="KS">Kansas</option><option value="KY">Kentucky</option><option value="LA">Louisiana</option><option value="ME">Maine</option><option value="MD">Maryland</option><option value="MA">Massachusetts</option><option value="MI">Michigan</option><option value="MN">Minnesota</option><option value="MS">Mississippi</option><option value="MO">Missouri</option><option value="MT">Montana</option><option value="NE">Nebraska</option><option value="NV">Nevada</option><option value="NH">New Hampshire</option><option value="NJ">New Jersey</option><option value="NM">New Mexico</option><option value="NY">New York</option><option value="NC">North Carolina</option><option value="ND">North Dakota</option><option value="OH">Ohio</option><option value="OK">Oklahoma</option><option value="OR">Oregon</option><option value="PA">Pennsylvania</option><option value="RI">Rhode Island</option><option value="SC">South Carolina</option><option value="SD">South Dakota</option><option value="TN">Tennessee</option><option value="TX">Texas</option><option value="UT">Utah</option><option value="VT">Vermont</option><option value="VA">Virginia</option><option value="WA">Washington</option><option value="WV">West Virginia</option><option value="WI">Wisconsin</option><option value="WY">Wyoming</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" id="sBtn" class="w-full px-6 py-3 gradient-bg text-white font-semibold rounded-lg hover:opacity-90 transition">
+          🚀 Build Your AI Employee
+        </button>
+        <div id="sResult"></div>
+      </form>
+    </div>
+    <p class="text-center text-xs text-gray-500 mt-4">Existing client? <a href="/login" class="text-purple-400 hover:text-purple-300 font-semibold">Login to Dashboard</a></p>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="border-t border-white/10 py-12 px-4 sm:px-6 lg:px-8">
+<div class="max-w-7xl mx-auto">
+<div class="flex flex-col md:flex-row justify-between items-center space-y-6 md:space-y-0">
+<div class="flex items-center space-x-2">
+<span>🎙️</span>
+<span class="font-bold">Diazites</span>
+</div>
+<div class="flex flex-wrap justify-center gap-6 text-sm text-gray-400">
+<a href="#" onclick="openSignup();return false;" class="hover:text-white transition">Get Started</a>
+<a href="/affiliate" class="hover:text-white transition">💸 Affiliates — Earn $50/Signup</a>
+<a href="/privacy" class="hover:text-white transition">Privacy</a>
+<a href="/terms" class="hover:text-white transition">Terms</a>
+<a href="/refund" class="hover:text-white transition">Refund</a>
+</div>
+<div class="text-sm text-gray-400">
+© 2026 Diazites. AI voice employees for local businesses.
+</div>
+</div>
+</div>
+</footer>
+
+<script>
+// Mobile menu toggle
+const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+const mobileMenu = document.getElementById('mobileMenu');
+mobileMenuBtn.addEventListener('click', () => {
+  mobileMenu.classList.toggle('hidden');
+});
+
+// Demo player function
+function playDemo(btn, voiceId, text) {
+  const p = document.getElementById('demoPlayer');
+  if (p.paused) {
+    p.src = '/api/test-voice?voice_id=' + encodeURIComponent(voiceId) + '&text=' + encodeURIComponent(text) + '&speed=1.0&t=' + Date.now();
+    p.play();
+    btn.innerHTML = '⏸️ Playing…';
+    p.onended = () => {
+      btn.innerHTML = '▶️ Hear the Call';
+    };
+  } else {
+    p.pause();
+    p.currentTime = 0;
+    btn.innerHTML = '▶️ Hear the Call';
+  }
+}
+
+// Book a Demo modal — Cal.com official loader pattern
+(function (C, A, L) { let p = function (a, ar) { a.q.push(ar); }; let d = C.document; C.Cal = C.Cal || function () { let cal = C.Cal; let ar = arguments; if (!cal.loaded) { cal.ns = {}; cal.q = cal.q || []; d.head.appendChild(d.createElement("script")).src = A; cal.loaded = true; } if (ar[0] === L) { const api = function () { p(cal, api); }; const namespace = ar[1]; api.q = api.q || []; typeof namespace === "string" ? (cal.ns[namespace] = api) : p(cal, namespace); return; } p(cal, ar); }; })(window, "https://app.cal.com/embed/embed.js", "init");
+Cal("init", { origin: "https://cal.com" });
+Cal("inline", { elementOrSelector: "#calEmbedContainer", config: { layout: "month_view", theme: "dark" }, calLink: "pablo-d-i2xmhr/30min" });
+setTimeout(function(){
+  var el = document.getElementById('calEmbedContainer');
+  if (el && el.children.length === 0) document.getElementById('demoCalFrame').classList.remove('hidden');
+}, 6000);
+function openDemo() {
+  document.getElementById('demoModal').classList.remove('hidden');
+  document.getElementById('demoModal').classList.add('flex');
+  document.body.style.overflow = 'hidden';
+}
+function closeDemo() {
+  document.getElementById('demoModal').classList.add('hidden');
+  document.getElementById('demoModal').classList.remove('flex');
+  document.body.style.overflow = '';
+}
+
+// Call script generator
+(function(){
+  var src = document.getElementById('sIndustry');
+  var dst = document.getElementById('genIndustry');
+  if (src && dst) {
+    Array.from(src.options).forEach(function(o){
+      if (o.value === '' || o.value === '__other__') return;
+      var n = document.createElement('option');
+      n.value = o.value; n.text = o.text;
+      dst.appendChild(n);
+    });
+  }
+})();
+function generateCallScripts() {
+  var sel = document.getElementById('genIndustry');
+  var btn = document.getElementById('genScriptsBtn');
+  if (!sel || !sel.value) { alert('Please select your business type first.'); return; }
+  btn.disabled = true; btn.textContent = '⏳ Generating…';
+  fetch('/api/generate-call-scripts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ industry: sel.value })
+  }).then(function(r){ return r.json(); })
+  .then(function(d){
+    btn.disabled = false; btn.textContent = '🤖 AI Auto Generate';
+    if (d.success) {
+      document.getElementById('genInbound').textContent = d.inbound;
+      document.getElementById('genOutbound').textContent = d.outbound;
+      document.getElementById('genResult').classList.remove('hidden');
+      document.getElementById('genResult').scrollIntoView({ behavior: 'smooth' });
+    } else {
+      alert('⚠️ ' + (d.error || 'Generation failed. Try again.'));
+    }
+  }).catch(function(){
+    btn.disabled = false; btn.textContent = '🤖 AI Auto Generate';
+    alert('⚠️ Network error — try again.');
+  });
+}
+
+// Voice sample player
+function toggleVoiceSample() {
+  var a = document.getElementById('voiceSampleAudio');
+  var b = document.getElementById('voiceSampleBtn');
+  if (a.paused) {
+    a.play();
+    b.innerHTML = '⏸️ Pause Sample';
+  } else {
+    a.pause();
+    b.innerHTML = '▶️ Play Voice Sample';
+  }
+  a.onended = function(){ b.innerHTML = '▶️ Play Voice Sample'; };
+}
+
+// YouTube hover-play (src swap)
+(function(){
+  var wrap = document.getElementById('ytPlayerWrap');
+  var frame = document.getElementById('ytFrame');
+  if (!wrap || !frame) return;
+  var BASE = 'https://www.youtube.com/embed/0LT64_mgkro?rel=0&playsinline=1';
+  wrap.addEventListener('mouseenter', function(){
+    if (frame.src.indexOf('autoplay=1') === -1) frame.src = BASE + '&autoplay=1&mute=1';
+  });
+  wrap.addEventListener('mouseleave', function(){
+    if (frame.src.indexOf('autoplay=1') !== -1) frame.src = BASE;
+  });
+})();
+
+// Scroll to the AI script generator
+function goToGenerator() {
+  var g = document.getElementById('generator');
+  if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Force hero background video to autoplay (incl. mobile/iOS)
+(function(){
+  var v = document.getElementById('heroBgVideo');
+  if (!v) return;
+  function playBg() {
+    if (!v) return;
+    // iOS/Safari: mute must be set via JS before play() is allowed
+    v.muted = true;
+    v.defaultMuted = true;
+    v.setAttribute('muted', '');
+    v.playsInline = true;
+    v.setAttribute('playsinline', '');
+    var pr = v.play();
+    if (pr && pr.catch) pr.catch(function(){});
+  }
+  playBg();
+  document.addEventListener('DOMContentLoaded', playBg);
+  window.addEventListener('load', playBg);
+  var tries = 0;
+  var iv = setInterval(function(){ if (v.paused && tries < 5) { playBg(); tries++; } else if (!v.paused) { clearInterval(iv); } }, 800);
+  // first tap anywhere also nudges playback (iOS unlocks autoplay after interaction)
+  ['touchstart', 'pointerdown', 'click'].forEach(function(ev){
+    document.addEventListener(ev, function once(){ playBg(); }, { once: true });
+  });
+})();
+
+// Signup modal
+function openSignup() {
+  var m = document.getElementById('signupModal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+  document.body.style.overflow = 'hidden';
+  var f = document.getElementById('sBizName');
+  if (f) setTimeout(function(){ f.focus(); }, 150);
+}
+function closeSignup() {
+  var m = document.getElementById('signupModal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') { closeSignup(); closeDemo(); } });
+
+// Plan selection (pricing cards)
+function selectPlan(p) {
+  var labels = { starter: 'Starter — $97/mo', pro: 'Professional — $197/mo', enterprise: 'Enterprise — Custom' };
+  document.getElementById('sPlan').value = p;
+  var sel = document.getElementById('sPlanSelect');
+  if (sel) sel.value = p;
+  var l = document.getElementById('sPlanLabel');
+  if (l) l.textContent = labels[p] || p;
+}
+function syncPlan() {
+  var p = document.getElementById('sPlanSelect').value;
+  document.getElementById('sPlan').value = p;
+  var labels = { starter: 'Starter — $97/mo', pro: 'Professional — $197/mo', enterprise: 'Enterprise — Custom' };
+  var l = document.getElementById('sPlanLabel');
+  if (l) l.textContent = labels[p] || p;
+}
+
+// Industry "other" toggle
+function toggleIndustryOther() {
+  var sel = document.getElementById('sIndustry');
+  var other = document.getElementById('sIndustryOther');
+  if (sel.value === '__other__') { other.classList.remove('hidden'); other.focus(); }
+  else { other.classList.add('hidden'); }
+}
+
+// Number picker step
+var pendingCheckout = null, pendingBid = null;
+function fmtNum(p) {
+  var d = (p || '').replace(/[^0-9]/g, '');
+  if (d.length === 11) d = d.slice(1);
+  return d.length === 10 ? '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6) : p;
+}
+function showNumStep(d) {
+  pendingCheckout = d.checkout_url; pendingBid = d.business_id;
+  document.getElementById('formStep').classList.add('hidden');
+  var city = document.getElementById('sCity').value.trim();
+  var state = document.getElementById('sState').value;
+  var stName = '';
+  var ssel = document.getElementById('sState');
+  if (ssel.selectedOptions.length) stName = ssel.selectedOptions[0].text;
+  document.getElementById('numArea').textContent = (city ? city + ', ' : '') + (stName || state);
+  var list = document.getElementById('numList');
+  list.innerHTML = '';
+  d.numbers.forEach(function(n){
+    var el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'w-full text-left px-4 py-3 rounded-lg border border-white/10 bg-white/5 hover:border-purple-500 hover:bg-white/10 transition flex items-center gap-3';
+    var sub = (n.locality ? n.locality + ', ' : '') + (n.region || '');
+    el.innerHTML = '<span class="text-lg">📞</span><span><span class="font-bold block">' + fmtNum(n.phone_number) + '</span>' + (sub ? '<span class="text-xs text-gray-400">' + sub + '</span>' : '') + '</span>';
+    el.onclick = function(){ pickNumber(n.phone_number); };
+    list.appendChild(el);
+  });
+  document.getElementById('numStep').classList.remove('hidden');
+}
+function pickNumber(phone) {
+  if (!pendingBid) return;
+  var btns = document.querySelectorAll('#numList button');
+  btns.forEach(function(b){ b.disabled = true; b.style.opacity = 0.5; });
+  fetch('/api/numbers/assign', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ business_id: pendingBid, phone_number: phone })
+  }).then(function(r){ return r.json(); })
+  .then(function(d){
+    if (pendingCheckout) window.location.href = pendingCheckout;
+    else {
+      var res = document.getElementById('sResult');
+      res.innerHTML = '<div style="background: rgba(74,222,128,0.1); border: 1px solid #4ade80; color: #4ade80; padding: 12px; border-radius: 8px; margin-top: 16px;">✅ Number assigned: ' + fmtNum(d.phone_number || phone) + '. Your 3-day free trial is active!</div>';
+      document.getElementById('numStep').classList.add('hidden');
+      document.getElementById('formStep').classList.remove('hidden');
+    }
+  }).catch(function(){
+    if (pendingCheckout) window.location.href = pendingCheckout;
+  });
+}
+function backToForm() {
+  document.getElementById('numStep').classList.add('hidden');
+  document.getElementById('formStep').classList.remove('hidden');
+}
+
+// Live sample call (admin-uploaded audio, falls back to default demo)
+function playLiveCall(btn) {
+  var orig = btn.innerHTML;
+  if (window._liveAud && !window._liveAud.paused) {
+    window._liveAud.pause(); window._liveAud.currentTime = 0;
+    btn.innerHTML = orig; return;
+  }
+  function fallback() {
+    playDemo(btn, 'onwK4e9ZLuTAKqWW03F9', 'Hey, thanks for calling — this is Mike over at Westside Motors. So you\'re looking at the Tahoe, the black 2024? Yeah, let me pull that up for you real quick... Okay, I\'ve got it here. Yeah, that one\'s still available. Are you looking to come by today? I can have it cleaned up and ready for a test drive whenever you get here.');
+    btn.setAttribute('data-orig', orig);
+  }
+  var a = window._liveAud = new Audio('/sample-call?t=' + Date.now());
+  a.onerror = function(){ window._liveAud = null; fallback(); };
+  a.onplay = function(){ btn.innerHTML = '⏸️ Playing…'; };
+  a.onended = function(){ btn.innerHTML = orig; };
+  a.play().catch(function(){ window._liveAud = null; fallback(); });
+}
+
+// Signup form submission
+function submitLandingSignup(e) {
+  e.preventDefault();
+  const btn = document.getElementById('sBtn');
+  const result = document.getElementById('sResult');
+  const name = document.getElementById('sBizName').value.trim();
+  const email = document.getElementById('sEmail').value.trim();
+  const phone = document.getElementById('sPhone').value.trim();
+  let industry = document.getElementById('sIndustry').value;
+  if (industry === '__other__') { industry = document.getElementById('sIndustryOther').value.trim() || 'Other'; }
+  
+  btn.disabled = true;
+  btn.textContent = 'Processing...';
+  result.innerHTML = '';
+  
+  fetch('/api/signup-stripe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, contact_name: document.getElementById('sContactName').value.trim(), email, phone, industry, plan: document.getElementById('sPlan').value, city: document.getElementById('sCity').value.trim(), state: document.getElementById('sState').value })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success && d.numbers && d.numbers.length) {
+      showNumStep(d);
+    } else if (d.checkout_url) {
+      window.location.href = d.checkout_url;
+    } else {
+      result.innerHTML = '<div style="background: rgba(74,222,128,0.1); border: 1px solid #4ade80; color: #4ade80; padding: 12px; border-radius: 8px; margin-top: 16px;">Account created! Business ID: ' + (d.business_id || 'N/A') + '. <a href="/login" style="text-decoration: underline;">Login here</a></div>';
+      btn.disabled = false;
+      btn.textContent = '🚀 Build Your AI Employee';
+    }
+  })
+  .catch(err => {
+    result.innerHTML = '<div style="background: rgba(239,68,68,0.1); border: 1px solid #ef4444; color: #ef4444; padding: 12px; border-radius: 8px; margin-top: 16px;">Error: ' + err.message + '</div>';
+    btn.disabled = false;
+    btn.textContent = '🚀 Build Your AI Employee';
+  });
+  
+  return false;
+}
+
+// Count-up animation
+function animateCount(el) {
+  const target = parseFloat(el.dataset.count);
+  const duration = 2000;
+  const step = target / (duration / 16);
+  let current = 0;
+  const isDecimal = target % 1 !== 0;
+  
+  const timer = setInterval(() => {
+    current += step;
+    if (current >= target) {
+      el.textContent = isDecimal ? target.toFixed(1) : Math.round(target);
+      clearInterval(timer);
+    } else {
+      el.textContent = isDecimal ? current.toFixed(1) : Math.round(current);
+    }
+  }, 16);
+}
+
+// Scroll reveal
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      
+      // Trigger count animation for elements with data-count
+      entry.target.querySelectorAll('[data-count]').forEach(el => {
+        if (!el.dataset.counted) {
+          el.dataset.counted = 'true';
+          animateCount(el);
+        }
+      });
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+</script>
+
+</body>
+</html>

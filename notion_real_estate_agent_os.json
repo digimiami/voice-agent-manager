@@ -1,0 +1,181 @@
+{
+  "name": "The Real Estate Agent OS",
+  "tagline": "Your complete real estate business command center",
+  "description": "A powerful real estate business management system for agents to track listings, leads, showings, transactions, and commissions.",
+  "price": 29,
+  "benefits": [
+    "Streamline your entire real estate workflow from lead capture to closing",
+    "Never lose track of a lead, listing, or showing with centralized tracking",
+    "Close more deals with organized transaction pipelines and deadline management",
+    "Maximize earnings with transparent commission tracking and split calculations",
+    "Save 5+ hours weekly with automated status updates and pre-built templates"
+  ],
+  "whats_included": [
+    "5 fully interconnected databases with custom properties",
+    "Pre-built dashboard with 6 real-time widgets",
+    "Property listing management with status tracking",
+    "Lead capture system with scoring and nurture workflows",
+    "Showing scheduler with feedback collection forms",
+    "Transaction pipeline from offer to close with milestones",
+    "Commission calculator with broker split percentages",
+    "4 bonus templates for client meetings and open houses"
+  ],
+  "perfect_for": [
+    "New real estate agents building their first business systems",
+    "Experienced agents scaling to handle higher transaction volume",
+    "Real estate team leaders managing multiple agents' deals",
+    "Independent brokers running their own practice without a CRM"
+  ],
+  "features": [
+    "Drag-and-drop kanban boards for visual deal pipeline management",
+    "Automated status propagation across all linked databases",
+    "Calendar views for showings, deadlines, and follow-ups",
+    "Built-in commission calculator with custom split percentages",
+    "Lead scoring system to prioritize high-value prospects",
+    "Property comparison templates for buyer presentations",
+    "Client communication log with timestamped notes",
+    "Mobile-optimized layouts for field access on any device"
+  ],
+  "seo_keywords": [
+    "real estate agent notion template",
+    "notion real estate CRM",
+    "property listing tracker notion",
+    "real estate transaction management system",
+    "commission tracking spreadsheet",
+    "real estate lead database template",
+    "showing scheduler notion",
+    "real estate business operating system"
+  ],
+  "linked_databases": [
+    {
+      "relation": "Listings \u2194 Transactions",
+      "description": "Connect each transaction to its corresponding property listing"
+    },
+    {
+      "relation": "Leads \u2194 Transactions",
+      "description": "Link buyers and sellers to their closed deals"
+    },
+    {
+      "relation": "Showings \u2194 Listings",
+      "description": "Associate each showing with the property shown"
+    },
+    {
+      "relation": "Showings \u2194 Leads",
+      "description": "Track which lead attended each showing"
+    },
+    {
+      "relation": "Transactions \u2194 Commission Tracker",
+      "description": "Automatically generate commission records from closed transactions"
+    },
+    {
+      "relation": "Listings \u2194 Leads",
+      "description": "Connect seller leads to their listed properties"
+    }
+  ],
+  "dashboard_widgets": [
+    {
+      "name": "Active Listings Summary",
+      "type": "Number & Progress"
+    },
+    {
+      "name": "Pipeline Value Calculator",
+      "type": "Formula Rollup"
+    },
+    {
+      "name": "Upcoming Showings Calendar",
+      "type": "Calendar Preview"
+    },
+    {
+      "name": "Lead Conversion Rate",
+      "type": "Progress Bar"
+    },
+    {
+      "name": "Monthly Commission Goal Tracker",
+      "type": "Progress Bar"
+    },
+    {
+      "name": "Recent Activity Feed",
+      "type": "Linked Database View"
+    }
+  ],
+  "bonus_templates": [
+    {
+      "name": "Open House Checklist",
+      "description": "Complete preparation and follow-up checklist for successful open houses"
+    },
+    {
+      "name": "Buyer Consultation Questionnaire",
+      "description": "Comprehensive intake form to understand buyer needs, budget, and timeline"
+    },
+    {
+      "name": "Seller Listing Presentation Outline",
+      "description": "Structured template for delivering compelling listing presentations"
+    },
+    {
+      "name": "Weekly Business Review Template",
+      "description": "Reflective framework to track KPIs, wins, and action items each week"
+    }
+  ],
+  "databases": [
+    {
+      "name": "Property Listings",
+      "icon": "\ud83c\udfe0",
+      "description": "Track all your property listings with status, details, pricing, and key metrics in one centralized database",
+      "views": [
+        "All Listings (Table View)",
+        "Listing Pipeline (Kanban Board by Status)",
+        "Property Gallery (Gallery View with Images)",
+        "By Price Range (Sorted Table)",
+        "Recently Added (Sorted by Created Date)"
+      ]
+    },
+    {
+      "name": "Leads",
+      "icon": "\ud83d\udc65",
+      "description": "Capture, score, and nurture buyer and seller leads through your pipeline from first contact to conversion",
+      "views": [
+        "All Leads (Table View)",
+        "Lead Pipeline (Kanban Board by Stage)",
+        "By Lead Source (Board View)",
+        "Hot Leads (Filtered Table - High Score)",
+        "Follow-up Queue (Calendar View by Next Contact Date)"
+      ]
+    },
+    {
+      "name": "Showings",
+      "icon": "\ud83d\uddd3\ufe0f",
+      "description": "Schedule and log all property showings with attendee details, feedback, and outcome tracking",
+      "views": [
+        "All Showings (Table View)",
+        "Showing Calendar (Calendar View)",
+        "By Property (Board View Grouped by Listing)",
+        "This Week (Filtered Table - Current Week)",
+        "Showing Feedback (Form View for Post-Showing Input)"
+      ]
+    },
+    {
+      "name": "Transactions",
+      "icon": "\ud83d\udcdd",
+      "description": "Track every deal from initial offer through closing with milestones, deadlines, and document checklists",
+      "views": [
+        "All Transactions (Table View)",
+        "Deal Pipeline (Kanban Board by Transaction Stage)",
+        "Transaction Timeline (Timeline View with Key Dates)",
+        "By Status (Board View)",
+        "Closing Checklist (Table View with Checkbox Properties)"
+      ]
+    },
+    {
+      "name": "Commission Tracker",
+      "icon": "\ud83d\udcb0",
+      "description": "Calculate and track your earnings per deal with gross commission, broker splits, and net income calculations",
+      "views": [
+        "All Commissions (Table View)",
+        "By Month (Calendar View by Closing Date)",
+        "Earnings Summary (Board View by Payment Status)",
+        "Pending Payouts (Filtered Table - Unpaid)",
+        "Annual Goal Tracker (Progress View Against Target)"
+      ]
+    }
+  ]
+}
