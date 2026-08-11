@@ -48,6 +48,29 @@ nav { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 /* Generator industry dropdown: black bg, white text */
 #genIndustry { background-color: #000 !important; color: #fff !important; }
 #genIndustry option { background-color: #000 !important; color: #fff !important; }
+/* --- Comparison table: AI Salesperson vs. Missed Calls --- */
+.cmp-card { border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); border-radius: 16px; overflow: hidden; }
+.cmp-head, .cmp-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 10px; padding: 13px 18px; align-items: center; }
+.cmp-head { background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #9ca3af; }
+.cmp-head .cmp-ai { color: #4ade80; }
+.cmp-row { border-bottom: 1px solid rgba(255,255,255,0.07); }
+.cmp-row:last-child { border-bottom: none; }
+.cmp-row:hover { background: rgba(255,255,255,0.03); }
+.cmp-cap { font-size: 14px; font-weight: 600; color: #e5e7eb; line-height: 1.35; }
+.cmp-ai { font-size: 14px; font-weight: 700; color: #4ade80; display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+.cmp-noai { font-size: 14px; color: #9ca3af; display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+.cmp-ok, .cmp-x { width: 17px; height: 17px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-style: normal; line-height: 1; flex: none; }
+.cmp-ok { background: rgba(74,222,128,0.15); border: 1px solid rgba(74,222,128,0.45); color: #4ade80; }
+.cmp-x { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #6b7280; }
+.cmp-sub { font-size: 15px; }
+.cmp-tagline { margin-top: 32px; }
+.cmp-br { display: none; }
+@media (min-width: 640px) { .cmp-sub { font-size: 17px; } }
+@media (max-width: 639px) {
+  .cmp-head, .cmp-row { grid-template-columns: 1fr 1fr; gap: 5px 14px; padding: 11px 14px; }
+  .cmp-cap { grid-column: 1 / -1; }
+  .cmp-br { display: block; }
+}
 </style>
 </head>
 <body class="bg-[#0a0a14] text-white antialiased">
@@ -185,27 +208,22 @@ nav { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 
 <!-- COMPARISON -->
 <section class="py-20 px-4 sm:px-6 lg:px-8">
-<div class="max-w-3xl mx-auto">
-<div class="text-center mb-10 reveal">
-<h2 class="text-4xl sm:text-5xl font-black mb-4">AI Salesperson vs. Missed Calls</h2>
+<div class="max-w-4xl mx-auto">
+<div class="text-center mb-6 reveal">
+<h2 class="text-3xl sm:text-5xl font-black mb-3 leading-tight">AI Salesperson vs.<br class="cmp-br"> Missed Calls</h2>
+<p class="cmp-sub text-gray-400 max-w-2xl mx-auto">When the lot closes, buyers keep calling. Here's what changes when Diazites AI answers instead of a voicemail.</p>
 </div>
-<div class="card overflow-hidden reveal">
-<div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 bg-white/[0.03]">
-<span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Capability</span>
-<div class="flex items-center gap-2">
-<span class="text-[11px] px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/30 font-bold">Diazites AI</span>
-<span class="text-[11px] px-2.5 py-1 rounded-full bg-white/5 text-gray-400 border border-white/10 font-bold">No AI</span>
+<div class="cmp-card reveal">
+<div class="cmp-head"><span class="cmp-cap">Capability</span><span class="cmp-ai">Diazites AI</span><span class="cmp-noai">No AI</span></div>
+<div class="cmp-row"><span class="cmp-cap">Answers after 7 PM</span><span class="cmp-ai"><i class="cmp-ok">✓</i>24/7</span><span class="cmp-noai"><i class="cmp-x">✕</i>Voicemail</span></div>
+<div class="cmp-row"><span class="cmp-cap">Answers during a test drive</span><span class="cmp-ai"><i class="cmp-ok">✓</i>Every call</span><span class="cmp-noai"><i class="cmp-x">✕</i>Missed call</span></div>
+<div class="cmp-row"><span class="cmp-cap">Books test drives</span><span class="cmp-ai"><i class="cmp-ok">✓</i>In seconds</span><span class="cmp-noai"><i class="cmp-x">✕</i>Office hours</span></div>
+<div class="cmp-row"><span class="cmp-cap">Calls back leads</span><span class="cmp-ai"><i class="cmp-ok">✓</i>Immediately</span><span class="cmp-noai"><i class="cmp-x">✕</i>Next day</span></div>
+<div class="cmp-row"><span class="cmp-cap">Outbound lead calling</span><span class="cmp-ai"><i class="cmp-ok">✓</i>Every lead</span><span class="cmp-noai"><i class="cmp-x">✕</i>Nobody</span></div>
+<div class="cmp-row"><span class="cmp-cap">Calls out sick</span><span class="cmp-ai"><i class="cmp-ok">✓</i>Never</span><span class="cmp-noai"><i class="cmp-x">✕</i>Sometimes</span></div>
+<div class="cmp-row"><span class="cmp-cap">Ready every day</span><span class="cmp-ai"><i class="cmp-ok">✓</i>365 days</span><span class="cmp-noai"><i class="cmp-x">✕</i>Most days</span></div>
 </div>
-</div>
-<div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 hover:bg-white/[0.03] transition"><span class="text-sm font-semibold text-gray-200">Answers after 7 PM</span><div class="flex items-center gap-2"><span class="text-xs px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/30 font-bold">✓</span><span class="text-xs px-2.5 py-1 rounded-full bg-white/5 text-gray-500 border border-white/10">—</span></div></div>
-<div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 hover:bg-white/[0.03] transition"><span class="text-sm font-semibold text-gray-200">Answers during a test drive</span><div class="flex items-center gap-2"><span class="text-xs px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/30 font-bold">✓</span><span class="text-xs px-2.5 py-1 rounded-full bg-white/5 text-gray-500 border border-white/10">—</span></div></div>
-<div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 hover:bg-white/[0.03] transition"><span class="text-sm font-semibold text-gray-200">Books test drives</span><div class="flex items-center gap-2"><span class="text-xs px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/30 font-bold">✓</span><span class="text-xs px-2.5 py-1 rounded-full bg-white/5 text-gray-400 border border-white/10">Sometimes</span></div></div>
-<div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 hover:bg-white/[0.03] transition"><span class="text-sm font-semibold text-gray-200">Calls back leads</span><div class="flex items-center gap-2"><span class="text-xs px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/30 font-bold">✓</span><span class="text-xs px-2.5 py-1 rounded-full bg-white/5 text-gray-500 border border-white/10">—</span></div></div>
-<div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 hover:bg-white/[0.03] transition"><span class="text-sm font-semibold text-gray-200">Outbound lead calling</span><div class="flex items-center gap-2"><span class="text-xs px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/30 font-bold">✓</span><span class="text-xs px-2.5 py-1 rounded-full bg-white/5 text-gray-500 border border-white/10">—</span></div></div>
-<div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 hover:bg-white/[0.03] transition"><span class="text-sm font-semibold text-gray-200">Calls out sick</span><div class="flex items-center gap-2"><span class="text-xs px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/30 font-bold">Never</span><span class="text-xs px-2.5 py-1 rounded-full bg-white/5 text-gray-400 border border-white/10">Sometimes</span></div></div>
-<div class="flex items-center justify-between gap-2 px-4 py-3 hover:bg-white/[0.03] transition"><span class="text-sm font-semibold text-gray-200">Ready every day</span><div class="flex items-center gap-2"><span class="text-xs px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/30 font-bold">✓</span><span class="text-xs px-2.5 py-1 rounded-full bg-white/5 text-gray-400 border border-white/10">✓</span></div></div>
-</div>
-<p class="text-center text-sm text-white font-bold mt-10 reveal">Your buyers don't stop shopping when the lot closes. Neither does your AI salesperson.</p>
+<p class="cmp-tagline text-center text-sm text-white font-bold reveal">Your buyers don't stop shopping when the lot closes. Neither does your AI salesperson.</p>
 </div>
 </section>
 
