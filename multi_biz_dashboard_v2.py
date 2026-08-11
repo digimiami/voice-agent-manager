@@ -2373,7 +2373,7 @@ CHATBOT_PROVIDERS = {
     },
     "venice": {
         "api_url": "https://api.venice.ai/api/v1/chat/completions",
-        "default_model": "llama-3.3-70b",
+        "default_model": "openai-gpt-4o-2024-11-20",
         "auth_header": lambda key: f"Bearer {key}"
     }
 }

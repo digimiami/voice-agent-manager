@@ -868,12 +868,12 @@ ADMIN_HTML = """<!DOCTYPE html>
                     </div>
                     <div>
                         <label class="text-xs text-[#64748b] block mb-1">Model</label>
-                        <input type="text" name="chatbot_model" value="{{ chatbot_model or '' }}" placeholder="Leave blank for default (llama-3.3-70b for Venice, grok for xAI)">
+                        <input type="text" name="chatbot_model" value="{{ chatbot_model or '' }}" placeholder="Leave blank for Venice OpenAI model (e.g. openai-gpt-4o-2024-11-20 or openai-gpt-52)">
                     </div>
                     <div>
                         <label class="text-xs text-[#64748b] block mb-1">API Key</label>
                         <input type="password" name="chatbot_api_key" value="{{ chatbot_api_key or '' }}" placeholder="sk-...">
-                        <p class="text-[10px] text-[#475569] mt-1">Uses VENICE_API_KEY / XAI_API_KEY from env as fallback</p>
+                        <p class="text-[10px] text-[#475569] mt-1">Uses VENICE_API_KEY from env (OpenAI-compatible GPT models via Venice)</p>
                     </div>
                     <button type="submit" class="btn-primary"><i class="fas fa-save mr-1"></i> Save Chatbot Settings</button>
                 </form>
