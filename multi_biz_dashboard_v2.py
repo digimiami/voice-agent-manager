@@ -7030,23 +7030,45 @@ def update_forwarding():
     db = get_db()
     c = db.cursor()
     enabled = 1 if request.form.get('forwarding_enabled') else 0
-    forward_to = request.form.get('forward_to','')
-    c.execute("UPDATE businesses SET call_forwarding = ?, forward_to = ?, forward_when = ? WHERE id = ?",
-        (enabled, forward_to, request.form.get('forward_when','after-hours'), bid))
+
+    # New multi-destination support from form (JSON array of {label, number})
+    dests_raw = request.form.get('destinations', '[]')
+    try:
+        destinations = json.loads(dests_raw) if dests_raw else []
+    except Exception:
+        destinations = []
+
+    # Legacy single forward_to: use first number if present
+    forward_to = ''
+    if destinations:
+        forward_to = destinations[0].get('number', '') or ''
+
+    # Save both for compat
+    dests_json = json.dumps(destinations) if destinations else '[]'
+    c.execute("UPDATE businesses SET call_forwarding = ?, forward_to = ?, forward_destinations = ?, forward_when = ? WHERE id = ?",
+        (enabled, forward_to, dests_json, request.form.get('forward_when', 'after-hours'), bid))
     db.commit()
-    # Sync transfer-to-manager tool + instruction to the VAPI assistant
+
+    # Sync to Vapi (support multiple destinations)
     c.execute("SELECT vapi_assistant_id FROM businesses WHERE id = ?", (bid,))
     row = c.fetchone()
     db.close()
-    if row and row['vapi_assistant_id'] and forward_to:
-        result = add_transfer_to_assistant(row['vapi_assistant_id'], forward_to)
-        if result.get('error') or 'statusCode' in result:
+
+    if row and row['vapi_assistant_id']:
+        if destinations:
+            result = add_transfer_to_assistant_multi(row['vapi_assistant_id'], destinations)
+        else:
+            result = add_transfer_to_assistant(row['vapi_assistant_id'], '')
+
+        if isinstance(result, dict) and (result.get('error') or 'statusCode' in result):
             flash('⚠️ Forwarding saved, but Vapi transfer sync failed: ' + str(result.get('message') or result.get('error')), 'warning')
         else:
-            flash('✅ Forwarding saved — callers asking for a manager now transfer to ' + forward_to, 'success')
+            names = ", ".join([d.get('label', 'Contact') + " " + d.get('number','') for d in destinations]) if destinations else "disabled"
+            flash('✅ Forwarding saved — transfers configured for: ' + names, 'success')
     else:
         flash('✅ Forwarding updated!', 'success')
-    return redirect('/?tab=forwarding')
+
+    return redirect('/?tab=settings')
 
 @app.route('/update-denoise', methods=['POST'])
 @login_required
