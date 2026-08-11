@@ -934,7 +934,7 @@ def index():
                 ga_url = "https://www.google-analytics.com/g/collect"
                 params = {
                     "v": "2",
-                    "tid": "G-LK2JXDNXCT",
+                    "tid": "G-KL7YJ57LR3",
                     "cid": cid,
                     "en": "page_view",
                     "dl": _ga_url,
