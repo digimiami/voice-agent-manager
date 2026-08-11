@@ -862,17 +862,18 @@ ADMIN_HTML = """<!DOCTYPE html>
                         <label class="text-xs text-[#64748b] block mb-1">Provider</label>
                         <select name="chatbot_provider">
                             <option value="xai" {% if chatbot_provider == 'xai' %}selected{% endif %}>xAI (Grok) — Recommended</option>
+                            <option value="venice" {% if chatbot_provider == 'venice' %}selected{% endif %}>Venice (Recommended - no credit issues)</option>
                             <option value="deepseek" {% if chatbot_provider == 'deepseek' %}selected{% endif %}>DeepSeek</option>
                         </select>
                     </div>
                     <div>
                         <label class="text-xs text-[#64748b] block mb-1">Model</label>
-                        <input type="text" name="chatbot_model" value="{{ chatbot_model or '' }}" placeholder="Leave blank for default (grok-4-mini / deepseek-chat)">
+                        <input type="text" name="chatbot_model" value="{{ chatbot_model or '' }}" placeholder="Leave blank for default (llama-3.3-70b for Venice, grok for xAI)">
                     </div>
                     <div>
                         <label class="text-xs text-[#64748b] block mb-1">API Key</label>
                         <input type="password" name="chatbot_api_key" value="{{ chatbot_api_key or '' }}" placeholder="sk-...">
-                        <p class="text-[10px] text-[#475569] mt-1">Uses XAI_API_KEY from env as fallback</p>
+                        <p class="text-[10px] text-[#475569] mt-1">Uses VENICE_API_KEY / XAI_API_KEY from env as fallback</p>
                     </div>
                     <button type="submit" class="btn-primary"><i class="fas fa-save mr-1"></i> Save Chatbot Settings</button>
                 </form>
@@ -3741,7 +3742,7 @@ def agent_tars_status():
         <div class="card space-y-3">
             <div class="flex justify-between"><span class="text-[#64748b]">Binary</span><span class="font-mono text-xs">{which}</span></div>
             <div class="flex justify-between"><span class="text-[#64748b]">Version</span><span class="font-mono text-xs">v0.3.0</span></div>
-            <div class="flex justify-between"><span class="text-[#64748b]">Model</span><span class="font-mono text-xs">DeepSeek v4 Flash</span></div>
+            <div class="flex justify-between"><span class="text-[#64748b]">Model</span><span class="font-mono text-xs">Venice / Current Model</span></div>
             <div class="flex justify-between"><span class="text-[#64748b]">Status</span><span class="text-green-400">✅ Ready</span></div>
         </div>
         <div class="card mt-6">

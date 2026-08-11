@@ -2370,6 +2370,11 @@ CHATBOT_PROVIDERS = {
         "api_url": "https://api.deepseek.com/chat/completions",
         "default_model": "deepseek-chat",
         "auth_header": lambda key: f"Bearer {key}"
+    },
+    "venice": {
+        "api_url": "https://api.venice.ai/api/v1/chat/completions",
+        "default_model": "llama-3.3-70b",
+        "auth_header": lambda key: f"Bearer {key}"
     }
 }
 
@@ -6782,6 +6787,72 @@ def add_transfer_to_assistant(aid, forward_to):
 
     return patch_vapi_assistant(aid, {"model": model_patch})
 
+def add_transfer_to_assistant_multi(aid, destinations):
+    """Support multiple forward destinations (with labels) for Vapi transferCall tool."""
+    try:
+        cur = fetch_vapi_assistant(aid)
+    except Exception:
+        return {"error": "could not fetch assistant"}
+
+    model = cur.get("model") or {}
+    provider = model.get("provider", "xai")
+    model_name = model.get("model", "grok-4.3")
+
+    # system prompt
+    if model.get("messages"):
+        msgs = list(model["messages"])
+        sys_idx = next((i for i, m in enumerate(msgs) if m.get("role") == "system"), None)
+        prompt = msgs[sys_idx].get("content", "") if sys_idx is not None else ""
+    else:
+        prompt = model.get("systemPrompt", "")
+        msgs = None
+
+    TRANSFER_TAG = "[TRANSFER-INSTRUCTION]"
+    if TRANSFER_TAG in prompt:
+        prompt = prompt.split(TRANSFER_TAG)[0].rstrip()
+
+    if destinations:
+        lines = []
+        for d in destinations:
+            label = (d.get('label') or 'Contact').strip()
+            num = (d.get('number') or '').strip()
+            if num:
+                lines.append(f"- {label}: {num}")
+        dest_list = "\n".join(lines)
+        prompt = (prompt.rstrip() + "\n\n" + TRANSFER_TAG +
+                  "\nIf the caller asks to speak with a manager, owner, supervisor, sales, support, or anyone specific, say \"Of course, one moment please\" and use the transferCall function to transfer to the correct person:\n" +
+                  dest_list + "\n").strip()
+    else:
+        prompt = prompt.strip()
+
+    # tools
+    tools = [t for t in (model.get("tools") or []) if t.get("type") != "transferCall"]
+    if destinations:
+        dests = [{"type": "number", "number": d.get("number")} for d in destinations if d.get("number")]
+        if dests:
+            tools.append({"type": "transferCall", "destinations": dests})
+
+    model_patch = {
+        "provider": provider,
+        "model": model_name,
+        "tools": tools,
+    }
+    if model.get("messages") or msgs is not None:
+        if sys_idx is not None:
+            msgs[sys_idx] = {**msgs[sys_idx], "content": prompt}
+        else:
+            msgs = [{"role": "system", "content": prompt}] + (msgs or [])
+        model_patch["messages"] = msgs
+    else:
+        model_patch["systemPrompt"] = prompt
+
+    if model.get("temperature") is not None:
+        model_patch["temperature"] = model["temperature"]
+    if model.get("maxTokens") is not None:
+        model_patch["maxTokens"] = model["maxTokens"]
+
+    return patch_vapi_assistant(aid, {"model": model_patch})
+
 
 @app.route('/update-agent-prompt', methods=['POST'])
 @login_required
@@ -8364,13 +8435,13 @@ Respond ONLY with valid JSON, no other text."""
         
         # Call AI via the chatbot config
         cfg = get_chatbot_config()
-        provider_name = cfg.get('chatbot_provider', 'deepseek')
+        provider_name = cfg.get('chatbot_provider', 'venice')
         api_key = cfg.get('chatbot_api_key', '')
         
         if not api_key:
-            api_key = os.environ.get('DEEPSEEK_API_KEY', '')
+            api_key = os.environ.get('VENICE_API_KEY', '') or os.environ.get('DEEPSEEK_API_KEY', '') or os.environ.get('XAI_API_KEY', '')
         
-        provider = CHATBOT_PROVIDERS.get(provider_name, CHATBOT_PROVIDERS['deepseek'])
+        provider = CHATBOT_PROVIDERS.get(provider_name, CHATBOT_PROVIDERS['venice'])
         model = cfg.get('chatbot_model', provider['default_model'])
         
         import urllib.request, json as json_module
