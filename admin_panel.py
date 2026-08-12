@@ -24,6 +24,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 # Import Agent API module
 from agent_api import agent_api, init_api_keys_table, generate_api_key, validate_api_key
 from agent_api import api_key_required
+from owner_alerts import notify_owner
 from diazites_prompt import build_diazites_prompt
 
 DB_PATH = "/root/voice-agent-businesses.db"
@@ -3205,6 +3206,14 @@ def create_business():
     
     db.commit()
     
+    # 🔔 Owner alert: new business created in admin (email + SMS)
+    try:
+        notify_owner('signup', name=name, email=request.form.get('email', ''),
+                     phone=request.form.get('phone_number', ''),
+                     plan=plan_label, industry=industry, business_id=bid, source='admin-panel')
+    except Exception:
+        pass
+    
     flash(f'✅ Business "<a href="/admin/business/{bid}" class="underline">{name}</a>" created! ID: <code>{bid}</code>', 'success')
     
     # Send email with login credentials
@@ -3273,7 +3282,7 @@ def send_email(to, subject, body):
         if key:
             payload = {"to": to, "subject": subject, "text": body}
             req = urllib.request.Request(
-                "https://api.agentmail.to/v0/inboxes/diazites@agentmail.to/messages/send",
+                "https://api.agentmail.to/v0/inboxes/aiworkers@agentmail.to/messages/send",
                 data=json.dumps(payload).encode(),
                 headers={"Authorization": "Bearer " + key, "Content-Type": "application/json",
                          "User-Agent": "DiazitesAdmin/1.0"},

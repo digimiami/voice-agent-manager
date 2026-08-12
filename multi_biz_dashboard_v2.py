@@ -96,6 +96,7 @@ campaign_status_cache = {}
 
 from premium_features2 import LANGUAGES
 from agentmail_email import send_appointment_confirmation
+from owner_alerts import notify_owner
 
 INDUSTRY_LIST = [
     {"id": "plumber", "name": "Plumber", "icon": "🔧", "desc": "Never miss emergency calls"},
@@ -1632,6 +1633,10 @@ def api_signup():
         pass
     db.commit()
     
+    # 🔔 Owner alert: new business signup (email + SMS)
+    notify_owner('signup', name=name, email=email, phone=phone,
+                 plan=plan, industry=industry, business_id=bid, source='website')
+    
     # 🎁 Free first number with trial: provision assistant + number in the background
     # (signup returns instantly; the number appears in the Phone Numbers tab shortly)
     threading.Thread(target=provision_first_number, args=(bid,), daemon=True).start()
@@ -1732,6 +1737,10 @@ def api_signup_stripe():
     
     c.execute("""INSERT INTO campaigns (id, business_id, status) VALUES (?, ?, 'idle')""", (cid, bid))
     db.commit()
+    
+    # 🔔 Owner alert: new business signup (email + SMS)
+    notify_owner('signup', name=name, email=email, phone=phone,
+                 plan=plan, industry=industry, business_id=bid, source='website-stripe')
     
     # 🎁 Free first number with trial: provision assistant + number in the background
     threading.Thread(target=provision_first_number, args=(bid,), daemon=True).start()
@@ -2079,6 +2088,13 @@ def stripe_signup_webhook():
                 c.execute("INSERT INTO campaigns (id, business_id, status) VALUES (?, ?, 'idle')", (cid, bid))
                 c.execute("UPDATE pending_signups SET status='completed' WHERE id=?", (pending['id'],))
                 db.commit()
+                
+                # 🔔 Owner alert: payment received for new signup (email + SMS)
+                amt = (session_data.get('amount_total') or 0) / 100
+                notify_owner('payment', name=pending['name'], email=pending['email'],
+                             phone=pending.get('phone', ''), plan=pending['plan'],
+                             amount=amt or pending['price'], business_id=bid,
+                             source='signup-checkout')
                 return 'OK', 200
             
             # Handle phone number purchase ($9.99/mo)
@@ -2089,15 +2105,25 @@ def stripe_signup_webhook():
                           (stripe_session_id, biz_id))
                 db.commit()
                 print(f"✅ Number purchase confirmed for business {biz_id}")
-                # Send welcome credentials (AgentMail email + SMS)
-                try:
-                    send_welcome_credentials(
-                        pending['name'], pending['email'], pending['phone'] or '',
-                        bid, pending['price'], request.host_url, trial=False)
-                except Exception as e:
-                    print(f"Credentials send error (stripe webhook): {e}")
+                # Look up the business for welcome credentials + alert (pending may be None here)
+                biz_row = c.execute("SELECT name, email, phone_number FROM businesses WHERE id=?",
+                                    (biz_id,)).fetchone()
+                if biz_row:
+                    # Send welcome credentials (AgentMail email + SMS)
+                    try:
+                        send_welcome_credentials(
+                            biz_row['name'], biz_row['email'], biz_row['phone_number'] or '',
+                            biz_id, 9.99, request.host_url, trial=False)
+                    except Exception as e:
+                        print(f"Credentials send error (stripe webhook): {e}")
+                    # 🔔 Owner alert: phone number purchase payment (email + SMS)
+                    amt = (session_data.get('amount_total') or 0) / 100
+                    notify_owner('payment', name=biz_row['name'], email=biz_row['email'],
+                                 phone=biz_row['phone_number'] or '', plan='phone-number',
+                                 amount=amt or 9.99, business_id=biz_id,
+                                 source='phone-number-purchase')
                 
-                return jsonify({'received': True, 'business_id': bid})
+                return jsonify({'received': True, 'business_id': biz_id})
         
         return jsonify({'received': True})
     except Exception as e:
@@ -8727,6 +8753,29 @@ def stripe_webhook():
     sig = request.headers.get('Stripe-Signature', '')
     result = handle_stripe_webhook(payload, sig)
     if result:
+        # 🔔 Owner alert: payment received (email + SMS)
+        try:
+            ev = json.loads(payload)
+            sess = ev.get('data', {}).get('object', {}) or {}
+            amt = (sess.get('amount_total') or 0) / 100
+            meta = sess.get('metadata', {}) or {}
+            cust_email = (sess.get('customer_details') or {}).get('email', '') or sess.get('customer_email', '')
+            bid = result.get('business_id') or meta.get('business_id', '')
+            name = ''
+            if bid:
+                _db = get_db()
+                _row = _db.execute("SELECT name, email FROM businesses WHERE id=?", (bid,)).fetchone()
+                _db.close()
+                if _row:
+                    name = _row['name']
+                    cust_email = cust_email or _row['email']
+            if not name:
+                name = cust_email or ('Review Service Lead' if result.get('lead_id') else 'Subscription')
+            notify_owner('payment', name=name, email=cust_email,
+                         plan=meta.get('plan') or (result.get('type') or 'subscription'),
+                         amount=amt, business_id=bid, source='stripe-webhook')
+        except Exception as e:
+            print(f"⚠️ Owner alert (stripe-webhook) error: {e}")
         return jsonify({'received': True})
     return jsonify({'received': False}), 200
 
@@ -9370,9 +9419,10 @@ def stripe_product_webhook():
             import uuid
             db = get_db()
             c = db.cursor()
-            c.execute("SELECT price FROM products WHERE id=?", (product_id,))
+            c.execute("SELECT name, price FROM products WHERE id=?", (product_id,))
             p = c.fetchone()
-            price = p[0] if p else 0
+            price = p[1] if p else 0
+            product_name = p[0] if p else product_id
             
             c.execute("""INSERT OR IGNORE INTO product_orders 
                 (id, product_id, customer_email, amount, stripe_session_id, download_token)
@@ -9380,6 +9430,12 @@ def stripe_product_webhook():
                 (str(uuid.uuid4())[:12], product_id, email, price, session_data.get('id', ''), download_token))
             db.commit()
             db.close()
+            
+            # 🔔 Owner alert: product purchase payment (email + SMS)
+            amt = (session_data.get('amount_total') or 0) / 100
+            notify_owner('payment', name=product_name, email=email,
+                         plan='product', amount=amt or price, business_id='',
+                         source='product-purchase')
     
     return jsonify({'received': True})
 

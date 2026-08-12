@@ -16,6 +16,7 @@ from datetime import datetime, date
 from flask import Flask, Blueprint, jsonify, request, render_template_string
 from functools import wraps
 from diazites_prompt import build_diazites_prompt
+from owner_alerts import notify_owner
 
 DB_PATH = "/root/voice-agent-businesses.db"
 
@@ -588,6 +589,13 @@ def api_create_business(api_key):
     c.execute("INSERT INTO campaigns (id, business_id, status) VALUES (?, ?, 'idle')", (cid, bid))
     db.commit()
     db.close()
+    
+    # 🔔 Owner alert: new business created via API (email + SMS)
+    try:
+        notify_owner('signup', name=name, email=email, phone=phone,
+                     plan=plan, industry=industry, business_id=bid, source='agent-api')
+    except Exception:
+        pass
 
     git_auto_commit(f'created business {name} ({bid})')
     return jsonify({

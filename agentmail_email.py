@@ -3,7 +3,7 @@
 AgentMail Email Integration for Diazites
 =========================================
 Send appointment confirmation emails with .ics calendar invites
-via AgentMail API (diazites@agentmail.to).
+via AgentMail API (aiworkers@agentmail.to — the Diazites inbox).
 
 Usage:
     from agentmail_email import send_appointment_confirmation
@@ -21,8 +21,8 @@ import urllib.request
 from datetime import datetime, timedelta
 
 # ── Config ──
-API_KEY = os.environ.get("AGENTMAIL_API_KEY") or "am_us_40204f4ba2b7915eab6469ef8fcf2c0b8f405342eb0e01d18fe033ae5df69889"
-INBOX = "diazites@agentmail.to"
+API_KEY = os.environ.get("AGENTMAIL_API_KEY") or "«redacted:am_…»"
+INBOX = "aiworkers@agentmail.to"
 API_BASE = "https://api.agentmail.to"
 
 def generate_ics(appointment_time_str, business_name, prospect_name, duration_min=30):
