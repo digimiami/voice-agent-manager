@@ -237,6 +237,7 @@ document.querySelectorAll(".sidebar a").forEach(function(a) {
     <a href="/?tab=squad" class="nav-item {% if tab == 'squad' %}active{% endif %}"><span>🔗</span> Squad</a>
     <a href="/?tab=settings" class="nav-item {% if tab == 'settings' %}active{% endif %}"><span>⚙️</span> Settings</a>
     <a href="/?tab=landing" class="nav-item {% if tab == 'landing' %}active{% endif %}"><span>🌐</span> Landing Page</a>
+    <a href="/blog/" class="nav-item"><span>📝</span> Blog</a>
     <a href="/?tab=calendar" class="nav-item {% if tab == 'calendar' %}active{% endif %}"><span>📅</span> Calendar</a>
     <a href="/?tab=billing" class="nav-item {% if tab == 'billing' %}active{% endif %}"><span>💳</span> Billing</a>
     <a href="/?tab=api-keys" class="nav-item {% if tab == 'api-keys' %}active{% endif %}"><span>🔑</span> API</a>
@@ -380,6 +381,25 @@ document.querySelectorAll(".sidebar a").forEach(function(a) {
     {% endif %}
   </div>
 
+  <!-- 📱 Outbound No-Answer SMS Toggle -->
+  <div class="card mt-6" style="border:1px solid {% if biz_info.sms_missed == '1' %}#4ade8040{% else %}#252533{% endif %}">
+    <div class="flex items-center justify-between">
+      <div>
+        <h3 class="font-bold text-sm">📱 SMS on No-Answer</h3>
+        <p class="text-xs text-[#7a7a8e] mt-1">When your AI dials a prospect and nobody picks up, send them an automated text with your company info so they know who called.</p>
+      </div>
+      <label class="relative inline-flex items-center cursor-pointer" style="flex-shrink:0;margin-left:16px">
+        <input type="checkbox" id="smsMissedToggle" {% if biz_info.sms_missed == '1' %}checked{% endif %} onchange="toggleSmsMissed(this.checked)" class="sr-only peer">
+        <div style="width:44px;height:24px;background:{% if biz_info.sms_missed == '1' %}#4ade80{% else %}#252533{% endif %};border-radius:999px;position:relative;transition:background .2s" id="smsMissedBg">
+          <div style="width:20px;height:20px;background:white;border-radius:50%;position:absolute;top:2px;left:{% if biz_info.sms_missed == '1' %}22px{% else %}2px{% endif %};transition:left .2s" id="smsMissedDot"></div>
+        </div>
+      </label>
+    </div>
+    <div id="smsMissedStatus" class="text-xs mt-2 {% if biz_info.sms_missed == '1' %}text-[#4ade80]{% else %}text-[#5c5c70]{% endif %}">
+      {% if biz_info.sms_missed == '1' %}● ON — Prospects who miss your call get a text with your company info{% else %}○ OFF — Toggle on to auto-text prospects who don't answer{% endif %}
+    </div>
+  </div>
+
   <div class="card mt-6">
     <h3 class="font-bold mb-3">📞 Recent Calls</h3>
     {% if recent_calls %}
@@ -400,6 +420,36 @@ document.querySelectorAll(".sidebar a").forEach(function(a) {
 
   <!-- ======== TAB: LEADS ======== -->
   {% elif tab == 'leads' %}
+  <!-- Recall instructions -->
+  <div style="background: linear-gradient(135deg, #1a1030, #0f0f1e); border: 1px solid #a855f7; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; display: flex; gap: 12px; align-items: flex-start;">
+    <span style="font-size: 1.5rem; flex-shrink: 0;">💡</span>
+    <div>
+      <p style="color: #e0d0ff; font-size: 0.85rem; font-weight: 600; margin: 0 0 4px;">To re-call leads, reset the campaign first</p>
+      <p style="color: #8b8ba0; font-size: 0.78rem; margin: 0; line-height: 1.5;">
+        If your campaign finished or you want to re-dial leads, click <strong style="color: #c084fc;">🔄 Reset</strong> to clear their call status — then hit <strong style="color: #4ade80;">▶ Start Campaign</strong> to begin calling again.
+      </p>
+    </div>
+  </div>
+
+  <!-- 📱 Outbound No-Answer SMS Toggle -->
+  <div class="card mb-6" style="border:1px solid {% if biz_info.sms_missed == '1' %}#4ade8040{% else %}#252533{% endif %}">
+    <div class="flex items-center justify-between">
+      <div>
+        <h3 class="font-bold text-sm">📱 SMS on No-Answer</h3>
+        <p class="text-xs text-[#7a7a8e] mt-1">When your AI dials a prospect and nobody picks up, send them an automated text with your company info so they know who called.</p>
+      </div>
+      <label class="relative inline-flex items-center cursor-pointer" style="flex-shrink:0;margin-left:16px">
+        <input type="checkbox" id="smsMissedToggle" {% if biz_info.sms_missed == '1' %}checked{% endif %} onchange="toggleSmsMissed(this.checked)" class="sr-only peer">
+        <div style="width:44px;height:24px;background:{% if biz_info.sms_missed == '1' %}#4ade80{% else %}#252533{% endif %};border-radius:999px;position:relative;transition:background .2s" id="smsMissedBg">
+          <div style="width:20px;height:20px;background:white;border-radius:50%;position:absolute;top:2px;left:{% if biz_info.sms_missed == '1' %}22px{% else %}2px{% endif %};transition:left .2s" id="smsMissedDot"></div>
+        </div>
+      </label>
+    </div>
+    <div id="smsMissedStatus" class="text-xs mt-2 {% if biz_info.sms_missed == '1' %}text-[#4ade80]{% else %}text-[#5c5c70]{% endif %}">
+      {% if biz_info.sms_missed == '1' %}● ON — Prospects who miss your call get a text with your company info{% else %}○ OFF — Toggle on to auto-text prospects who don't answer{% endif %}
+    </div>
+  </div>
+
   <div class="flex gap-3 mb-6 flex-wrap items-center">
     {% if campaign_status == 'running' %}
     <form method="POST" action="/campaign/stop" onsubmit="return confirm('Stop campaign?')"><button type="submit" class="btn-danger text-xs" style="background:#ef4444;color:white;padding:8px 16px;border-radius:8px;font-weight:600;border:none;cursor:pointer;font-size:12px">⏹ Stop Campaign</button></form>
@@ -414,6 +464,8 @@ document.querySelectorAll(".sidebar a").forEach(function(a) {
     </form>
     <a href="/static/lead_template.csv" download class="btn-secondary text-xs">📄 CSV Template</a>
     <form method="POST" action="/campaign/reset" onsubmit="return confirm('Reset campaign counters?')" class="inline"><button type="submit" class="btn-secondary text-xs">🔄 Reset</button></form>
+    <button onclick="deleteSelectedLeads()" id="deleteSelectedBtn" class="btn-secondary text-xs" style="border-color:#ef4444;color:#f87171" disabled>🗑️ Delete Selected (<span id="selCount">0</span>)</button>
+    <button onclick="deleteAllLeads()" class="btn-danger text-xs" style="background:#ef4444;color:white;padding:8px 16px;border-radius:8px;font-weight:600;border:none;cursor:pointer;font-size:12px">⚠️ Delete All Leads</button>
     <input type="text" id="leadSearch" placeholder="🔍 Search by name, phone, or business..." style="width:260px;max-width:100%;margin-left:auto" oninput="filterLeads(this.value)">
   </div>
 
@@ -421,10 +473,11 @@ document.querySelectorAll(".sidebar a").forEach(function(a) {
     <h3 class="font-bold mb-3">All Leads ({{ stats.leads_total }})</h3>
     {% if leads %}
     <table id="leadsTable">
-      <thead><tr><th>Name</th><th>Phone</th><th>Business</th><th>Status</th><th>Added</th><th>Actions</th></tr></thead>
+      <thead><tr><th style="width:32px"><input type="checkbox" id="selectAllLeads" onclick="toggleSelectAllLeads(this)" title="Select all visible"></th><th>Name</th><th>Phone</th><th>Business</th><th>Status</th><th>Added</th><th>Actions</th></tr></thead>
       <tbody>
       {% for lead in leads %}
       <tr class="lead-row" data-search="{{ (lead.name or '').lower() }} {{ (lead.business_name or '').lower() }} {{ (lead.phone or '') }}">
+        <td><input type="checkbox" class="lead-check" value="{{ lead.id }}" onclick="updateSelCount()"></td>
         <td class="font-medium">{{ lead.name or lead.business_name or 'Prospect' }}{% if lead.notes and lead.notes.strip() %} <span class="text-xs text-[#a855f7]" title="Has context knowledge">📝</span>{% endif %}</td>
         <td class="font-mono text-xs">{{ (lead.phone or '')[:16] }}</td>
         <td class="text-xs text-[#7a7a8e]">{{ lead.business_name or '-' }}</td>
@@ -1065,6 +1118,33 @@ setTimeout(refreshMonitor, 500);
       <h2 class="text-lg font-bold">🤖 AI Agents</h2>
       <button onclick="showCreateAgent()" class="btn-primary text-xs" id="addAgentBtn">+ New Agent</button>
     </div>
+
+    <!-- How agents work — info card -->
+    <div style="background: linear-gradient(135deg, #1a1030, #0f0f1e); border: 1px solid #a855f7; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px;">
+      <p style="color: #e0d0ff; font-size: 0.85rem; font-weight: 600; margin: 0 0 8px;">💡 How Agents Work & Why You Want More Than One</p>
+      <div style="color: #8b8ba0; font-size: 0.78rem; line-height: 1.6;">
+        <p style="margin: 0 0 6px;">Each agent is a <strong style="color: #c084fc;">standalone AI employee</strong> with its own phone number, voice, script, and knowledge — they work independently, 24/7.</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+          <div style="background: rgba(168,85,247,0.08); border-radius: 8px; padding: 10px;">
+            <span style="color: #4ade80; font-size: 0.75rem; font-weight: 600;">🏢 Multiple Departments</span>
+            <p style="margin: 4px 0 0; font-size: 0.7rem;">Sales, support, and service — each gets its own agent trained for that role.</p>
+          </div>
+          <div style="background: rgba(168,85,247,0.08); border-radius: 8px; padding: 10px;">
+            <span style="color: #4ade80; font-size: 0.75rem; font-weight: 600;">🌐 Multiple Locations</span>
+            <p style="margin: 4px 0 0; font-size: 0.7rem;">Different area codes and local numbers for each city you serve.</p>
+          </div>
+          <div style="background: rgba(168,85,247,0.08); border-radius: 8px; padding: 10px;">
+            <span style="color: #4ade80; font-size: 0.75rem; font-weight: 600;">🔀 Call Transfer</span>
+            <p style="margin: 4px 0 0; font-size: 0.7rem;">Agents can transfer calls to each other — sales agent books, then hands off to support.</p>
+          </div>
+          <div style="background: rgba(168,85,247,0.08); border-radius: 8px; padding: 10px;">
+            <span style="color: #4ade80; font-size: 0.75rem; font-weight: 600;">📊 Better Insights</span>
+            <p style="margin: 4px 0 0; font-size: 0.7rem;">Track which agent converts best, which hours are busiest — optimize independently.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <p class="text-xs text-[#7a7a8e] mb-4">Each agent has its own phone number, voice, script, and knowledge base.</p>
 
     <!-- Plan limit meter -->
@@ -1311,21 +1391,19 @@ setTimeout(refreshMonitor, 500);
   }
 
   function buyAgentNumber(aid, name) {
-    if (!confirm('Buy a new phone number for "' + name + '"? This costs $1-2/mo and is assigned to this agent instantly.')) return;
-    var btn = event.target;
-    btn.disabled = true;
-    btn.textContent = '⏳ Buying...';
-    fetch('/api/agents/buy-number', {
+    // Stripe checkout for $9.99 phone number
+    fetch('/api/buy-phone-checkout', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({agent_id: aid, area_code: ''})
+      body: JSON.stringify({})
     }).then(function(r){return r.json()}).then(function(d){
-      if (d.success) { alert(d.message); loadAgents(); }
-      else { alert(d.error || 'Error buying number'); btn.disabled = false; btn.textContent = '📱 Get Number'; }
+      if (d.success && d.checkout_url) {
+        window.location.href = d.checkout_url;
+      } else {
+        alert(d.error || 'Checkout failed. Please try again.');
+      }
     }).catch(function(){
-      alert('Error buying number');
-      btn.disabled = false;
-      btn.textContent = '📱 Get Number';
+      alert('Error starting checkout. Please try again.');
     });
   }
 
@@ -1335,23 +1413,47 @@ setTimeout(refreshMonitor, 500);
     btn.disabled = true;
     btn.textContent = '⏳ Generating...';
     status.className = 'text-xs mt-1 text-[#c084fc]';
-    status.textContent = 'Generating knowledge base...';
+    status.textContent = 'Generating knowledge base + scripts via AI...';
     status.style.display = 'block';
 
+    // Step 1: Generate KB
     fetch('/api/generate-kb', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({type: 'outbound'})
+      body: JSON.stringify({method: 'venice', kind: 'kb', type: 'outbound'})
     }).then(function(r){return r.json()}).then(function(d){
-      status.textContent = d.success ? '✅ KB generated!' : (d.error || 'Failed');
-      status.style.color = d.success ? '#4ade80' : '#ef4444';
-      if (d.success && d.knowledge_base) {
-        document.getElementById('agentKB').value = d.knowledge_base;
+      if (d.success) {
+        var kbContent = d.knowledge_base || d.content || '';
+        if (kbContent) {
+          document.getElementById('agentKB').value = kbContent;
+          status.textContent = '✅ KB generated! Now generating inbound script...';
+        } else {
+          status.textContent = '⚠️ KB empty. Generating script...';
+          status.style.color = '#f59e0b';
+        }
+      } else {
+        status.textContent = '⚠️ KB failed: ' + (d.message || d.error || '');
+        status.style.color = '#f59e0b';
+      }
+      // Step 2: Generate inbound script
+      return fetch('/api/generate-kb', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({method: 'venice', kind: 'script', type: 'inbound'})
+      });
+    }).then(function(r){return r.json()}).then(function(d){
+      if (d.success && d.content) {
+        document.getElementById('agentScript').value = d.content;
+        status.textContent = '✅ KB + Scripts generated!';
+        status.style.color = '#4ade80';
+      } else {
+        status.textContent = status.textContent.replace('Now generating inbound script...', '') + ' Script generation failed.';
+        status.style.color = '#f59e0b';
       }
       btn.disabled = false;
       btn.textContent = '🤖 Auto-Generate KB';
     }).catch(function(){
-      status.textContent = '❌ Error generating KB';
+      status.textContent = '❌ Error generating';
       status.style.color = '#ef4444';
       btn.disabled = false;
       btn.textContent = '🤖 Auto-Generate KB';
@@ -1380,274 +1482,37 @@ setTimeout(refreshMonitor, 500);
   <!-- ======== TAB: SQUAD ======== -->
   {% elif tab == 'squad' %}
   <style>
-    .squad-card { background: #0f0f1e; border: 1px solid #1a1a33; border-radius: 16px; padding: 20px; margin-bottom: 16px; transition: all 0.2s; }
-    .squad-card:hover { border-color: #a855f7; }
-    .squad-member-tag { display: inline-flex; align-items: center; gap: 6px; background: #1a1a33; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; }
-    .squad-empty { text-align: center; padding: 60px 20px; color: #5c5c70; }
-    .btn-sm { padding: 6px 14px; font-size: 0.75rem; border-radius: 8px; cursor: pointer; border: none; }
-    .btn-purple { background: #a855f7; color: white; }
-    .btn-purple:hover { background: #9333ea; }
-    .btn-outline { background: transparent; border: 1px solid #333; color: #a0a0b8; }
-    .btn-outline:hover { border-color: #a855f7; color: #a855f7; }
-    .btn-danger-squad { background: transparent; border: 1px solid #dc2626; color: #dc2626; }
-    .btn-danger-squad:hover { background: #dc2626; color: white; }
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
-    .modal-overlay.show { display: flex; }
-    .modal-box { background: #12121a; border: 1px solid #252533; border-radius: 16px; padding: 24px; width: 90%; max-width: 480px; max-height: 80vh; overflow-y: auto; }
-    .squad-agent-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 10px; margin-bottom: 6px; background: #0a0a14; }
-    .squad-agent-row:hover { background: #1a1a2e; }
-    .vapi-badge { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; }
-    .vapi-ok { background: rgba(34,197,94,0.15); color: #22c55e; }
-    .vapi-no { background: rgba(234,179,8,0.15); color: #eab308; }
+    .coming-soon-card {
+      text-align: center;
+      padding: 80px 20px;
+      background: linear-gradient(135deg, #0f0f1e 0%, #1a1030 100%);
+      border: 2px dashed #a855f7;
+      border-radius: 20px;
+      max-width: 500px;
+      margin: 40px auto;
+    }
+    .coming-soon-card .icon { font-size: 4rem; margin-bottom: 16px; }
+    .coming-soon-card h2 { font-size: 1.5rem; font-weight: 700; color: #e0d0ff; margin-bottom: 8px; }
+    .coming-soon-card p { color: #8b8ba0; font-size: 0.9rem; line-height: 1.6; }
+    .coming-soon-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #a855f7, #7c3aed);
+      color: white;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-top: 16px;
+      letter-spacing: 0.05em;
+    }
   </style>
 
-  <div class="flex items-center justify-between mb-6">
-    <div>
-      <h3 class="font-bold text-lg">🔗 Agent Squads</h3>
-      <p class="text-xs text-[#7a7a8e] mt-1">Group agents together to enable call transfers between them</p>
-    </div>
-    <button onclick="showCreateSquadModal()" class="btn-sm btn-purple">+ New Squad</button>
+  <div class="coming-soon-card">
+    <div class="icon">🔗</div>
+    <h2>Agent Squads</h2>
+    <p>Group your AI agents into squads so they can transfer calls and work together as a team. This feature is being built right now!</p>
+    <div class="coming-soon-badge">✨ COMING SOON</div>
   </div>
-
-  <div id="squadsContainer">
-    <div class="text-center text-[#5c5c70] py-8">Loading squads...</div>
-  </div>
-
-  <!-- Create Squad Modal -->
-  <div id="createSquadModal" class="modal-overlay" onclick="if(event.target===this)closeCreateModal()">
-    <div class="modal-box">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="font-bold">🆕 New Squad</h3>
-        <button onclick="closeCreateModal()" class="text-[#7a7a8e] hover:text-white text-xl">&times;</button>
-      </div>
-      <input id="newSquadName" type="text" placeholder="Squad Name (Optional)" class="w-full mb-4" style="background:#0a0a14;border:1px solid #252533;border-radius:8px;padding:10px;color:white;">
-      <label class="text-xs text-[#7a7a8e] block mb-2">Add Members (Optional — select agents to include)</label>
-      <div id="createAgentList" class="max-h-48 overflow-y-auto mb-4 space-y-1">
-        <div class="text-xs text-[#5c5c70]">Loading agents...</div>
-      </div>
-      <button onclick="createSquad()" class="btn-sm btn-purple w-full">Create Squad</button>
-    </div>
-  </div>
-
-  <!-- Detail Modal -->
-  <div id="detailSquadModal" class="modal-overlay" onclick="if(event.target===this)closeDetailModal()">
-    <div class="modal-box">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="font-bold" id="detailSquadName">Squad Details</h3>
-        <button onclick="closeDetailModal()" class="text-[#7a7a8e] hover:text-white text-xl">&times;</button>
-      </div>
-      <div id="detailSquadMembers" class="mb-4 space-y-1"></div>
-      <div class="border-t border-[#1a1a33] pt-4 mb-4">
-        <label class="text-xs text-[#7a7a8e] block mb-2">➕ Add Agent</label>
-        <div id="detailAddAgentList" class="max-h-40 overflow-y-auto mb-2 space-y-1"></div>
-      </div>
-      <div class="flex gap-2">
-        <button onclick="deleteCurrentSquad()" class="btn-sm btn-danger-squad">🗑 Delete Squad</button>
-        <button onclick="closeDetailModal()" class="btn-sm btn-outline ml-auto">Close</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    var currentSquads = [];
-    var currentDetailSquadId = null;
-
-    function loadSquads() {
-      fetch('/api/squads/list')
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          currentSquads = data.squads || [];
-          renderSquads();
-        });
-    }
-
-    function renderSquads() {
-      var container = document.getElementById('squadsContainer');
-      if (!currentSquads.length) {
-        container.innerHTML = '<div class="squad-empty">🎯 No squads yet. <br><span class="text-xs">Create one to enable call transfers between agents!</span></div>';
-        return;
-      }
-      var html = '';
-      currentSquads.forEach(function(s) {
-        var memberList = (s.members || []).map(function(m) {
-          var badgeClass = m.vapi_assistant_id ? 'vapi-ok' : 'vapi-no';
-          var badgeText = m.vapi_assistant_id ? 'VAPI ✓' : 'No VAPI';
-          return '<span class="squad-member-tag">🤖 ' + escHtml(m.name) + ' <span class="vapi-badge ' + badgeClass + '">' + badgeText + '</span></span>';
-        }).join(' ') || '<span class="text-xs text-[#5c5c70]">No members yet</span>';
-
-        html += '<div class="squad-card">' +
-          '<div class="flex items-center justify-between mb-3">' +
-            '<div>' +
-              '<h4 class="font-semibold">' + escHtml(s.name || 'Unnamed Squad') + '</h4>' +
-              '<span class="text-xs text-[#5c5c70]">' + s.member_count + ' agent(s) • ' + (s.vapi_squad_id ? '🔗 VAPI synced' : '⚠️ Not synced') + '</span>' +
-            '</div>' +
-            '<button onclick="openDetailModal(\'' + s.id + '\')" class="btn-sm btn-outline">Manage</button>' +
-          '</div>' +
-          '<div class="flex flex-wrap gap-2">' + memberList + '</div>' +
-        '</div>';
-      });
-      container.innerHTML = html;
-    }
-
-    function showCreateSquadModal() {
-      document.getElementById('createSquadModal').classList.add('show');
-      document.getElementById('newSquadName').value = '';
-      fetch('/api/squads/list')
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          var agents = data.available_agents || [];
-          var html = '';
-          if (!agents.length) {
-            html = '<div class="text-xs text-[#5c5c70] p-2">No agents available. Create agents first.</div>';
-          } else {
-            agents.forEach(function(a) {
-              html += '<label class="squad-agent-row" style="cursor:pointer">' +
-                '<span>🤖 ' + escHtml(a.name) + '</span>' +
-                '<span class="vapi-badge ' + (a.vapi_assistant_id ? 'vapi-ok' : 'vapi-no') + '">' + (a.vapi_assistant_id ? 'VAPI ✓' : 'No VAPI') + '</span>' +
-                '<input type="checkbox" value="' + a.id + '" class="create-agent-check" style="accent-color:#a855f7">' +
-              '</label>';
-            });
-          }
-          document.getElementById('createAgentList').innerHTML = html;
-        });
-    }
-
-    function closeCreateModal() {
-      document.getElementById('createSquadModal').classList.remove('show');
-    }
-
-    function createSquad() {
-      var name = document.getElementById('newSquadName').value.trim();
-      var checks = document.querySelectorAll('.create-agent-check:checked');
-      var agentIds = [];
-      checks.forEach(function(c) { agentIds.push(c.value); });
-
-      fetch('/api/squads/create', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({name: name, agent_ids: agentIds})
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (d.success) {
-          closeCreateModal();
-          loadSquads();
-        } else {
-          alert('Error: ' + (d.error || 'Unknown'));
-        }
-      });
-    }
-
-    function openDetailModal(squadId) {
-      currentDetailSquadId = squadId;
-      var squad = null;
-      currentSquads.forEach(function(s) { if (s.id === squadId) squad = s; });
-      if (!squad) return;
-
-      document.getElementById('detailSquadName').textContent = squad.name || 'Unnamed Squad';
-      document.getElementById('detailSquadModal').classList.add('show');
-
-      var members = squad.members || [];
-      var mhtml = '';
-      if (!members.length) {
-        mhtml = '<div class="text-xs text-[#5c5c70] p-2">No members yet</div>';
-      } else {
-        members.forEach(function(m) {
-          mhtml += '<div class="squad-agent-row">' +
-            '<span>🤖 ' + escHtml(m.name) + '</span>' +
-            '<span class="vapi-badge ' + (m.vapi_assistant_id ? 'vapi-ok' : 'vapi-no') + '">' + (m.vapi_assistant_id ? 'VAPI ✓' : 'No VAPI') + '</span>' +
-            '<button onclick="removeMember(\'' + m.id + '\')" class="btn-sm btn-danger-squad" style="padding:3px 8px;font-size:0.65rem">✕</button>' +
-          '</div>';
-        });
-      }
-      document.getElementById('detailSquadMembers').innerHTML = mhtml;
-
-      fetch('/api/squads/list')
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          var allAgents = data.available_agents || [];
-          var memberIds = members.map(function(m) { return m.id; });
-          var available = allAgents.filter(function(a) { return memberIds.indexOf(a.id) === -1; });
-          var ahtml = '';
-          if (!available.length) {
-            ahtml = '<div class="text-xs text-[#5c5c70]">All agents are already in this squad</div>';
-          } else {
-            available.forEach(function(a) {
-              ahtml += '<div class="squad-agent-row">' +
-                '<span>🤖 ' + escHtml(a.name) + '</span>' +
-                '<span class="vapi-badge ' + (a.vapi_assistant_id ? 'vapi-ok' : 'vapi-no') + '">' + (a.vapi_assistant_id ? 'VAPI ✓' : 'No VAPI') + '</span>' +
-                '<button onclick="addMember(\'' + a.id + '\')" class="btn-sm btn-purple" style="padding:3px 10px;font-size:0.65rem">+ Add</button>' +
-              '</div>';
-            });
-          }
-          document.getElementById('detailAddAgentList').innerHTML = ahtml;
-        });
-    }
-
-    function closeDetailModal() {
-      document.getElementById('detailSquadModal').classList.remove('show');
-      currentDetailSquadId = null;
-    }
-
-    function addMember(agentId) {
-      if (!currentDetailSquadId) return;
-      fetch('/api/squads/add-member', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({squad_id: currentDetailSquadId, agent_id: agentId})
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (d.success) {
-          loadSquads();
-          setTimeout(function() { openDetailModal(currentDetailSquadId); }, 300);
-        } else {
-          alert('Error: ' + (d.error || 'Unknown'));
-        }
-      });
-    }
-
-    function removeMember(agentId) {
-      if (!confirm('Remove this agent from the squad?')) return;
-      fetch('/api/squads/remove-member', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({squad_id: currentDetailSquadId, agent_id: agentId})
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (d.success) {
-          loadSquads();
-          setTimeout(function() { openDetailModal(currentDetailSquadId); }, 300);
-        } else {
-          alert('Error: ' + (d.error || 'Unknown'));
-        }
-      });
-    }
-
-    function deleteCurrentSquad() {
-      if (!confirm('Delete this squad? This cannot be undone.')) return;
-      fetch('/api/squads/delete/' + currentDetailSquadId, { method: 'DELETE' })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-          if (d.success) {
-            closeDetailModal();
-            loadSquads();
-          } else {
-            alert('Error: ' + (d.error || 'Unknown'));
-          }
-        });
-    }
-
-    function escHtml(s) {
-      var d = document.createElement('div');
-      d.textContent = s;
-      return d.innerHTML;
-    }
-
-    loadSquads();
-  </script>
-
   <!-- ======== TAB: SETTINGS ======== -->
   {% elif tab == 'settings' %}
   <div class="grid md:grid-cols-2 gap-6">
@@ -3502,6 +3367,11 @@ function editLead(id,name,phone,business,notes){document.getElementById('editLea
 function closeEditLeadModal(){document.getElementById('editLeadModal').classList.remove('show');}
 function submitEditLead(){var id=document.getElementById('editLeadId').value;var name=document.getElementById('editLeadName').value.trim();var phone=document.getElementById('editLeadPhone').value.trim();var biz=document.getElementById('editLeadBiz').value.trim();var notes=document.getElementById('editLeadNotes');var err=document.getElementById('editLeadError');var btn=document.getElementById('editLeadBtn');if(!id||!phone){err.textContent='Phone required';err.classList.remove('hidden');return}btn.disabled=true;btn.textContent='Saving...';fetch('/lead/update',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},body:'id='+encodeURIComponent(id)+'&name='+encodeURIComponent(name)+'&phone='+encodeURIComponent(phone)+'&business_name='+encodeURIComponent(biz)+'&notes='+encodeURIComponent(notes?notes.value.trim():'')}).then(function(r){return r.json()}).then(function(d){btn.disabled=false;btn.textContent='💾 Save';if(d.success){alert(d.message);closeEditLeadModal();location.reload()}else{err.textContent=d.message;err.classList.remove('hidden')}}).catch(function(){btn.disabled=false;btn.textContent='💾 Save';err.textContent='Network error';err.classList.remove('hidden')});}
 function filterLeads(val){var q=val.toLowerCase().trim();var rows=document.querySelectorAll('.lead-row');var visible=0;rows.forEach(function(r){var search=r.getAttribute('data-search')||'';if(!q||search.indexOf(q)!==-1){r.style.display='';visible++}else{r.style.display='none'}});document.getElementById('noLeadsMsg').classList.toggle('hidden',visible>0);}
+// Bulk lead delete
+function updateSelCount(){var n=document.querySelectorAll('.lead-check:checked').length;var el=document.getElementById('selCount');var btn=document.getElementById('deleteSelectedBtn');if(el)el.textContent=n;if(btn)btn.disabled=n===0;}
+function toggleSelectAllLeads(cb){document.querySelectorAll('.lead-row').forEach(function(r){if(r.style.display!=='none'){var ch=r.querySelector('.lead-check');if(ch)ch.checked=cb.checked;}});updateSelCount();}
+function deleteSelectedLeads(){var ids=[];document.querySelectorAll('.lead-check:checked').forEach(function(c){ids.push(c.value)});if(!ids.length){alert('No leads selected');return;}if(!confirm('Delete '+ids.length+' selected lead(s)? This cannot be undone.'))return;fetch('/lead/delete-selected',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids:ids})}).then(function(r){return r.json()}).then(function(d){alert(d.message||'Done');if(d.success)location.reload()}).catch(function(){alert('Network error');});}
+function deleteAllLeads(){if(!confirm('Delete ALL leads for this business? This cannot be undone.'))return;if(!confirm('Are you SURE? All '+document.querySelectorAll('.lead-row').length+' leads will be permanently deleted.'))return;fetch('/lead/delete-all',{method:'POST'}).then(function(r){return r.json()}).then(function(d){alert(d.message||'Done');if(d.success)location.reload()}).catch(function(){alert('Network error');});}
 // Call History functions
 function toggleRecording(id,url){var p=document.getElementById('rec-player-'+id);var btn=document.getElementById('rec-btn-'+id);if(p.classList.contains('hidden')){p.classList.remove('hidden');btn.textContent='🔊 Playing...';p.querySelector('audio').play()}else{p.classList.add('hidden');btn.textContent='🔊 Play Recording';p.querySelector('audio').pause();p.querySelector('audio').currentTime=0}}
 function copyText(txt,btn){navigator.clipboard.writeText(txt).then(()=>{if(btn){var o=btn.textContent;btn.textContent='✅ Copied';setTimeout(()=>btn.textContent=o,1500)}})}
@@ -3676,6 +3546,31 @@ document.addEventListener('visibilitychange', function() {
   else callingInterval = setInterval(refreshCallingStatus, 4000);
 });
 setTimeout(refreshCallingStatus, 300);
+
+function toggleSmsMissed(enabled) {
+  var formData = new FormData();
+  formData.append('enabled', enabled ? '1' : '0');
+  fetch('/api/toggle-sms-missed', {method:'POST', body:formData})
+    .then(function(r){return r.json()})
+    .then(function(d){
+      if (d.success) {
+        var bg = document.getElementById('smsMissedBg');
+        var dot = document.getElementById('smsMissedDot');
+        var status = document.getElementById('smsMissedStatus');
+        if (enabled) {
+          bg.style.background = '#4ade80';
+          dot.style.left = '22px';
+          status.textContent = '● ON — Prospects who miss your call get a text with your company info';
+          status.style.color = '#4ade80';
+        } else {
+          bg.style.background = '#252533';
+          dot.style.left = '2px';
+          status.textContent = '○ OFF — Toggle on to auto-text prospects who don\'t answer';
+          status.style.color = '#5c5c70';
+        }
+      }
+    });
+}
 </script>
 
 </body>

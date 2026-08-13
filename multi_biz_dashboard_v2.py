@@ -28,6 +28,7 @@ import urllib.request
 from datetime import datetime, date, timedelta
 from pathlib import Path
 from flask import Flask, render_template_string, jsonify, request, redirect, session, url_for, send_file, flash, make_response
+from urllib.parse import quote as _urlquote
 from functools import wraps
 import secrets
 from diazites_prompt import build_diazites_prompt
@@ -72,20 +73,13 @@ def api_ga_config():
         return jsonify({'ga_id': '', 'sc_key': ''})
 
 def gsc_meta_tag():
-    """Server-side Google Search Console + GA4 tracking (no JS fetch needed)."""
+    """Server-side Google Search Console verification meta tag (no JS needed)."""
     try:
         with open(GA_CONFIG_PATH) as f:
             cfg = json.load(f)
-        sc_key = cfg.get('sc_key', '').strip()
-        ga_id = cfg.get('ga_id', '').strip()
-        
-        parts = []
-        if sc_key:
-            parts.append(f'<meta name="google-site-verification" content="{sc_key}" />')
-        if ga_id and ga_id.startswith('G-'):
-            parts.append(f'''<script async src="https://www.googletagmanager.com/gtag/js?id={ga_id}"></script>
-<script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments)}}gtag('js',new Date());gtag('config','{ga_id}');</script>''')
-        return '\n'.join(parts)
+        key = cfg.get('sc_key', '').strip()
+        if key:
+            return f'<meta name="google-site-verification" content="{key}" />'
     except Exception:
         pass
     return ''
@@ -96,7 +90,6 @@ campaign_status_cache = {}
 
 from premium_features2 import LANGUAGES
 from agentmail_email import send_appointment_confirmation
-from owner_alerts import notify_owner
 
 INDUSTRY_LIST = [
     {"id": "plumber", "name": "Plumber", "icon": "🔧", "desc": "Never miss emergency calls"},
@@ -573,7 +566,7 @@ body{background:#08080f;color:#f1f1f5;overflow-x:hidden}
         <ul class="text-left space-y-3 text-sm mb-8">
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> 2 AI Voice Agents</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> 2 Phone Numbers</li>
-          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> <strong>550</strong> Call Minutes</li>
+          <li class="flex items-center gap-2"><span class="text-green-400">✓</span> <strong>1,000</strong> Call Minutes</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Advanced Analytics & Reports</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Priority Support</li>
           <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Outbound Campaigns</li>
@@ -776,6 +769,8 @@ function submitSignup(e) {
 </html>"""
 
 LANDING_PAGE = open("/root/voice-agent-manager/landing_page_v2.html").read()
+AUTO_LANDING = open("/root/voice-agent-manager/auto_landing.html").read()
+RESTAURANT_LANDING = open('/root/voice-agent-manager/restaurant_landing.html').read()
 
 LOGIN_FORM = """<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -814,6 +809,49 @@ def get_db():
     db = sqlite3.connect(DB_PATH)
     db.row_factory = sqlite3.Row
     return db
+
+# ── Tracked short links (/l/<code>) ──
+@app.route('/l/<code>')
+def link_redirect(code):
+    """High-speed 302 redirect for tracked short links + click analytics logging."""
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    try:
+        link = db.execute("SELECT * FROM tracked_links WHERE code = ?", (code,)).fetchone()
+        if not link:
+            return "Link not found", 404
+        # Build final URL with UTM params (only non-empty ones)
+        final = link['url']
+        utms = []
+        for k in ('utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'):
+            v = (link[k] or '').strip()
+            if v:
+                utms.append(f"{k}={_urlquote(v)}")
+        if utms:
+            sep = '&' if '?' in final else '?'
+            final = final + sep + '&'.join(utms)
+        # Log the click (fire-and-forget style: fast single insert)
+        ua = request.headers.get('User-Agent', '')[:300]
+        ref = request.referrer or ''
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+        db.execute(
+            "INSERT INTO link_clicks (link_id, ip, ua, referrer) VALUES (?,?,?,?)",
+            (link['id'], ip, ua, ref[:300]),
+        )
+        db.execute("UPDATE tracked_links SET clicks = clicks + 1 WHERE id = ?", (link['id'],))
+        db.commit()
+        return redirect(final, code=302)
+    except Exception as e:
+        # Never break the redirect on logging failure
+        import traceback
+        print(f"[LINK-REDIRECT-ERR] {type(e).__name__}: {e}", flush=True)
+        traceback.print_exc()
+        try:
+            return redirect(final, code=302)
+        except Exception:
+            return "Error", 500
+    finally:
+        db.close()
 
 # ── User (business owner) TOTP 2FA ──
 USER_2FA_PATH = "/root/voice-agent-manager/user_2fa.json"
@@ -923,36 +961,10 @@ def admin_required(f):
 
 @app.route('/')
 def index():
-    # Server-side GA4 tracking via /g/collect (Hostinger strips client-side scripts)
-    cid = request.cookies.get('_ga_cid', str(uuid.uuid4()))
-    _ga_url = request.url
-    _ga_ua = request.headers.get("User-Agent", "Diazites/1.0")
-    try:
-        import threading
-        def _send_ga():
-            try:
-                import urllib.request as _ur
-                ga_url = "https://www.google-analytics.com/g/collect"
-                params = {
-                    "v": "2",
-                    "tid": "G-KL7YJ57LR3",
-                    "cid": cid,
-                    "en": "page_view",
-                    "dl": _ga_url,
-                    "dt": "Diazites Landing",
-                    "ul": "en-us",
-                }
-                body = "&".join(f"{k}={_ur.quote(str(v))}" for k, v in params.items()).encode()
-                _ur.urlopen(_ur.Request(ga_url, data=body, headers={
-                    "User-Agent": _ga_ua,
-                    "Content-Type": "application/x-www-form-urlencoded"
-                }), timeout=3)
-            except Exception:
-                pass
-        threading.Thread(target=_send_ga, daemon=True).start()
-    except Exception:
-        pass
-    
+    if request.host.startswith('auto.'):
+        return render_template_string(AUTO_LANDING.replace('<!-- GSC_META -->', gsc_meta_tag()))
+    if request.host.startswith('restaurants.'):
+        return render_template_string(RESTAURANT_LANDING.replace('<!-- GSC_META -->', gsc_meta_tag()))
     if 'business_id' in session:
         return dashboard()
     # Affiliate tracking: ?ref=CODE sets a 30-day cookie + records a click
@@ -961,7 +973,6 @@ def index():
     if aff:
         resp = make_response(render_template_string(LANDING_PAGE.replace('<!-- GSC_META -->', gsc_meta_tag())))
         resp.set_cookie('diazites_ref', aff['code'], max_age=60 * 60 * 24 * 90, samesite='Lax')
-        resp.set_cookie('_ga_cid', cid, max_age=60*60*24*365*2)
         try:
             db = get_db()
             c = db.cursor()
@@ -973,9 +984,7 @@ def index():
         except Exception:
             pass
         return resp
-    resp = make_response(render_template_string(LANDING_PAGE.replace('<!-- GSC_META -->', gsc_meta_tag())))
-    resp.set_cookie('_ga_cid', cid, max_age=60*60*24*365*2, samesite='Lax')
-    return resp
+    return render_template_string(LANDING_PAGE.replace('<!-- GSC_META -->', gsc_meta_tag()))
 
 
 LEGAL_PAGES = {
@@ -992,7 +1001,7 @@ LEGAL_PAGES = {
 <h3 class="text-lg font-bold mt-6 mb-2">3. Data Storage & Security</h3>
 <p class="mb-3">Your data is stored securely with encryption at rest and in transit. We retain call transcripts for up to 90 days unless you request deletion.</p>
 <h3 class="text-lg font-bold mt-6 mb-2">4. Third-Party Services</h3>
-<p class="mb-3">We use Stripe for payment processing, Eleven Labs for text-to-speech, and leading voice-infrastructure partners to power our AI calling features. Each service has its own privacy policy governing data handling.</p>
+<p class="mb-3">We use Stripe for payment processing, VAPI for voice agent infrastructure, and Eleven Labs for text-to-speech. Each service has its own privacy policy governing data handling.</p>
 <h3 class="text-lg font-bold mt-6 mb-2">5. Your Rights</h3>
 <p class="mb-3">You can request access, correction, or deletion of your data at any time by contacting support.</p>
 <p class="mt-6"><a href="/" class="text-[#818cf8] hover:text-[#a855f7]">← Back to Home</a></p>
@@ -1083,29 +1092,6 @@ def refund_page():
 def signup_redirect():
     return redirect('/#signup-form')
 
-# === BLOG ROUTES ===
-import os as _os
-BLOG_DIR = '/root/voice-agent-manager/static/blog'
-
-@app.route('/blog/')
-@app.route('/blog')
-def blog_index():
-    """Serve blog index page."""
-    index_path = _os.path.join(BLOG_DIR, 'index.html')
-    if _os.path.exists(index_path):
-        with open(index_path) as f:
-            return f.read()
-    return '<h1>Blog</h1><p>Coming soon!</p>', 200
-
-@app.route('/blog/<path:filename>')
-def blog_article(filename):
-    """Serve individual blog articles."""
-    filepath = _os.path.join(BLOG_DIR, filename)
-    if _os.path.exists(filepath) and filepath.endswith('.html'):
-        with open(filepath) as f:
-            return f.read()
-    return '<h1>404</h1><p>Article not found</p>', 404
-
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
     # ── Step 2: TOTP / backup code ──
@@ -1170,85 +1156,6 @@ def api_change_login_id():
     db.commit()
     db.close()
     return jsonify({'success': True, 'message': f'✅ Your User ID is now: {new_id}'})
-
-
-@app.route('/api/cancel-trial', methods=['POST'])
-@login_required
-def api_cancel_trial():
-    """Cancel the free trial so the user is NEVER charged.
-
-    - Cancels the Stripe subscription at period end (Stripe trial subs auto-charge
-      at trial end unless cancelled).
-    - Flags the business as trial_cancelled (no future charge attempts).
-    - Access keeps working until trial_end. Confirmation email sent.
-    """
-    bid = session['business_id']
-    db = get_db()
-    c = db.cursor()
-    biz = c.execute("SELECT * FROM businesses WHERE id=?", (bid,)).fetchone()
-    if not biz:
-        db.close()
-        return jsonify({'success': False, 'error': 'Not found'}), 404
-
-    sub_status = str(biz['subscription_status'] or '')
-    status = str(biz['status'] or '')
-    if sub_status == 'cancelled' or status == 'trial_cancelled':
-        db.close()
-        return jsonify({'success': True, 'message': 'Your trial was already cancelled — you will not be charged.'})
-
-    # Still inside the trial window?
-    try:
-        te = datetime.fromisoformat(str(biz['trial_end'] or '').replace('Z', ''))
-        if te.tzinfo is not None:
-            te = te.replace(tzinfo=None)
-        in_trial = te > datetime.utcnow()
-    except Exception:
-        in_trial = False
-    if not in_trial:
-        db.close()
-        return jsonify({'success': False,
-                        'error': 'Your trial has already ended. Contact support at pablo@diazites.online to cancel billing.'}), 400
-
-    # Cancel any Stripe subscription (prevents the auto-charge at trial end)
-    sub_id = biz['stripe_subscription_id'] or ''
-    if sub_id:
-        try:
-            from premium_features import load_stripe_config
-            import stripe as _stripe
-            cfg = load_stripe_config()
-            if cfg.get('enabled') and cfg.get('secret_key'):
-                _stripe.api_key = cfg['secret_key']
-                _stripe.Subscription.modify(sub_id, cancel_at_period_end=True)
-                print(f"🚫 Stripe subscription {sub_id} set to cancel at period end (trial cancel for {bid})")
-        except Exception as e:
-            print(f"Stripe cancel error for {bid}: {e}")
-
-    c.execute("UPDATE businesses SET subscription_status='cancelled', status='trial_cancelled' WHERE id=?", (bid,))
-    db.commit()
-    db.close()
-
-    # Confirmation email (best-effort)
-    try:
-        import agentmail_email
-        end_disp = te.strftime('%B %d, %Y')
-        subject = '✅ Trial Cancelled — You Will NOT Be Charged'
-        text = (f"Hi {biz['name']},\n\nYour 3-day free trial has been cancelled as requested.\n\n"
-                f"✅ You will NOT be charged.\n📅 Your access stays active until {end_disp}.\n\n"
-                f"Change your mind? You can resubscribe anytime from the Billing tab.\n\n— The Diazites Team")
-        html = (f"<div style='font-family:-apple-system,sans-serif;padding:20px'>"
-                f"<h2 style='margin:0 0 12px'>✅ Trial Cancelled</h2>"
-                f"<p>Hi <strong>{biz['name']}</strong>,</p>"
-                f"<p>Your 3-day free trial has been cancelled as requested.</p>"
-                f"<p>✅ <strong>You will NOT be charged.</strong></p>"
-                f"<p>📅 Your access stays active until <strong>{end_disp}</strong>.</p>"
-                f"<p>Change your mind? Resubscribe anytime from the Billing tab.</p>"
-                f"<p style='color:#9ca3af;font-size:12px'>— The Diazites Team</p></div>")
-        agentmail_email.send_agentmail(biz['email'], subject, text, html=html)
-    except Exception as e:
-        print(f"Trial-cancel email error: {e}")
-
-    return jsonify({'success': True,
-                    'message': 'Trial cancelled — you will NOT be charged. Access continues until ' + te.strftime('%B %d, %Y') + '.'})
 
 
 @app.route('/2fa/setup', methods=['POST'])
@@ -1380,7 +1287,7 @@ def _assistant_model(name, full_script, max_tokens, industry='', bid=''):
     """Build the VAPI model config for a new assistant. All assistants get the
     appointment-booking tool; dealerships additionally get the live-inventory
     search tool."""
-    model = {"provider": "xai", "model": "grok-4.3",
+    model = {"provider": "openai", "model": "openai-gpt-4o-2024-11-20",
              "temperature": 0.3, "maxTokens": max_tokens,
              "systemPrompt": full_script}
     tools = booking_tool(bid)
@@ -1419,10 +1326,6 @@ def provision_first_number(bid, priority_area=None):
             full_script = build_diazites_prompt(
                 business_name=name, industry=industry,
                 script=script, knowledge_base=kb)
-            full_script += ("\n\nIMPORTANT: You are a MULTI-LINGUAL assistant. Detect the caller's language and "
-                            "respond in that same language. You speak: English, Spanish, French, German, "
-                            "Portuguese, Chinese, Arabic, Hindi, Korean, Japanese. Switch languages naturally "
-                            "when the caller switches.")
             r = subprocess.run(["curl", "-s", "-X", "POST", f"{VAPI_BASE}/assistant",
                 "-H", f"Authorization: Bearer {VAPI_API_KEY}",
                 "-H", "Content-Type: application/json",
@@ -1435,7 +1338,9 @@ def provision_first_number(bid, priority_area=None):
                     "firstMessageMode": "assistant-speaks-first",
                     "silenceTimeoutSeconds": 40,
                     "maxDurationSeconds": 300,
-                    "backgroundSound": "off"
+                    "backgroundSound": "off",
+                                        "endCallPhrases": ["goodbye", "bye", "have a great day", "thank you for calling", "talk to you soon", "see you later", "have a good one"],
+                    "endCallMessage": "Thanks for calling! Have a great day. Goodbye.",
                 })], capture_output=True, text=True, timeout=30)
             try:
                 assistant_id = json.loads(r.stdout).get('id')
@@ -1633,10 +1538,6 @@ def api_signup():
         pass
     db.commit()
     
-    # 🔔 Owner alert: new business signup (email + SMS)
-    notify_owner('signup', name=name, email=email, phone=phone,
-                 plan=plan, industry=industry, business_id=bid, source='website')
-    
     # 🎁 Free first number with trial: provision assistant + number in the background
     # (signup returns instantly; the number appears in the Phone Numbers tab shortly)
     threading.Thread(target=provision_first_number, args=(bid,), daemon=True).start()
@@ -1708,6 +1609,9 @@ def api_signup_stripe():
     email = data.get('email', '').strip()
     industry = data.get('industry', 'general')
     phone = data.get('phone', '').strip()
+    contact_name = data.get('contact_name', '').strip()
+    city = data.get('city', '').strip()
+    state = data.get('state', '').strip()
     plan = data.get('plan', 'pro')
     
     if not name:
@@ -1726,24 +1630,65 @@ def api_signup_stripe():
     price = price_map.get(plan, 197)
     
     # Create business with trial
+    business_address = f"{city}, {state}".strip(', ') if (city or state) else ''
     c.execute("""INSERT INTO businesses 
-        (id, name, industry, phone_number, script_template, knowledge_base,
-         plan, monthly_price, email, status, voice_id, created_at, subscription_status, trial_end)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'trial', 'rachel', datetime('now'), 'trial', datetime('now', '+3 days'))""",
-        (bid, name, industry, phone,
+        (id, name, contact_name, industry, phone_number, script_template, knowledge_base,
+         plan, monthly_price, email, status, voice_id, created_at, subscription_status, trial_end, business_address)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'trial', 'rachel', datetime('now'), 'trial', datetime('now', '+3 days'), ?)""",
+        (bid, name, contact_name, industry, phone,
          f"You are a professional employee of {name}. Help them book more clients. Keep responses under 30 seconds. You are a real person — never mention being AI, a robot, or software.",
          f"Industry: {industry}. Business: {name}.",
-         plan, price, email))
+         plan, price, email, business_address))
     
     c.execute("""INSERT INTO campaigns (id, business_id, status) VALUES (?, ?, 'idle')""", (cid, bid))
     db.commit()
     
-    # 🔔 Owner alert: new business signup (email + SMS)
-    notify_owner('signup', name=name, email=email, phone=phone,
-                 plan=plan, industry=industry, business_id=bid, source='website-stripe')
+    # Send registration confirmation email (username = Business ID)
+    try:
+        plan_label = {'starter': f'Starter (${price}/month)', 'pro': f'Professional (${price}/month)',
+                      'enterprise': 'Enterprise (Custom)', 'custom': 'Enterprise (Custom)'}.get(plan, plan)
+        trial_end_str = (datetime.now() + timedelta(days=3)).strftime('%B %d, %Y')
+        body = f"""Hi {contact_name or name},
+
+Your Diazites account is ready! Here is your registration information:
+
+Business Name: {name}
+Username (Business ID): {bid}
+Plan: {plan_label}
+Trial: 3-day free trial (ends {trial_end_str})
+Email: {email}
+Phone: {phone or '--'}
+Industry: {industry}
+Location: {business_address or '--'}
+
+Login: go to https://diazites.online/login and enter your Business ID.
+
+Welcome aboard — your AI voice employee is ready to start answering calls.
+-- The Diazites Team"""
+        send_email_via_smtp(email, '🎉 Welcome to Diazites — Your Registration Details', body, business_id=bid)
+    except Exception as e:
+        print(f"Registration email error: {e}")
     
-    # 🎁 Free first number with trial: provision assistant + number in the background
-    threading.Thread(target=provision_first_number, args=(bid,), daemon=True).start()
+    # Search available local numbers for the chosen city/state
+    available_numbers = []
+    try:
+        from twilio_helper import search_available_numbers
+        nums, err = search_available_numbers(region=state or None, locality=(city or None), limit=8)
+        if err:
+            nums, err = search_available_numbers(region=state or None, limit=8)
+        if not err and nums:
+            for n in nums[:8]:
+                available_numbers.append({
+                    'phone_number': n.get('phone_number', ''),
+                    'locality': n.get('locality') or '',
+                    'region': n.get('region') or state or '',
+                    'friendly': n.get('phone_number', ''),
+                })
+    except Exception as e:
+        print(f"Number search error: {e}")
+    
+    # 🎁 Free first number with trial: provision assistant + number in the background (prioritize their state)
+    threading.Thread(target=provision_first_number, args=(bid, state or None), daemon=True).start()
     
     # Create Stripe checkout with 3-day trial
     try:
@@ -1754,6 +1699,7 @@ def api_signup_stripe():
                 'success': True,
                 'business_id': bid,
                 'checkout_url': None,
+                'numbers': available_numbers,
                 'message': '🎉 Business created! You have a 3-day free trial. Payments unavailable — contact support to set up billing.',
                 'trial_end': (datetime.now() + timedelta(days=3)).isoformat()
             })
@@ -1775,6 +1721,7 @@ def api_signup_stripe():
                 'success': True,
                 'business_id': bid,
                 'checkout_url': url,
+                'numbers': available_numbers,
                 'message': '🎉 Business created! Set up payment to start your 3-day free trial.',
                 'trial_end': (datetime.now() + timedelta(days=3)).isoformat()
             })
@@ -1783,6 +1730,7 @@ def api_signup_stripe():
                 'success': True,
                 'business_id': bid,
                 'checkout_url': None,
+                'numbers': available_numbers,
                 'message': '🎉 Business created! You have a 3-day free trial. Contact support to complete billing setup.',
                 'trial_end': (datetime.now() + timedelta(days=3)).isoformat()
             })
@@ -1796,6 +1744,132 @@ def api_signup_stripe():
             'trial_end': (datetime.now() + timedelta(days=3)).isoformat()
         })
 
+
+
+
+@app.route('/api/generate-call-scripts', methods=['POST'])
+def api_generate_call_scripts():
+    """Generate inbound + outbound call script previews for a given industry."""
+    data = request.get_json(silent=True) or {}
+    industry = (data.get('industry') or '').strip()[:80]
+    biz_name = (data.get('business_name') or '').strip()[:80]
+    if not industry:
+        return jsonify({'success': False, 'error': 'Please select your business type.'}), 400
+
+    cfg = get_chatbot_config()
+    provider_name = cfg.get('chatbot_provider', 'venice')
+    api_key = cfg.get('chatbot_api_key', '') or os.environ.get('VENICE_API_KEY', '') or get_xai_api_key()
+    model = cfg.get('chatbot_model', '')
+    provider = CHATBOT_PROVIDERS.get(provider_name)
+    if not provider:
+        provider = CHATBOT_PROVIDERS['venice']
+    if not model:
+        model = provider['default_model']
+    if not api_key:
+        return jsonify({'success': False, 'error': 'AI generation is temporarily unavailable. Please try again in a moment.'}), 503
+
+    system = ("You are an expert AI voice-agent script writer for local businesses. "
+              "Write two short, natural, professional phone-call scripts for a " + industry + " business"
+              + ((" named " + biz_name) if biz_name else "") + ". "
+              "INBOUND script: the AI receptionist answers an incoming call - greet the caller, handle their need, "
+              "qualify them (budget/timeline/needs), and offer to book. "
+              "OUTBOUND script: the AI calls a lead - introduce yourself, state the purpose, qualify, and set a next step. "
+              "Each script must be 5-7 conversational turns between AI: and Caller:, plain text, no markdown, no headers, under 140 words. "
+              'Reply ONLY with valid JSON: {"inbound": "...", "outbound": "..."}')
+
+    try:
+        r = requests.post(provider['api_url'], json={
+            "model": model,
+            "messages": [{"role": "system", "content": system},
+                         {"role": "user", "content": f"Write the call scripts for a {industry} business."}],
+            "max_tokens": 800,
+            "temperature": 0.6
+        }, headers={"Authorization": provider['auth_header'](api_key), "Content-Type": "application/json"}, timeout=30)
+        content = r.json().get('choices', [{}])[0].get('message', {}).get('content', '').strip()
+        if not content:
+            return jsonify({'success': False, 'error': 'AI returned an empty response. Try again.'}), 502
+        import json as _json
+        inbound = outbound = ''
+        try:
+            parsed = _json.loads(content)
+            inbound = (parsed.get('inbound') or '').strip()
+            outbound = (parsed.get('outbound') or '').strip()
+        except Exception:
+            m1 = content.find('INBOUND'); m2 = content.find('OUTBOUND')
+            if m1 >= 0 and m2 > m1:
+                inbound = content[m1 + len('INBOUND'):m2].strip(' :\n\"')
+                outbound = content[m2 + len('OUTBOUND'):].strip(' :\n\"')
+        if not inbound and not outbound:
+            return jsonify({'success': False, 'error': 'Could not parse the generated scripts. Try again.'}), 502
+        return jsonify({'success': True, 'inbound': inbound or '—', 'outbound': outbound or '—', 'industry': industry})
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Generation failed: {str(e)[:120]}'}), 500
+
+
+@app.route('/twiml-answer')
+def twiml_answer():
+    from flask import Response as FResponse
+    return FResponse('<Response><Pause length="40"/></Response>', mimetype='text/xml')
+
+@app.route('/api/numbers/assign', methods=['POST'])
+def api_number_assign():
+    """Buy the chosen Twilio number and assign it to the new business."""
+    data = request.get_json(silent=True) or {}
+    bid = data.get('business_id', '').strip()
+    phone = data.get('phone_number', '').strip()
+    if not bid or not phone:
+        return jsonify({'success': False, 'error': 'business_id and phone_number are required'}), 400
+    db = get_db()
+    c = db.cursor()
+    biz = c.execute("SELECT * FROM businesses WHERE id = ?", (bid,)).fetchone()
+    if not biz:
+        db.close()
+        return jsonify({'success': False, 'error': 'Business not found'}), 404
+    from twilio_helper import buy_twilio_number, register_with_vapi
+    tw, err = buy_twilio_number(phone)
+    if err:
+        db.close()
+        return jsonify({'success': False, 'error': f'Purchase failed: {err}'}), 500
+    bought = tw.get('phone_number', phone)
+    vapi_ok = False
+    if biz['vapi_assistant_id']:
+        _, verr = register_with_vapi(bought, biz['vapi_assistant_id'])
+        vapi_ok = not verr
+    c.execute("UPDATE businesses SET phone_number = ?, number_free_trial = 1 WHERE id = ?", (bought, bid))
+    db.commit()
+    db.close()
+    return jsonify({'success': True, 'phone_number': bought, 'registered_with_vapi': vapi_ok})
+
+
+
+SAMPLE_CALL_PATH = "/root/voice-agent-manager/sample_call.mp3"
+
+@app.route('/api/admin/sample-call', methods=['POST'])
+@login_required
+def api_admin_sample_call():
+    """Upload a pre-recorded sample call (MP3/WAV/OGG) played on the landing page."""
+    f = request.files.get('file')
+    if not f or not f.filename:
+        return jsonify({'success': False, 'error': 'No file uploaded'}), 400
+    name = (f.filename or '').lower()
+    if not any(name.endswith(ext) for ext in ('.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac')):
+        return jsonify({'success': False, 'error': 'Please upload an audio file (MP3, WAV, OGG, M4A, AAC, FLAC)'}), 400
+    if f.mimetype and not f.mimetype.startswith('audio'):
+        # allow if extension is audio even if mimetype is generic
+        pass
+    try:
+        f.save(SAMPLE_CALL_PATH)
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Save failed: {e}'}), 500
+    return jsonify({'success': True, 'message': 'Sample call uploaded — it now plays on the landing page.'})
+
+@app.route('/sample-call')
+def serve_sample_call():
+    """Serve the uploaded sample call audio."""
+    if os.path.exists(SAMPLE_CALL_PATH):
+        from flask import send_file
+        return send_file(SAMPLE_CALL_PATH, mimetype='audio/mpeg')
+    return ('', 404)
 
 ONBOARD_HTML = """<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1993,7 +2067,7 @@ def api_signup_checkout():
         return jsonify({'success': False, 'error': 'Name and email required'}), 400
     
     import uuid
-    price_map = {'starter': 9700, 'pro': 19700, 'premium': 25000}
+    price_map = {'starter': 9700, 'pro': 19700, 'premium': 49700}
     price_cents = price_map.get(plan, 19700)
     sid = str(uuid.uuid4())[:12]
     
@@ -2088,42 +2162,48 @@ def stripe_signup_webhook():
                 c.execute("INSERT INTO campaigns (id, business_id, status) VALUES (?, ?, 'idle')", (cid, bid))
                 c.execute("UPDATE pending_signups SET status='completed' WHERE id=?", (pending['id'],))
                 db.commit()
-                
-                # 🔔 Owner alert: payment received for new signup (email + SMS)
-                amt = (session_data.get('amount_total') or 0) / 100
-                notify_owner('payment', name=pending['name'], email=pending['email'],
-                             phone=pending.get('phone', ''), plan=pending['plan'],
-                             amount=amt or pending['price'], business_id=bid,
-                             source='signup-checkout')
                 return 'OK', 200
             
-            # Handle phone number purchase ($9.99/mo)
-            plan_name = session_data.get('metadata', {}).get('plan', '')
-            biz_id = session_data.get('metadata', {}).get('business_id', '')
-            if plan_name and biz_id and ('phone' in plan_name.lower() or 'number' in plan_name.lower()):
-                c.execute("UPDATE businesses SET number_paid=1, stripe_subscription_id=? WHERE id=?",
-                          (stripe_session_id, biz_id))
-                db.commit()
-                print(f"✅ Number purchase confirmed for business {biz_id}")
-                # Look up the business for welcome credentials + alert (pending may be None here)
-                biz_row = c.execute("SELECT name, email, phone_number FROM businesses WHERE id=?",
-                                    (biz_id,)).fetchone()
-                if biz_row:
-                    # Send welcome credentials (AgentMail email + SMS)
-                    try:
-                        send_welcome_credentials(
-                            biz_row['name'], biz_row['email'], biz_row['phone_number'] or '',
-                            biz_id, 9.99, request.host_url, trial=False)
-                    except Exception as e:
-                        print(f"Credentials send error (stripe webhook): {e}")
-                    # 🔔 Owner alert: phone number purchase payment (email + SMS)
-                    amt = (session_data.get('amount_total') or 0) / 100
-                    notify_owner('payment', name=biz_row['name'], email=biz_row['email'],
-                                 phone=biz_row['phone_number'] or '', plan='phone-number',
-                                 amount=amt or 9.99, business_id=biz_id,
-                                 source='phone-number-purchase')
+            # Handle phone number purchase ($9.99 one-time)
+            metadata = session_data.get('metadata', {}) or {}
+            purchase_purpose = metadata.get('purpose', '')
+            biz_id = metadata.get('business_id', '') or client_ref
+            
+            if purchase_purpose == 'buy_phone_number' and biz_id:
+                print(f"📱 Stripe webhook: Phone purchase confirmed for {biz_id}")
                 
-                return jsonify({'received': True, 'business_id': biz_id})
+                # Mark payment as received
+                try:
+                    c.execute("ALTER TABLE businesses ADD COLUMN number_paid INTEGER DEFAULT 0")
+                except:
+                    pass
+                c.execute("UPDATE businesses SET number_paid=1 WHERE id=?", (biz_id,))
+                
+                # Buy and assign the phone number
+                c.execute("SELECT name, vapi_assistant_id, vapi_phone_id FROM businesses WHERE id=?", (biz_id,))
+                biz_info = c.fetchone()
+                db.commit()
+                
+                if biz_info and biz_info['vapi_assistant_id'] and not biz_info['vapi_phone_id']:
+                    try:
+                        from twilio_helper import buy_and_assign_number
+                        phone_id, phone_number, error = buy_and_assign_number(biz_info['vapi_assistant_id'])
+                        if phone_id and phone_number:
+                            c.execute("UPDATE businesses SET vapi_phone_id=? WHERE id=?", (phone_id, biz_id))
+                            db.commit()
+                            print(f"📱 Phone {phone_number} purchased & assigned to {biz_info['name']} ({biz_id})")
+                        elif phone_number:
+                            print(f"⚠️ Bought {phone_number} but VAPI registration failed: {error}")
+                        else:
+                            print(f"❌ Phone purchase failed: {error}")
+                    except Exception as e:
+                        print(f"❌ Phone buy error: {e}")
+                elif biz_info and biz_info['vapi_phone_id']:
+                    print(f"ℹ️ {biz_info['name']} already has a phone number")
+                else:
+                    print(f"⚠️ No VAPI assistant for {biz_id} — phone will be assigned later")
+                
+                return jsonify({'received': True, 'business_id': biz_id, 'purpose': 'buy_phone_number'})
         
         return jsonify({'received': True})
     except Exception as e:
@@ -2208,12 +2288,11 @@ def api_agent_create():
     import uuid
     aid = 'agent-' + str(uuid.uuid4())[:10]
     
-    c.execute("""INSERT INTO agents (id, business_id, name, script_template, knowledge_base, first_message, status)
-                VALUES (?, ?, ?, ?, ?, ?, 'active')""",
+    c.execute("""INSERT INTO agents (id, business_id, name, script_template, knowledge_base, status)
+                VALUES (?, ?, ?, ?, ?, 'active')""",
               (aid, bid, name,
                f"You are a professional employee of {biz['name']}. Help book more clients. You are a real person — never mention being AI, a robot, or software.",
-               f"Business: {biz['name']}.",
-               (data.get('first_message') or '').strip()[:500]))
+               f"Business: {biz['name']}."))
     db.commit()
     
     return jsonify({'success': True, 'agent_id': aid, 'message': f'✅ Agent "{name}" created!'})
@@ -2236,7 +2315,7 @@ def api_agent_update():
         return jsonify({'success': False, 'error': 'Agent not found'}), 404
     
     fields = ['name', 'phone_number', 'vapi_assistant_id', 'script_template', 'knowledge_base',
-              'voice_id', 'voice_speed', 'language', 'status', 'first_message']
+              'voice_id', 'voice_speed', 'language', 'status']
     updates = []
     values = []
     for f in fields:
@@ -2291,7 +2370,7 @@ def api_agent_buy_number():
     assistant_id = agent['vapi_assistant_id']
     if not assistant_id:
         db.close()
-        return jsonify({'success': False, 'error': 'Agent is not set up to make calls yet. Save the agent first.'}), 400
+        return jsonify({'success': False, 'error': 'Agent has no VAPI assistant yet. Save the agent first.'}), 400
 
     # Check they haven't already got a number
     if agent['phone_number']:
@@ -2329,7 +2408,7 @@ def api_agent_buy_number():
     vapi_result, error = register_with_vapi(bought_number, assistant_id)
     if error:
         db.close()
-        return jsonify({'success': False, 'error': f'Number {bought_number} was assigned but activation failed: {error}'}), 500
+        return jsonify({'success': False, 'error': f'Bought {bought_number} but Vapi registration failed: {error}'}), 500
     vapi_phone_id = vapi_result.get('id', '')
 
     c.execute("UPDATE agents SET phone_number=?, vapi_phone_id=? WHERE id=?", (bought_number, vapi_phone_id, aid))
@@ -2337,307 +2416,6 @@ def api_agent_buy_number():
     db.close()
     return jsonify({'success': True, 'message': f'✅ {bought_number} bought & assigned to {agent["name"]}!',
                     'phone_number': bought_number})
-
-# ── SQUAD MANAGEMENT API ──
-
-def _ensure_squad_tables(db):
-    """Lazily create squad tables if they don't exist."""
-    db.execute("""CREATE TABLE IF NOT EXISTS squads (
-        id TEXT PRIMARY KEY,
-        business_id TEXT NOT NULL,
-        name TEXT DEFAULT '',
-        vapi_squad_id TEXT DEFAULT '',
-        status TEXT DEFAULT 'active',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )""")
-    db.execute("""CREATE TABLE IF NOT EXISTS squad_members (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        squad_id TEXT NOT NULL,
-        agent_id TEXT NOT NULL,
-        FOREIGN KEY (squad_id) REFERENCES squads(id),
-        FOREIGN KEY (agent_id) REFERENCES agents(id),
-        UNIQUE(squad_id, agent_id)
-    )""")
-    db.commit()
-
-def _sync_squad_to_vapi(squad_id, db):
-    """Sync a local squad to VAPI (create or update). Returns (vapi_squad_id, error)."""
-    squad = db.execute("SELECT * FROM squads WHERE id=?", (squad_id,)).fetchone()
-    if not squad:
-        return None, "Squad not found"
-    
-    # Get all members with VAPI assistant IDs
-    members = db.execute("""
-        SELECT a.vapi_assistant_id, a.name FROM squad_members sm
-        JOIN agents a ON sm.agent_id = a.id
-        WHERE sm.squad_id = ? AND a.vapi_assistant_id != ''
-    """, (squad_id,)).fetchall()
-    
-    if not members:
-        member_payload = []
-    else:
-        member_payload = [{"assistantId": m["vapi_assistant_id"]} for m in members]
-    
-    import subprocess, json
-    
-    if squad["vapi_squad_id"]:
-        # Update existing: delete and recreate (VAPI PATCH may not support members)
-        subprocess.run([
-            "curl", "-s", "-4", "--http1.1", "-X", "DELETE",
-            f"https://api.vapi.ai/squad/{squad['vapi_squad_id']}",
-            "-H", f"Authorization: Bearer {VAPI_API_KEY}",
-            "-H", "User-Agent: curl/8.0"
-        ], capture_output=True, timeout=15)
-    
-    payload = json.dumps({
-        "name": squad["name"] or f"Squad {squad_id[:6]}",
-        "members": member_payload
-    })
-    
-    result = subprocess.run([
-        "curl", "-s", "-4", "--http1.1", "-X", "POST",
-        "https://api.vapi.ai/squad",
-        "-H", f"Authorization: Bearer {VAPI_API_KEY}",
-        "-H", "Content-Type: application/json",
-        "-H", "User-Agent: curl/8.0",
-        "-d", payload
-    ], capture_output=True, text=True, timeout=15)
-    
-    try:
-        data = json.loads(result.stdout)
-        if "id" in data:
-            vapi_id = data["id"]
-            db.execute("UPDATE squads SET vapi_squad_id=? WHERE id=?", (vapi_id, squad_id))
-            db.commit()
-            return vapi_id, None
-        else:
-            err = data.get("message", result.stdout[:200])
-            return None, str(err)
-    except Exception as e:
-        return None, f"VAPI sync error: {e}"
-
-@app.route('/api/squads/list')
-@login_required
-def api_squads_list():
-    """List all squads for this business with member details."""
-    bid = session.get('business_id', '')
-    db = get_db()
-    _ensure_squad_tables(db)
-    c = db.cursor()
-    
-    squads = c.execute("SELECT * FROM squads WHERE business_id=? AND status='active' ORDER BY created_at DESC", (bid,)).fetchall()
-    result = []
-    for s in squads:
-        members = c.execute("""
-            SELECT a.id, a.name, a.vapi_assistant_id, a.phone_number 
-            FROM squad_members sm
-            JOIN agents a ON sm.agent_id = a.id
-            WHERE sm.squad_id = ?
-        """, (s["id"],)).fetchall()
-        result.append({
-            "id": s["id"],
-            "name": s["name"],
-            "vapi_squad_id": s["vapi_squad_id"],
-            "created_at": s["created_at"],
-            "member_count": len(members),
-            "members": [dict(m) for m in members]
-        })
-    
-    all_agents = c.execute("SELECT id, name, vapi_assistant_id, phone_number FROM agents WHERE business_id=? AND status='active'", (bid,)).fetchall()
-    
-    db.close()
-    return jsonify({
-        "success": True, 
-        "squads": result,
-        "available_agents": [dict(a) for a in all_agents]
-    })
-
-@app.route('/api/squads/create', methods=['POST'])
-@login_required
-def api_squad_create():
-    """Create a new squad, optionally with initial members."""
-    bid = session.get('business_id', '')
-    data = request.get_json(silent=True) or {}
-    name = data.get('name', '').strip()
-    initial_members = data.get('agent_ids', [])
-    
-    db = get_db()
-    _ensure_squad_tables(db)
-    c = db.cursor()
-    
-    import uuid
-    squad_id = 'sqd-' + str(uuid.uuid4())[:10]
-    
-    c.execute("INSERT INTO squads (id, business_id, name) VALUES (?, ?, ?)",
-              (squad_id, bid, name))
-    
-    added = 0
-    for aid in initial_members:
-        agent = c.execute("SELECT id FROM agents WHERE id=? AND business_id=?", (aid, bid)).fetchone()
-        if agent:
-            try:
-                c.execute("INSERT INTO squad_members (squad_id, agent_id) VALUES (?, ?)", (squad_id, aid))
-                added += 1
-            except:
-                pass
-    
-    db.commit()
-    
-    vapi_id, error = _sync_squad_to_vapi(squad_id, db)
-    
-    db.close()
-    
-    if error:
-        return jsonify({
-            "success": True, 
-            "squad_id": squad_id, 
-            "members_added": added,
-            "vapi_warning": f"Created locally but VAPI sync failed: {error}"
-        })
-    
-    return jsonify({
-        "success": True, 
-        "squad_id": squad_id, 
-        "vapi_squad_id": vapi_id,
-        "members_added": added,
-        "message": f'✅ Squad "{name or squad_id[:6]}" created with {added} agent(s)!'
-    })
-
-@app.route('/api/squads/delete/<squad_id>', methods=['DELETE'])
-@login_required
-def api_squad_delete(squad_id):
-    """Delete a squad (local + VAPI)."""
-    bid = session.get('business_id', '')
-    db = get_db()
-    _ensure_squad_tables(db)
-    c = db.cursor()
-    
-    squad = c.execute("SELECT * FROM squads WHERE id=? AND business_id=?", (squad_id, bid)).fetchone()
-    if not squad:
-        db.close()
-        return jsonify({"success": False, "error": "Squad not found"}), 404
-    
-    if squad["vapi_squad_id"]:
-        import subprocess
-        subprocess.run([
-            "curl", "-s", "-4", "--http1.1", "-X", "DELETE",
-            f"https://api.vapi.ai/squad/{squad['vapi_squad_id']}",
-            "-H", f"Authorization: Bearer {VAPI_API_KEY}",
-            "-H", "User-Agent: curl/8.0"
-        ], capture_output=True, timeout=15)
-    
-    c.execute("DELETE FROM squad_members WHERE squad_id=?", (squad_id,))
-    c.execute("DELETE FROM squads WHERE id=?", (squad_id,))
-    db.commit()
-    db.close()
-    
-    return jsonify({"success": True, "message": "Squad deleted"})
-
-@app.route('/api/squads/add-member', methods=['POST'])
-@login_required
-def api_squad_add_member():
-    """Add an agent to a squad."""
-    bid = session.get('business_id', '')
-    data = request.get_json(silent=True) or {}
-    squad_id = data.get('squad_id', '')
-    agent_id = data.get('agent_id', '')
-    
-    if not squad_id or not agent_id:
-        return jsonify({"success": False, "error": "squad_id and agent_id are required"}), 400
-    
-    db = get_db()
-    _ensure_squad_tables(db)
-    c = db.cursor()
-    
-    squad = c.execute("SELECT * FROM squads WHERE id=? AND business_id=?", (squad_id, bid)).fetchone()
-    if not squad:
-        db.close()
-        return jsonify({"success": False, "error": "Squad not found"}), 404
-    
-    agent = c.execute("SELECT id, name, vapi_assistant_id FROM agents WHERE id=? AND business_id=?", (agent_id, bid)).fetchone()
-    if not agent:
-        db.close()
-        return jsonify({"success": False, "error": "Agent not found"}), 404
-    
-    try:
-        c.execute("INSERT INTO squad_members (squad_id, agent_id) VALUES (?, ?)", (squad_id, agent_id))
-        db.commit()
-    except:
-        db.close()
-        return jsonify({"success": False, "error": "Agent is already in this squad"}), 400
-    
-    vapi_id, error = _sync_squad_to_vapi(squad_id, db)
-    db.close()
-    
-    if error:
-        return jsonify({"success": True, "message": f"{agent['name']} added! Warning: VAPI sync: {error}"})
-    
-    return jsonify({"success": True, "message": f"{agent['name']} added to squad!"})
-
-@app.route('/api/squads/remove-member', methods=['POST'])
-@login_required
-def api_squad_remove_member():
-    """Remove an agent from a squad."""
-    bid = session.get('business_id', '')
-    data = request.get_json(silent=True) or {}
-    squad_id = data.get('squad_id', '')
-    agent_id = data.get('agent_id', '')
-    
-    if not squad_id or not agent_id:
-        return jsonify({"success": False, "error": "squad_id and agent_id are required"}), 400
-    
-    db = get_db()
-    _ensure_squad_tables(db)
-    c = db.cursor()
-    
-    squad = c.execute("SELECT * FROM squads WHERE id=? AND business_id=?", (squad_id, bid)).fetchone()
-    if not squad:
-        db.close()
-        return jsonify({"success": False, "error": "Squad not found"}), 404
-    
-    agent = c.execute("SELECT name FROM agents WHERE id=? AND business_id=?", (agent_id, bid)).fetchone()
-    
-    c.execute("DELETE FROM squad_members WHERE squad_id=? AND agent_id=?", (squad_id, agent_id))
-    db.commit()
-    
-    vapi_id, error = _sync_squad_to_vapi(squad_id, db)
-    db.close()
-    
-    agent_name = agent["name"] if agent else "Agent"
-    if error:
-        return jsonify({"success": True, "message": f"{agent_name} removed! Warning: VAPI sync: {error}"})
-    
-    return jsonify({"success": True, "message": f"{agent_name} removed from squad!"})
-
-@app.route('/api/squads/rename', methods=['POST'])
-@login_required
-def api_squad_rename():
-    """Rename a squad."""
-    bid = session.get('business_id', '')
-    data = request.get_json(silent=True) or {}
-    squad_id = data.get('squad_id', '')
-    new_name = data.get('name', '').strip()
-    
-    if not squad_id or not new_name:
-        return jsonify({"success": False, "error": "squad_id and name are required"}), 400
-    
-    db = get_db()
-    _ensure_squad_tables(db)
-    c = db.cursor()
-    
-    squad = c.execute("SELECT * FROM squads WHERE id=? AND business_id=?", (squad_id, bid)).fetchone()
-    if not squad:
-        db.close()
-        return jsonify({"success": False, "error": "Squad not found"}), 404
-    
-    c.execute("UPDATE squads SET name=? WHERE id=?", (new_name, squad_id))
-    db.commit()
-    
-    if squad["vapi_squad_id"]:
-        _sync_squad_to_vapi(squad_id, db)
-    
-    db.close()
-    return jsonify({"success": True, "message": f"Squad renamed to '{new_name}'!"})
 
 # ── AI CHATBOT API (Multi-Provider) ──
 
@@ -2657,6 +2435,11 @@ CHATBOT_PROVIDERS = {
     "deepseek": {
         "api_url": "https://api.deepseek.com/chat/completions",
         "default_model": "deepseek-chat",
+        "auth_header": lambda key: f"Bearer {key}"
+    },
+    "venice": {
+        "api_url": "https://api.venice.ai/api/v1/chat/completions",
+        "default_model": "openai-gpt-4o-2024-11-20",
         "auth_header": lambda key: f"Bearer {key}"
     }
 }
@@ -2686,8 +2469,8 @@ def api_chatbot():
     
     # Get config from DB
     cfg = get_chatbot_config()
-    provider_name = cfg.get('chatbot_provider', 'xai')
-    api_key = cfg.get('chatbot_api_key', '') or get_xai_api_key()
+    provider_name = cfg.get('chatbot_provider', 'venice')
+    api_key = cfg.get('chatbot_api_key', '') or os.environ.get('VENICE_API_KEY', '') or get_xai_api_key()
     model = cfg.get('chatbot_model', '')
     
     if not api_key:
@@ -2695,7 +2478,7 @@ def api_chatbot():
     
     provider = CHATBOT_PROVIDERS.get(provider_name)
     if not provider:
-        provider = CHATBOT_PROVIDERS['xai']
+        provider = CHATBOT_PROVIDERS['venice']
     
     if not model:
         model = provider['default_model']
@@ -2802,7 +2585,7 @@ def dashboard():
     plan_key = biz.get('plan', 'starter') or 'starter'
     pricing_tiers = {
         "starter": {"name": "Starter", "price": 97, "minutes_limit": 250, "features": ["1 AI Agent", "1 Number", "250 min", "Booking", "Analytics", "Email Support"]},
-        "pro": {"name": "Professional", "price": 197, "minutes_limit": 550, "features": ["2 AI Agents", "2 Numbers", "550 min", "Campaigns", "SMS", "Calendar", "Priority Support"]},
+        "pro": {"name": "Professional", "price": 197, "minutes_limit": 1000, "features": ["2 AI Agents", "2 Numbers", "1000 min", "Campaigns", "SMS", "Calendar", "Priority Support"]},
         "premium": {"name": "Premium", "price": 297, "minutes_limit": 2500, "features": ["3 AI Agents", "3 Numbers", "2500 min", "Forwarding", "Priority Support"]},
         "enterprise": {"name": "Enterprise", "price": 497, "minutes_limit": 7500, "features": ["5 AI Agents", "5 Numbers", "7500 min", "API", "White-Label", "Dedicated Manager"]},
         "custom": {"name": "Custom", "price": 997, "minutes_limit": 0, "features": ["Custom config"]}
@@ -2810,25 +2593,6 @@ def dashboard():
     user_tier = pricing_tiers.get(plan_key, pricing_tiers['starter'])
     extra_minutes = biz.get('extra_minutes', 0) or 0
     total_minutes_limit = (user_tier['minutes_limit'] or 0) + extra_minutes
-
-    # Trial info for the Billing tab (cancel-trial card)
-    trial_end_display = ''
-    trial_days_left = 0
-    trial_minutes_used = 0
-    trial_minutes_exceeded = False
-    try:
-        te = datetime.fromisoformat(str(biz.get('trial_end') or '').replace('Z', ''))
-        if te.tzinfo is not None:
-            te = te.replace(tzinfo=None)
-        trial_end_display = te.strftime('%B %d, %Y')
-        trial_days_left = max(1, (te - datetime.utcnow()).days + 1)
-        # Check trial minutes usage
-        c.execute("SELECT COALESCE(SUM(duration),0) FROM call_log WHERE business_id = ?", (bid,))
-        trial_minutes_used = (c.fetchone()[0] or 0) / 60
-        if trial_minutes_used >= 50:
-            trial_minutes_exceeded = True
-    except Exception:
-        pass
     
     # Recent calls
     c.execute("""
@@ -3113,8 +2877,6 @@ def dashboard():
         seven_days_ago=seven_days_ago,
         total_duration=total_duration, user_tier=user_tier,
         extra_minutes=extra_minutes, total_minutes_limit=total_minutes_limit,
-        trial_end_display=trial_end_display, trial_days_left=trial_days_left,
-        trial_minutes_used=trial_minutes_used, trial_minutes_exceeded=trial_minutes_exceeded,
         user_2fa=u2fa)
 
 # ── CONVERSATIONS API ROUTES ──
@@ -3984,7 +3746,7 @@ def serve_landing_page(bid):
     db = get_db()
     c = db.cursor()
     try:
-        c.execute("SELECT lp.*, b.name as biz_name, b.industry, b.phone_number FROM landing_pages lp JOIN businesses b ON lp.business_id=b.id WHERE lp.business_id=? AND lp.published=1", (bid,))
+        c.execute("SELECT lp.*, b.name as biz_name, b.business_address as biz_address, b.industry, b.phone_number FROM landing_pages lp JOIN businesses b ON lp.business_id=b.id WHERE lp.business_id=? AND lp.published=1", (bid,))
         lp = c.fetchone()
     except Exception as e:
         print(f"Landing page fetch error: {e}")
@@ -4470,7 +4232,7 @@ def _place_lead_call(phone, name, biz_id, source):
         call_data = json.loads(r.stdout or "{}")
         call_id = call_data.get("id", "")
         if not call_id:
-            return jsonify({"success": False, "error": f"Call failed: {call_data.get('message','failed')}"}), 502
+            return jsonify({"success": False, "error": f"VAPI: {call_data.get('message','failed')}"}), 502
         _lead_call_cooldown[phone] = now
         db = get_db()
         try:
@@ -4511,7 +4273,7 @@ def api_outbound_call():
             "business_name": str(data.get("business_name") or biz["name"] or "your business")}
     call_id = make_vapi_call(lead, dict(biz), biz["vapi_assistant_id"], biz["vapi_phone_id"], 0)
     if not call_id:
-        return jsonify({"success": False, "error": "Call failed to start"}), 502
+        return jsonify({"success": False, "error": "VAPI call failed to start"}), 502
     return jsonify({"success": True, "call_id": call_id, "business": biz_id, "phone": phone})
 
 
@@ -5466,207 +5228,6 @@ FAQ:
 • Q: How long does closing take? A: Typically 30-45 days""",
 }
 
-def fetch_site_text(url):
-    """Fetch a website's readable text with a fallback chain:
-    direct GET -> Wayback Machine snapshot -> Jina reader.
-    Returns (text, title). Bot-protected/JS-only sites (e.g. brucknerautosales.com)
-    are unreachable directly, so the Wayback snapshot provides the real content."""
-    import re as _re
-    u = url if url.startswith('http') else 'https://' + url
-    for attempt in [u, 'https://web.archive.org/web/2026id_/' + u, 'https://r.jina.ai/' + u]:
-        try:
-            r = requests.get(attempt, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}, timeout=35)
-            if r.status_code != 200:
-                continue
-            t = r.text
-            m = _re.search(r'<title[^>]*>([^<]+)</title>', t, _re.I)
-            title = m.group(1).strip() if m else ''
-            txt = _re.sub(r'<script[\s\S]*?</script>|<style[\s\S]*?</style>', ' ', t)
-            # Next.js sites keep real content inside __NEXT_DATA__ JSON — keep it
-            m2 = _re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', t, _re.S)
-            if m2:
-                try:
-                    import json as _json
-                    def _walk(o):
-                        if isinstance(o, str):
-                            return o
-                        if isinstance(o, dict):
-                            return ' '.join(_walk(v) for v in o.values())
-                        if isinstance(o, list):
-                            return ' '.join(_walk(i) for i in o)
-                        return ''
-                    txt = txt + ' ' + _walk(_json.loads(m2.group(1)))
-                except Exception:
-                    pass
-            txt = _re.sub(r'<[^>]+>', ' ', txt)
-            txt = _re.sub(r'\s+', ' ', txt).strip()
-            if len(txt) >= 200:
-                return txt[:8000], title
-        except Exception:
-            continue
-    return '', ''
-
-
-@app.route('/api/onboard-run', methods=['POST'])
-@login_required
-def api_onboard_run():
-    """One-shot onboarding: scan website -> extract business info -> auto-generate
-    knowledge base + inbound/outbound scripts -> SAVE everything. Returns all for UI."""
-    import re as _re
-    bid = session['business_id']
-    data = request.get_json(silent=True) or {}
-    url = (data.get('url') or '').strip()
-    db = get_db()
-    c = db.cursor()
-    c.execute("SELECT * FROM businesses WHERE id=?", (bid,))
-    biz = c.fetchone()
-    biz_name = (biz['name'] or '').strip() or 'your business'
-    industry = (biz['industry'] or '').strip() or 'general'
-
-    # ── 1. Fetch website ──
-    site_text, title = '', ''
-    fetched = False
-    if url:
-        site_text, title = fetch_site_text(url)
-        fetched = bool(site_text)
-
-    # ── 2. Extract business info ──
-    def find_phone(t):
-        m = _re.search(r'(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}', t)
-        return m.group(0) if m else ''
-    def find_address(t):
-        m = _re.search(r'\d{1,6}\s+[A-Za-z0-9\s.,#-]{2,60}?(?:Street|St|Avenue|Ave|Blvd|Boulevard|Road|Rd|Drive|Dr|Lane|Ln|Way|Court|Ct|Suite|Ste|Highway|Hwy)\b[^.\n]{0,40}', t, _re.I)
-        return m.group(0).strip() if m else ''
-    def find_hours(t):
-        m = _re.search(r'(?:(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*[.\s,-]*(?:&|and|to|–|-)?\s*){1,7}\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)', t, _re.I)
-        if m:
-            s = max(0, m.start() - 60)
-            return t[s:m.end() + 60].strip()
-        m2 = _re.search(r'(?:hours|open)[^.]{5,90}\d{1,2}(?::\d{2})?\s*(?:am|pm)', t, _re.I)
-        return m2.group(0).strip() if m2 else ''
-    def guess_industry(t, name):
-        low = (t + ' ' + name).lower()
-        kw = [('dealership|inventory|cars|vehicles|auto sales|used cars', 'Car Dealership'),
-              ('electrician|electrical', 'Electrician'),
-              ('pizza|restaurant|menu|food|diner|cafe', 'Restaurant'),
-              ('dental|dentist|teeth', 'Dental Clinic'),
-              ('plumb', 'Plumber'),
-              ('salon|spa|beauty|hair', 'Salon'),
-              ('lawyer|attorney|law firm|legal', 'Law Office'),
-              ('contractor|construction|remodel', 'Contractor'),
-              ('auto repair|mechanic|tire', 'Auto Repair'),
-              ('real estate|realtor|property', 'Real Estate'),
-              ('cleaning|maid|janitor', 'Cleaning Service'),
-              ('landscap|lawn|tree', 'Landscaping')]
-        for pat, ind in kw:
-            if _re.search(pat, low):
-                return ind
-        return 'General Services'
-    extracted = {
-        'name': title.split('|')[0].split('–')[0].split('-')[0].strip()[:80] if title else '',
-        'industry': guess_industry(site_text, title) if fetched else '',
-        'phone': find_phone(site_text) if fetched else '',
-        'address': find_address(site_text) if fetched else '',
-        'hours': find_hours(site_text) if fetched else '',
-        'timezone': biz['timezone'] or 'America/New_York',
-        'primary_contact': '',
-    }
-    if fetched and (not extracted['name'] or len(extracted['name']) < 3):
-        m = _re.search(r'<h1[^>]*>([^<]+)</h1>', raw, _re.I) if 'raw' in dir() else None
-        if m:
-            extracted['name'] = m.group(1).strip()[:80]
-    new_name = extracted['name'] or biz_name
-    new_industry = extracted['industry'] or industry
-
-    # ── 3. Auto-generate KB + scripts (Venice, one KB call + one scripts call) ──
-    api_key = os.environ.get('VENICE_API_KEY', '')
-    if not api_key:
-        try:
-            with open('/root/voice-agent-manager/api_keys.json') as f:
-                api_key = json.load(f).get('VENICE_API_KEY', '')
-        except Exception:
-            pass
-    site_block = (f"\n\nBUSINESS WEBSITE CONTENT (use ONLY this for facts — never invent details not found here):\n{site_text[:6000]}"
-                  if site_text else "")
-    kb, script_in, script_out = '', '', ''
-    try:
-        if api_key:
-            sys_kb = "You build concise, practical knowledge bases for AI voice employees handling customer calls."
-            usr_kb = (f"Build a knowledge base for {new_name} ({new_industry}). Include: business info, services/products, "
-                      f"pricing ranges, business hours, location, FAQs, booking process, escalation rules. "
-                      f"5-8 short sections with bullet points. Plain English, no fluff.{site_block}")
-            r1 = requests.post("https://api.venice.ai/api/v1/chat/completions",
-                               headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                               json={"model": "venice-uncensored-1-2",
-                                     "messages": [{"role": "system", "content": sys_kb},
-                                                  {"role": "user", "content": usr_kb}],
-                                     "max_tokens": 2000, "temperature": 0.7}, timeout=45)
-            kb = r1.json()['choices'][0]['message']['content'].strip()
-            sys_sc = "You are an expert call-script writer for AI voice employees. The AI must sound like a professional human employee — NEVER mention being AI, a robot, software, or a virtual assistant unless directly asked."
-            usr_sc = (f"Write TWO call scripts for {new_name} ({new_industry}).\n"
-                      f"INBOUND SCRIPT: how the AI answers customers who call — greeting, listening, answering questions, booking, ending.\n"
-                      f"OUTBOUND SCRIPT: how the AI calls prospects — opening (introduce self + business, use {{{{prospect_name}}}}), reason for call, qualifying, the ask, objection handling, voicemail.\n"
-                      f"Start INBOUND with the marker 'INBOUND_SCRIPT:' and OUTBOUND with 'OUTBOUND_SCRIPT:'. Natural conversational tone, 300-500 words each.{site_block}")
-            r2 = requests.post("https://api.venice.ai/api/v1/chat/completions",
-                               headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                               json={"model": "venice-uncensored-1-2",
-                                     "messages": [{"role": "system", "content": sys_sc},
-                                                  {"role": "user", "content": usr_sc}],
-                                     "max_tokens": 3000, "temperature": 0.7}, timeout=60)
-            raw_sc = r2.json()['choices'][0]['message']['content'].strip()
-            m_in = _re.search(r'INBOUND_SCRIPT:(.*?)(?:OUTBOUND_SCRIPT:|$)', raw_sc, _re.S | _re.I)
-            m_out = _re.search(r'OUTBOUND_SCRIPT:(.*)$', raw_sc, _re.S | _re.I)
-            script_in = m_in.group(1).strip() if m_in else raw_sc[:1500].strip()
-            script_out = m_out.group(1).strip() if m_out else ''
-    except Exception:
-        pass
-
-    # ── 4. Fallback templates if generation failed ──
-    if not kb:
-        kb = (f"BUSINESS: {new_name} ({new_industry})\n"
-              f"LOCATION: {extracted['address'] or '[Your City, State]'}\n"
-              f"HOURS: {extracted['hours'] or 'Mon-Fri 9am-6pm'}\n"
-              f"PHONE: {extracted['phone'] or '[Your Phone Number]'}\n\n"
-              f"Services: [describe what you offer]\nPricing: [describe your pricing]\n"
-              f"FAQs: [common questions & answers]\nBooking: [how to book]")
-    if not script_in:
-        script_in = (f"INBOUND CALL SCRIPT\n\nGreeting: \"Hi, thanks for calling {new_name}! This is [Your Name] — how can I help you today?\"\n"
-                     f"Listen to the customer's need, answer questions using the knowledge base, collect name + phone, "
-                     f"offer to book an appointment or transfer to a team member. Never invent facts.")
-    if not script_out:
-        script_out = (f"OUTBOUND CALL SCRIPT\n\nOpening: \"Hi {{{{prospect_name}}}}, this is [Your Name] from {new_name} — "
-                      f"do you have a quick minute?\"\nState the reason for the call, qualify the lead, offer the next step "
-                      f"(appointment/info), handle objections, leave a voicemail with the callback number. Never say 'thanks for calling'.")
-
-    # ── 5. SAVE everything ──
-    try:
-        db.execute("ALTER TABLE businesses ADD COLUMN website TEXT DEFAULT ''")
-    except Exception:
-        pass
-    try:
-        db.execute("ALTER TABLE businesses ADD COLUMN business_hours TEXT DEFAULT ''")
-    except Exception:
-        pass
-    try:
-        db.execute("ALTER TABLE businesses ADD COLUMN primary_contact TEXT DEFAULT ''")
-    except Exception:
-        pass
-    db.execute("""UPDATE businesses SET name=?, industry=?, phone_number=?, business_address=?,
-                  business_hours=?, timezone=?, primary_contact=?, website=?, knowledge_base=?, script_template=?, script_outbound=? WHERE id=?""",
-        (new_name, new_industry, extracted['phone'], extracted['address'], extracted['hours'],
-         extracted['timezone'], extracted['primary_contact'], url, kb, script_in, script_out, bid))
-    db.commit()
-    db.close()
-
-    # ── 6. Summary stats ──
-    topics = max(1, kb.count('•') + kb.count('- ') // 2)
-    faqs = site_text.count('?') if fetched else 0
-    return jsonify({'success': True, 'fetched': fetched,
-                    'info': extracted, 'name': new_name, 'industry': new_industry,
-                    'kb': kb, 'script_in': script_in, 'script_out': script_out,
-                    'summary': {'topics': min(topics, 99), 'pages': 1 if fetched else 0, 'faqs': min(faqs, 99)}})
-
-
 @app.route('/api/generate-kb', methods=['POST'])
 @login_required
 def api_generate_kb():
@@ -5701,30 +5262,27 @@ def api_generate_kb():
             except:
                 pass
         
-        if api_key and method == 'venice':
+        if api_key and method in ('venice', 'ai'):
             try:
                 kind = data.get('kind', 'kb')
                 # Optional: fetch the business website so the AI generates real content
                 site_text = ''
                 site_url = (data.get('url') or '').strip()
                 if site_url:
-                    site_text, _t = fetch_site_text(site_url)
-                    site_text = site_text[:6000]
+                    try:
+                        r_site = requests.get(
+                            site_url if site_url.startswith('http') else 'https://' + site_url,
+                            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'},
+                            timeout=20)
+                        import re as _re
+                        site_text = _re.sub(r'<script[\s\S]*?</script>|<style[\s\S]*?</style>', ' ', r_site.text)
+                        site_text = _re.sub(r'<[^>]+>', ' ', site_text)
+                        site_text = _re.sub(r'\s+', ' ', site_text).strip()[:6000]
+                    except Exception as _e:
+                        site_text = ''
                 site_block = f"\n\nBUSINESS WEBSITE CONTENT (use ONLY this for facts — never invent details not found here):\n{site_text}" if site_text else ""
 
-                if kind == 'first_message':
-                    if kb_type == 'inbound':
-                        sys_p = "You write short, natural opening greetings for AI voice assistants that answer business phone calls."
-                        usr_p = (f"Write ONE opening greeting line the AI says when it ANSWERS the phone for \"{biz_name}\" ({industry}). "
-                                 f"Rules: 1-2 sentences max, sounds like a real friendly human (not a robot), include the business name, "
-                                 f"invite the caller to say what they need. Return ONLY the greeting itself — no quotes, no label, no explanation.{site_block}")
-                    else:
-                        sys_p = "You write short, natural cold-call openers for AI voice assistants that call prospects on behalf of a business."
-                        usr_p = (f"Write ONE opening line the AI says when it CALLS a prospect for \"{biz_name}\" ({industry}). "
-                                 f"Rules: 1-2 sentences max, introduce yourself and the business, confirm you're speaking with the right person "
-                                 f"using {{{{prospect_name}}}}, sounds like a real human (not a robot). NEVER start with 'thanks for calling' "
-                                 f"(the AI made the call). Return ONLY the opening itself — no quotes, no label, no explanation.{site_block}")
-                elif kind == 'script':
+                if kind == 'script':
                     if kb_type == 'inbound':
                         sys_p = "You are an expert call-script writer. Write a complete, natural INBOUND call script for a dealership-style AI voice agent that answers the phone."
                         usr_p = (f"Write a complete inbound call script for \"{biz_name}\" ({industry}). Include: ROLE, PERSONALITY, OPENING greeting, "
@@ -5750,23 +5308,17 @@ def api_generate_kb():
                     json={"model": "venice-uncensored-1-2", "messages": [{"role":"system","content":sys_p},{"role":"user","content":usr_p}], "max_tokens":2000, "temperature":0.7},
                     timeout=45)
                 content = r.json()['choices'][0]['message']['content'].strip()
-                if kind == 'first_message':
-                    label = "Inbound First Message" if kb_type == 'inbound' else "Outbound First Message"
-                elif kind == 'script':
+                if kind == 'script':
                     label = "Inbound Script" if kb_type == 'inbound' else "Outbound Script"
                 else:
                     label = "Inbound Call KB" if kb_type == 'inbound' else "Knowledge Base"
                 src = " from your website" if site_text else ""
-                return jsonify({'success': True, 'content': content, 'message': f'{label} generated{src} via AI!'})
+                return jsonify({'success': True, 'content': content, 'knowledge_base': content if kind != 'script' else '', 'script': content if kind == 'script' else '', 'message': f'{label} generated{src} via AI!'})
             except Exception as e:
                 return jsonify({'success': False, 'message': f'AI generation failed: {str(e)}'}), 500
         
         # Fallback: template-based AI generation
-        if kind == 'first_message':
-            kb = (f"Hi, thanks for calling {biz_name}! This is [Your Name] — how can I help you today?"
-                  if kb_type == 'inbound'
-                  else f"Hi {{{{prospect_name}}}}! This is [Your Name] from {biz_name} — do you have a minute to talk?")
-        elif kb_type == 'inbound':
+        if kb_type == 'inbound':
             kb = f"""🏢 BUSINESS: {biz_name}
 📍 LOCATION: [Your City, State]
 🕐 HOURS: Mon-Fri 9am-6pm (customize below)
@@ -5811,7 +5363,7 @@ Booking Process:
 2. Collect contact info (name, phone, email)
 3. Schedule appointment
 4. Send confirmation"""
-        return jsonify({'success': True, 'content': kb, 'message': f'Template KB generated!'})
+        return jsonify({'success': True, 'content': kb, 'knowledge_base': kb, 'message': f'Template KB generated!'})
     
     # Method: Templates
     if method == 'template':
@@ -6178,8 +5730,8 @@ def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
             model_provider = model_config.get('provider', 'xai')
             model_name = model_config.get('model', 'grok-4.3')
         except:
-            model_provider = 'xai'
-            model_name = 'grok-4.3'
+            model_provider = 'openai'
+            model_name = 'openai-gpt-4o-2024-11-20'
         
         agent_prompt = biz.get('agent_prompt') or ''
         if agent_prompt or script or kb:
@@ -6389,14 +5941,16 @@ def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
                                 lr2 = c3.fetchone()
                                 lead_email = lr2[0] if lr2 and lr2[0] else ''
                                 if lead_email:
-                                    c3.execute("SELECT name FROM businesses WHERE id=?", (biz_id,))
+                                    c3.execute("SELECT name, business_address FROM businesses WHERE id=?", (biz_id,))
                                     br = c3.fetchone()
                                     biz_name_am = br[0] if br else 'Business'
+                                    biz_addr_am = br[1] if br and br[1] else ''
                                     send_appointment_confirmation(
                                         to=lead_email,
                                         prospect_name=prospect_name or 'there',
                                         business_name=biz_name_am,
-                                        appointment_time=appointment_time
+                                        appointment_time=appointment_time,
+                                        business_address=biz_addr_am
                                     )
                                     print(f"📧 Confirmation email sent to {lead_email}")
                             except Exception as am_e:
@@ -6407,6 +5961,20 @@ def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
                     print(f"📝 Call {cid[:12]}... updated: {dur}s, ${cost}, {outcome}")
                     if appointment_time:
                         print(f"📅 Appointment: {appointment_time}")
+                    
+                    # ── SMS Followup ──
+                    # Send SMS on no_answer (outbound) or appointment_booked
+                    try:
+                        from premium_features import send_sms_followup
+                        # Find biz_id and lead phone for SMS
+                        biz_for_sms = biz['id']
+                        lead_phone_for_sms = lead_phone
+                        prospect_for_sms = lead.get('name') or lead.get('business_name') or lead_phone
+                        if outcome != 'appointment_booked':  # Send SMS for all non-booking outcomes
+                            send_sms_followup(biz_for_sms, lead_phone_for_sms, prospect_for_sms, outcome)
+                            print(f"📱 SMS followup attempted for {outcome}")
+                    except Exception as sms_e:
+                        print(f"⚠️ SMS followup error: {sms_e}")
                 except Exception as e:
                     import traceback
                     traceback.print_exc()
@@ -6815,7 +6383,7 @@ def call_lead(lead_id):
             "assistantId": biz['vapi_assistant_id'],
             "phoneNumberId": biz['vapi_phone_id'],
             "customer": {"number": lead['phone']},
-            "assistantOverrides": {"model": {"maxTokens": 200, "provider": "xai", "model": "grok-4.3"}}
+            "assistantOverrides": {"model": {"maxTokens": 200, "provider": "openai", "model": "openai-gpt-4o-2024-11-20"}}
         }
         # Inject lead knowledge into the AI's context
         knowledge_parts = []
@@ -6852,6 +6420,43 @@ def delete_lead(lead_id):
     c.execute("DELETE FROM leads WHERE id = ? AND business_id = ?", (lead_id, bid))
     db.commit()
     return redirect('/?tab=leads')
+
+@app.route('/lead/delete-selected', methods=['POST'])
+@login_required
+def delete_selected_leads():
+    """Delete multiple leads by ID (JSON: {"ids": [...]}). Scoped to the logged-in business."""
+    bid = session['business_id']
+    data = request.get_json(silent=True) or {}
+    ids = [str(x).strip() for x in data.get('ids', []) if str(x).strip()]
+    if not ids:
+        return jsonify({'success': False, 'message': 'No leads selected'}), 400
+    db = get_db()
+    c = db.cursor()
+    placeholders = ','.join('?' * len(ids))
+    c.execute(f"DELETE FROM leads WHERE business_id = ? AND id IN ({placeholders})", [bid] + ids)
+    deleted = c.rowcount
+    try:
+        c.execute(f"DELETE FROM followups WHERE business_id = ? AND lead_id IN ({placeholders})", [bid] + ids)
+    except Exception:
+        pass  # followups table optional
+    db.commit()
+    return jsonify({'success': True, 'message': f'🗑️ Deleted {deleted} lead(s)'})
+
+@app.route('/lead/delete-all', methods=['POST'])
+@login_required
+def delete_all_leads():
+    """Delete every lead for the logged-in business."""
+    bid = session['business_id']
+    db = get_db()
+    c = db.cursor()
+    c.execute("DELETE FROM leads WHERE business_id = ?", (bid,))
+    deleted = c.rowcount
+    try:
+        c.execute("DELETE FROM followups WHERE business_id = ?", (bid,))
+    except Exception:
+        pass
+    db.commit()
+    return jsonify({'success': True, 'message': f'🗑️ Deleted ALL {deleted} lead(s)'})
 
 @app.route('/lead/update', methods=['POST'])
 @login_required
@@ -7057,55 +6662,6 @@ def import_leads():
 
 # ── SETTINGS ──
 
-@app.route('/update-business-info', methods=['POST'])
-@login_required
-def update_business_info():
-    """Step 1 — Business Information: name, industry, phone, address, hours, timezone, contact, website."""
-    bid = session['business_id']
-    db = get_db()
-    try:
-        db.execute("ALTER TABLE businesses ADD COLUMN website TEXT DEFAULT ''")
-    except Exception:
-        pass
-    try:
-        db.execute("ALTER TABLE businesses ADD COLUMN business_hours TEXT DEFAULT ''")
-    except Exception:
-        pass
-    try:
-        db.execute("ALTER TABLE businesses ADD COLUMN primary_contact TEXT DEFAULT ''")
-    except Exception:
-        pass
-    db.execute("""UPDATE businesses SET name=?, industry=?, phone_number=?, business_address=?,
-                  business_hours=?, timezone=?, primary_contact=?, website=? WHERE id=?""",
-        (request.form.get('name', '').strip()[:120],
-         request.form.get('industry', '').strip()[:80],
-         request.form.get('phone_number', '').strip()[:30],
-         request.form.get('business_address', '').strip()[:200],
-         request.form.get('business_hours', '').strip()[:200],
-         request.form.get('timezone', 'America/New_York'),
-         request.form.get('primary_contact', '').strip()[:120],
-         request.form.get('website', '').strip()[:300], bid))
-    db.commit()
-    db.close()
-    flash('✅ Business information saved!', 'success')
-    return redirect('/?tab=settings')
-
-
-@app.route('/api/setup-done', methods=['POST'])
-@login_required
-def api_setup_done():
-    """Final step — ACTIVATE: mark setup complete."""
-    db = get_db()
-    try:
-        db.execute("ALTER TABLE businesses ADD COLUMN setup_done INTEGER DEFAULT 0")
-    except Exception:
-        pass
-    db.execute("UPDATE businesses SET setup_done = 1 WHERE id = ?", (session['business_id'],))
-    db.commit()
-    db.close()
-    return jsonify({'success': True})
-
-
 @app.route('/update-script', methods=['POST'])
 @login_required
 def update_script():
@@ -7118,38 +6674,28 @@ def update_script():
     first_message_mode = request.form.get('first_message_mode', 'assistant-speaks-first')
     business_address = request.form.get('business_address', '').strip()[:200]
     voice_provider = request.form.get('voice_provider', '')
-    agent_tone = request.form.get('agent_tone', 'conversational')
-    agent_honesty = 1 if request.form.get('agent_honesty') == '1' else 0
-    try:
-        db.execute("ALTER TABLE businesses ADD COLUMN agent_tone TEXT DEFAULT 'conversational'")
-    except Exception:
-        pass
-    try:
-        db.execute("ALTER TABLE businesses ADD COLUMN agent_honesty INTEGER DEFAULT 1")
-    except Exception:
-        pass
 
     db = get_db()
     c = db.cursor()
     if voice_provider:
         c.execute("""UPDATE businesses 
                      SET script_template = ?, script_outbound = ?, knowledge_base = ?, 
-                         first_message = ?, first_message_outbound = ?, first_message_mode = ?, business_address = ?, voice_provider = ?, agent_tone = ?, agent_honesty = ?
+                         first_message = ?, first_message_outbound = ?, first_message_mode = ?, business_address = ?, voice_provider = ?
                      WHERE id = ?""",
-            (script, script_outbound, kb, first_message, first_message_outbound, first_message_mode, business_address, voice_provider, agent_tone, agent_honesty, bid))
+            (script, script_outbound, kb, first_message, first_message_outbound, first_message_mode, business_address, voice_provider, bid))
     else:
         # Voice Provider selector removed — preserve the stored provider
         c.execute("""UPDATE businesses 
                      SET script_template = ?, script_outbound = ?, knowledge_base = ?, 
-                         first_message = ?, first_message_outbound = ?, first_message_mode = ?, business_address = ?, agent_tone = ?, agent_honesty = ?
+                         first_message = ?, first_message_outbound = ?, first_message_mode = ?, business_address = ?
                      WHERE id = ?""",
-            (script, script_outbound, kb, first_message, first_message_outbound, first_message_mode, business_address, agent_tone, agent_honesty, bid))
+            (script, script_outbound, kb, first_message, first_message_outbound, first_message_mode, business_address, bid))
     db.commit()
     
     # ── Sync to Vapi assistant ──
     c.execute("""SELECT vapi_assistant_id, name, industry, script_template, 
                  knowledge_base, agent_prompt, first_message, first_message_mode,
-                 voice_id, voice_speed, voice_provider, script_outbound, agent_tone, agent_honesty
+                 voice_id, voice_speed, voice_provider, script_outbound
                  FROM businesses WHERE id = ?""", (bid,))
     biz = c.fetchone()
     db.close()
@@ -7173,20 +6719,6 @@ def update_script():
                 business_name=name, industry=industry,
                 script=saved_script, knowledge_base=saved_kb
             )
-        # AI Behavior (tone) + honesty rule
-        TONE_LINES = {
-            'professional': 'professional, polished, and clear',
-            'friendly': 'friendly and approachable',
-            'conversational': 'natural and conversational',
-            'confident': 'confident and assured',
-            'luxury': 'elegant, refined, and premium',
-            'direct': 'direct and to the point',
-        }
-        tone = (biz['agent_tone'] or 'conversational')
-        extra = "You speak in a %s tone." % TONE_LINES.get(tone, 'natural and conversational')
-        if (biz['agent_honesty'] if 'agent_honesty' in biz.keys() else 1):
-            extra += " If someone directly asks whether you are a human or an AI, be honest: tell them you are %s's AI assistant here to help." % (name or 'the business')
-        full_prompt = extra + "\n\n" + full_prompt
         # Append the outbound script (what to say when CALLING prospects)
         outbound = biz['script_outbound'] or ''
         if outbound.strip():
@@ -7249,6 +6781,12 @@ def update_script():
                 flash('✅ Script, KB & Vapi settings synced!', 'success')
             else:
                 flash(f"✅ Saved locally. Vapi sync: {result.get('message','check settings')}", 'warning')
+            # KB-driven transfers: keep transferCall tool in sync with KB transfer lines
+            try:
+                from premium_features import sync_transfers_from_kb
+                sync_transfers_from_kb(bid, biz['vapi_assistant_id'])
+            except Exception as e:
+                print(f"[transfer-sync] {e}")
         except:
             flash('✅ Script & KB saved locally. Vapi sync attempted.', 'success')
     else:
@@ -7258,14 +6796,16 @@ def update_script():
 
 def fetch_vapi_assistant(aid):
     """GET current VAPI assistant config (used to preserve model/voice on PATCH).
-    Uses curl subprocess — urllib gets HTTP 403 from the VAPI API in this env."""
+    Uses curl because VAPI blocks urllib with HTTP 403."""
     import subprocess
-    r = subprocess.run(["curl", "-s", f"{VAPI_BASE}/assistant/{aid}",
-        "-H", f"Authorization: Bearer {VAPI_API_KEY}"], capture_output=True, text=True, timeout=15)
-    try:
-        return json.loads(r.stdout)
-    except Exception:
-        return {"error": r.stdout[:200]}
+    r = subprocess.run([
+        "curl", "-s",
+        f"{VAPI_BASE}/assistant/{aid}",
+        "-H", f"Authorization: Bearer {VAPI_API_KEY}"
+    ], capture_output=True, text=True, timeout=15)
+    if r.returncode != 0 or not r.stdout:
+        raise Exception(f"curl failed: {r.stderr or 'empty response'}")
+    return json.loads(r.stdout)
 
 
 def build_model_patch(cur_assistant, full_prompt, temperature=None, max_tokens=None):
@@ -7279,10 +6819,8 @@ def build_model_patch(cur_assistant, full_prompt, temperature=None, max_tokens=N
     }
     # CRITICAL: preserve any registered tools (e.g. search_inventory) — a PATCH
     # that omits them wipes them and the agent silently loses its tools.
-    # Tools can live at model.tools OR assistant top-level tools — preserve BOTH.
-    tools = cur_model.get("tools") or (cur_assistant or {}).get("tools")
-    if tools:
-        patch["tools"] = tools
+    if cur_model.get("tools"):
+        patch["tools"] = cur_model["tools"]
     if cur_model.get("messages"):
         msgs = list(cur_model["messages"])
         sys_idx = next((i for i, m in enumerate(msgs) if m.get("role") == "system"), None)
@@ -7316,28 +6854,18 @@ def patch_vapi_assistant(aid, payload):
 TRANSFER_TAG = "[TRANSFER-INSTRUCTION]"
 
 
-def add_transfer_to_assistant(aid, forward_to, destinations=None):
+def add_transfer_to_assistant(aid, forward_to):
     """Add/remove the transferCall tool + transfer instruction on a VAPI assistant.
-    forward_to: single destination number (legacy) OR list of dicts {label, number}.
-    destinations: optional explicit list of {label, number} — supports forwarding
-    to MULTIPLE people/depts. The prompt lists who's reachable so the model picks
-    the right destination (Manager, Sales, Support, …).
+    When forward_to is set, the agent transfers callers who ask for a manager/owner.
     Preserves the assistant's model provider, voice, transcriber, and analysis plan.
     """
-    if isinstance(forward_to, (list, tuple)):
-        destinations = [d if isinstance(d, dict) else {'label': 'Manager', 'number': d} for d in forward_to]
-        forward_to = destinations[0]['number'] if destinations else ''
-    elif destinations is None and forward_to:
-        destinations = [{'label': 'Manager', 'number': forward_to}]
-    else:
-        destinations = [d for d in (destinations or []) if d.get('number')]
     try:
         cur = fetch_vapi_assistant(aid)
     except Exception:
         return {"error": "could not fetch assistant"}
     model = cur.get("model") or {}
-    provider = model.get("provider", "xai")
-    model_name = model.get("model", "grok-4.3")
+    provider = model.get("provider", "openai")
+    model_name = model.get("model", "openai-gpt-4o-2024-11-20")
 
     # ── system prompt (messages-style or systemPrompt-style) ──
     if model.get("messages"):
@@ -7352,32 +6880,22 @@ def add_transfer_to_assistant(aid, forward_to, destinations=None):
         msgs = None
 
     # strip any previous transfer instruction
-    if TRANSFER_TAG in prompt:
-        prompt = prompt.split(TRANSFER_TAG)[0].rstrip()
+    import re
+    prompt = re.sub(r'=== CRITICAL TRANSFER RULES.*?=== END TRANSFER RULES ===', '', prompt, flags=re.DOTALL)
+    prompt = re.sub(r'\[TRANSFER-INSTRUCTION\].*?(?=\n\n|$)', '', prompt, flags=re.DOTALL).strip()
 
-    if destinations:
-        dest_list = ", ".join(f"{d.get('label', 'Manager')} ({d['number']})" for d in destinations)
-        if len(destinations) == 1:
-            d0 = destinations[0]
-            prompt = (prompt.rstrip() + "\n\n" + TRANSFER_TAG +
-                      "\nIf the caller asks to speak with a manager, owner, supervisor, or asks to be transferred, "
-                      "say \"Of course, one moment please\" and immediately use the transferCall function to "
-                      f"transfer the call to {d0['number']}. Do not transfer for sales calls or wrong numbers.\n").strip()
-        else:
-            prompt = (prompt.rstrip() + "\n\n" + TRANSFER_TAG +
-                      "\nIf the caller asks to speak with a specific person or department (manager, owner, supervisor, "
-                      "sales, support, etc.) or asks to be transferred, say \"Of course, one moment please\" and use the "
-                      "transferCall function to transfer to the RIGHT person. Available destinations: "
-                      f"{dest_list}. Match the caller's request to the closest destination. "
-                      "Do not transfer for sales calls or wrong numbers.\n").strip()
+    if forward_to:
+        # Prepend transfer rules at TOP so the AI reads them first
+        prompt = (TRANSFER_TAG +
+                  "\nONLY transfer if the caller EXPLICITLY asks to speak with a manager, owner, supervisor, or asks to be transferred. NEVER offer a transfer proactively. NEVER transfer just because the caller sounds frustrated or unhappy. If in doubt, do NOT transfer. Before transferring, confirm: \"Sure, let me transfer you now. One moment.\" Use the transferCall function to "
+                  f"transfer the call to {forward_to}. Do not transfer for sales calls or wrong numbers.\n").strip()
     else:
         prompt = prompt.strip()
 
     # ── tools ──
     tools = [t for t in (model.get("tools") or []) if t.get("type") != "transferCall"]
-    if destinations:
-        tools.append({"type": "transferCall",
-                      "destinations": [{"type": "number", "number": d['number']} for d in destinations]})
+    if forward_to:
+        tools.append({"type": "transferCall", "destinations": [{"type": "number", "number": forward_to}]})
 
     model_patch = {
         "provider": provider,
@@ -7392,6 +6910,75 @@ def add_transfer_to_assistant(aid, forward_to, destinations=None):
         model_patch["messages"] = msgs
     else:
         model_patch["systemPrompt"] = prompt
+    if model.get("temperature") is not None:
+        model_patch["temperature"] = model["temperature"]
+    if model.get("maxTokens") is not None:
+        model_patch["maxTokens"] = model["maxTokens"]
+
+    return patch_vapi_assistant(aid, {"model": model_patch})
+
+def add_transfer_to_assistant_multi(aid, destinations):
+    """Support multiple forward destinations (with labels) for Vapi transferCall tool."""
+    try:
+        cur = fetch_vapi_assistant(aid)
+    except Exception:
+        return {"error": "could not fetch assistant"}
+
+    model = cur.get("model") or {}
+    provider = model.get("provider", "openai")
+    model_name = model.get("model", "openai-gpt-4o-2024-11-20")
+
+    # system prompt
+    if model.get("messages"):
+        msgs = list(model["messages"])
+        sys_idx = next((i for i, m in enumerate(msgs) if m.get("role") == "system"), None)
+        prompt = msgs[sys_idx].get("content", "") if sys_idx is not None else ""
+    else:
+        prompt = model.get("systemPrompt", "")
+        msgs = None
+
+    TRANSFER_TAG = "[TRANSFER-INSTRUCTION]"
+    # Strip old transfer instructions
+    import re
+    prompt = re.sub(r"=== CRITICAL TRANSFER RULES.*?=== END TRANSFER RULES ===", "", prompt, flags=re.DOTALL)
+    prompt = re.sub(r'=== CRITICAL TRANSFER RULES.*?=== END TRANSFER RULES ===\s*', '', prompt, flags=re.DOTALL)
+    prompt = re.sub(r'\[TRANSFER-INSTRUCTION\].*?(?=\n\n|$)', '', prompt, flags=re.DOTALL).strip()
+
+    if destinations:
+        lines = []
+        for d in destinations:
+            label = (d.get('label') or 'Contact').strip()
+            num = (d.get('number') or '').strip()
+            if num:
+                lines.append(f"- {label}: {num}")
+        dest_list = "\n".join(lines)
+        prompt = (prompt.rstrip() + "\n\n" + TRANSFER_TAG +
+                  "\nONLY transfer if the caller EXPLICITLY asks by name or role using the destinations below. NEVER offer a transfer proactively. NEVER transfer just because the caller is frustrated. If in doubt, do NOT transfer. Confirm first, then use transferCall. Destinations:\n" +
+                  dest_list + "\n").strip()
+    else:
+        prompt = prompt.strip()
+
+    # tools
+    tools = [t for t in (model.get("tools") or []) if t.get("type") != "transferCall"]
+    if destinations:
+        dests = [{"type": "number", "number": d.get("number")} for d in destinations if d.get("number")]
+        if dests:
+            tools.append({"type": "transferCall", "destinations": dests})
+
+    model_patch = {
+        "provider": provider,
+        "model": model_name,
+        "tools": tools,
+    }
+    if model.get("messages") or msgs is not None:
+        if sys_idx is not None:
+            msgs[sys_idx] = {**msgs[sys_idx], "content": prompt}
+        else:
+            msgs = [{"role": "system", "content": prompt}] + (msgs or [])
+        model_patch["messages"] = msgs
+    else:
+        model_patch["systemPrompt"] = prompt
+
     if model.get("temperature") is not None:
         model_patch["temperature"] = model["temperature"]
     if model.get("maxTokens") is not None:
@@ -7647,40 +7234,44 @@ def update_forwarding():
     db = get_db()
     c = db.cursor()
     enabled = 1 if request.form.get('forwarding_enabled') else 0
-    # Multiple destinations: JSON array of {label, number} (empty label -> 'Manager')
-    raw_dest = request.form.get('destinations', '')
+
+    # New multi-destination support from form (JSON array of {label, number})
+    dests_raw = request.form.get('destinations', '[]')
     try:
-        dests = json.loads(raw_dest) if raw_dest else []
-        dests = [{'label': (d.get('label') or 'Manager').strip()[:40], 'number': (d.get('number') or '').strip()}
-                 for d in dests if isinstance(d, dict) and (d.get('number') or '').strip()]
+        destinations = json.loads(dests_raw) if dests_raw else []
     except Exception:
-        dests = []
-    forward_to = dests[0]['number'] if dests else (request.form.get('forward_to', '') or '').strip()
-    if not dests and forward_to:
-        dests = [{'label': 'Manager', 'number': forward_to}]
-    c.execute("UPDATE businesses SET call_forwarding = ?, forward_to = ?, forward_when = ?, forward_destinations = ? WHERE id = ?",
-        (enabled, forward_to, request.form.get('forward_when','after-hours'), json.dumps(dests), bid))
+        destinations = []
+
+    # Legacy single forward_to: use first number if present
+    forward_to = ''
+    if destinations:
+        forward_to = destinations[0].get('number', '') or ''
+
+    # Save both for compat
+    dests_json = json.dumps(destinations) if destinations else '[]'
+    c.execute("UPDATE businesses SET call_forwarding = ?, forward_to = ?, forward_destinations = ?, forward_when = ? WHERE id = ?",
+        (enabled, forward_to, dests_json, request.form.get('forward_when', 'after-hours'), bid))
     db.commit()
-    # Sync transfer tool + instruction to the VAPI assistant (all destinations)
+
+    # Sync to Vapi (support multiple destinations)
     c.execute("SELECT vapi_assistant_id FROM businesses WHERE id = ?", (bid,))
     row = c.fetchone()
     db.close()
-    if row and row['vapi_assistant_id'] and dests and enabled:
-        result = add_transfer_to_assistant(row['vapi_assistant_id'], forward_to, destinations=dests)
-        if result.get('error') or 'statusCode' in result:
+
+    if row and row['vapi_assistant_id']:
+        if destinations:
+            result = add_transfer_to_assistant_multi(row['vapi_assistant_id'], destinations)
+        else:
+            result = add_transfer_to_assistant(row['vapi_assistant_id'], '')
+
+        if isinstance(result, dict) and (result.get('error') or 'statusCode' in result):
             flash('⚠️ Forwarding saved, but Vapi transfer sync failed: ' + str(result.get('message') or result.get('error')), 'warning')
         else:
-            names = ", ".join(d['label'] for d in dests)
-            flash(f'✅ Forwarding saved — callers can now be transferred to: {names}', 'success')
-    elif row and row['vapi_assistant_id'] and (not dests or not enabled):
-        # forwarding disabled -> strip the transfer tool
-        result = add_transfer_to_assistant(row['vapi_assistant_id'], '')
-        if not result.get('error') and 'statusCode' not in result:
-            flash('✅ Forwarding disabled — transfers removed from your AI agent.', 'success')
-        else:
-            flash('⚠️ Forwarding saved, but Vapi sync failed: ' + str(result.get('message') or result.get('error')), 'warning')
+            names = ", ".join([d.get('label', 'Contact') + " " + d.get('number','') for d in destinations]) if destinations else "disabled"
+            flash('✅ Forwarding saved — transfers configured for: ' + names, 'success')
     else:
         flash('✅ Forwarding updated!', 'success')
+
     return redirect('/?tab=settings')
 
 @app.route('/update-denoise', methods=['POST'])
@@ -8230,6 +7821,20 @@ def update_sms_settings():
     return redirect('/?tab=calendar')
 
 
+@app.route('/api/toggle-sms-missed', methods=['POST'])
+@login_required
+def api_toggle_sms_missed():
+    """Toggle the sms_missed setting for outbound no-answer SMS."""
+    bid = session['business_id']
+    enabled = '1' if request.form.get('enabled') == '1' else '0'
+    db = get_db()
+    c = db.cursor()
+    c.execute("UPDATE businesses SET sms_missed = ? WHERE id = ?", (enabled, bid))
+    db.commit()
+    db.close()
+    return jsonify({'success': True, 'sms_missed': enabled == '1'})
+
+
 @app.route('/api/send-appointment-email', methods=['POST'])
 @login_required
 def api_send_appointment_email():
@@ -8244,7 +7849,7 @@ def api_send_appointment_email():
     db = get_db()
     c = db.cursor()
     c.execute("""
-        SELECT a.*, l.email, l.name as lead_name, b.name as biz_name
+        SELECT a.*, l.email, l.name as lead_name, b.name as biz_name, b.business_address as biz_address
         FROM appointments a
         LEFT JOIN leads l ON a.lead_id = l.id
         JOIN businesses b ON a.business_id = b.id
@@ -8265,7 +7870,8 @@ def api_send_appointment_email():
             to=appt_dict['email'],
             prospect_name=appt_dict.get('lead_name') or appt_dict.get('prospect_name') or 'there',
             business_name=appt_dict['biz_name'],
-            appointment_time=appt_dict.get('appointment_time') or ''
+            appointment_time=appt_dict.get('appointment_time') or '',
+            business_address=appt_dict.get('biz_address', '')
         )
         return jsonify({'success': True, 'message_id': msg_id})
     except Exception as e:
@@ -8279,7 +7885,7 @@ def admin_send_appointment_email(bid, appt_id):
     db = get_db()
     c = db.cursor()
     c.execute("""
-        SELECT a.*, l.email, l.name as lead_name, b.name as biz_name
+        SELECT a.*, l.email, l.name as lead_name, b.name as biz_name, b.business_address as biz_address
         FROM appointments a
         LEFT JOIN leads l ON a.lead_id = l.id
         JOIN businesses b ON a.business_id = b.id
@@ -8300,7 +7906,8 @@ def admin_send_appointment_email(bid, appt_id):
             to=appt_dict['email'],
             prospect_name=appt_dict.get('lead_name') or appt_dict.get('prospect_name') or 'there',
             business_name=appt_dict['biz_name'],
-            appointment_time=appt_dict.get('appointment_time') or ''
+            appointment_time=appt_dict.get('appointment_time') or '',
+            business_address=appt_dict.get('biz_address', '')
         )
         return jsonify({'success': True, 'message_id': msg_id})
     except Exception as e:
@@ -8315,7 +7922,7 @@ def download_calendar(call_log_id):
     db = get_db()
     c = db.cursor()
     c.execute("""
-        SELECT cl.*, l.name as prospect_name, b.name as biz_name
+        SELECT cl.*, l.name as prospect_name, b.name as biz_name, b.business_address as biz_address
         FROM call_log cl
         LEFT JOIN leads l ON cl.lead_id = l.id
         JOIN businesses b ON cl.business_id = b.id
@@ -8707,6 +8314,61 @@ def api_buy_minutes():
     
     return jsonify({'success': False, 'error': 'Failed to create payment checkout. Try again later.'}), 500
 
+@app.route('/api/buy-phone-checkout', methods=['POST'])
+@login_required
+def api_buy_phone_checkout():
+    """Create $9.99 Stripe checkout for buying a phone number."""
+    from premium_features import load_stripe_config
+    import stripe as stripe_mod
+    cfg = load_stripe_config()
+    if not cfg.get('enabled'):
+        return jsonify({'success': False, 'error': 'Stripe not configured. Contact admin.'}), 400
+
+    stripe_mod.api_key = cfg.get('secret_key', '')
+    bid = session['business_id']
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT name, email, vapi_assistant_id, vapi_phone_id FROM businesses WHERE id=?", (bid,))
+    biz = c.fetchone()
+    db.close()
+
+    if not biz:
+        return jsonify({'success': False, 'error': 'Business not found'}), 404
+
+    # Allow buying additional numbers (each agent can have its own)
+    base = request.host_url.rstrip('/')
+    success_url = f"{base}/?tab=agents&phone_paid=success"
+    cancel_url = f"{base}/?tab=agents&phone_paid=cancel"
+
+    try:
+        checkout = stripe_mod.checkout.Session.create(
+            payment_method_types=['card'],
+            mode='payment',
+            client_reference_id=bid,
+            customer_email=biz['email'] or '',
+            line_items=[{
+                'price_data': {
+                    'currency': 'usd',
+                    'product_data': {
+                        'name': 'Phone Number — Diazites Voice Agent',
+                        'description': f'One-time $9.99 for a dedicated phone number assigned to your AI voice agent. Business: {biz["name"]}',
+                    },
+                    'unit_amount': 999,  # $9.99
+                },
+                'quantity': 1,
+            }],
+            metadata={
+                'business_id': bid,
+                'purpose': 'buy_phone_number',
+                'business_name': biz['name'] or '',
+            },
+            success_url=success_url,
+            cancel_url=cancel_url,
+        )
+        return jsonify({'success': True, 'checkout_url': checkout.url})
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Stripe error: {str(e)}'}), 500
+
 @app.route('/clone-voice', methods=['POST'])
 @login_required
 def clone_voice():
@@ -8745,6 +8407,26 @@ def clone_voice():
     
     return redirect('/?tab=settings')
 
+@app.route('/qm-checkout')
+def qm_checkout():
+    """Landing-page checkout for the AI back-office tiers (Starter/Pro/Premium)."""
+    from premium_features import create_stripe_checkout
+    plan = request.args.get('plan', 'pro')
+    email = (request.args.get('email') or '').strip()
+    prices = {'starter': 9700, 'pro': 29700, 'premium': 49700}
+    labels = {'starter': 'Voice Starter', 'pro': 'Back-Office Pro', 'premium': 'Back-Office Premium'}
+    if plan not in prices:
+        plan = 'pro'
+    bid = 'qm-' + (email or 'lead')
+    url = create_stripe_checkout(
+        bid, labels[plan], prices[plan], email or f'{bid}@diazites.online',
+        success_url='https://qm.diazites.online/app',
+        cancel_url='https://qm.diazites.online/#plans')
+    if not url:
+        return 'Checkout temporarily unavailable — email diazites.ai@gmail.com', 503
+    return redirect(url)
+
+
 @app.route('/stripe-webhook', methods=['POST'])
 def stripe_webhook():
     """Handle Stripe webhook events (subscription payments)."""
@@ -8753,29 +8435,6 @@ def stripe_webhook():
     sig = request.headers.get('Stripe-Signature', '')
     result = handle_stripe_webhook(payload, sig)
     if result:
-        # 🔔 Owner alert: payment received (email + SMS)
-        try:
-            ev = json.loads(payload)
-            sess = ev.get('data', {}).get('object', {}) or {}
-            amt = (sess.get('amount_total') or 0) / 100
-            meta = sess.get('metadata', {}) or {}
-            cust_email = (sess.get('customer_details') or {}).get('email', '') or sess.get('customer_email', '')
-            bid = result.get('business_id') or meta.get('business_id', '')
-            name = ''
-            if bid:
-                _db = get_db()
-                _row = _db.execute("SELECT name, email FROM businesses WHERE id=?", (bid,)).fetchone()
-                _db.close()
-                if _row:
-                    name = _row['name']
-                    cust_email = cust_email or _row['email']
-            if not name:
-                name = cust_email or ('Review Service Lead' if result.get('lead_id') else 'Subscription')
-            notify_owner('payment', name=name, email=cust_email,
-                         plan=meta.get('plan') or (result.get('type') or 'subscription'),
-                         amount=amt, business_id=bid, source='stripe-webhook')
-        except Exception as e:
-            print(f"⚠️ Owner alert (stripe-webhook) error: {e}")
         return jsonify({'received': True})
     return jsonify({'received': False}), 200
 
@@ -9000,13 +8659,13 @@ Respond ONLY with valid JSON, no other text."""
         
         # Call AI via the chatbot config
         cfg = get_chatbot_config()
-        provider_name = cfg.get('chatbot_provider', 'deepseek')
+        provider_name = cfg.get('chatbot_provider', 'venice')
         api_key = cfg.get('chatbot_api_key', '')
         
         if not api_key:
-            api_key = os.environ.get('DEEPSEEK_API_KEY', '')
+            api_key = os.environ.get('VENICE_API_KEY', '') or os.environ.get('DEEPSEEK_API_KEY', '') or os.environ.get('XAI_API_KEY', '')
         
-        provider = CHATBOT_PROVIDERS.get(provider_name, CHATBOT_PROVIDERS['deepseek'])
+        provider = CHATBOT_PROVIDERS.get(provider_name, CHATBOT_PROVIDERS['venice'])
         model = cfg.get('chatbot_model', provider['default_model'])
         
         import urllib.request, json as json_module
@@ -9419,10 +9078,9 @@ def stripe_product_webhook():
             import uuid
             db = get_db()
             c = db.cursor()
-            c.execute("SELECT name, price FROM products WHERE id=?", (product_id,))
+            c.execute("SELECT price FROM products WHERE id=?", (product_id,))
             p = c.fetchone()
-            price = p[1] if p else 0
-            product_name = p[0] if p else product_id
+            price = p[0] if p else 0
             
             c.execute("""INSERT OR IGNORE INTO product_orders 
                 (id, product_id, customer_email, amount, stripe_session_id, download_token)
@@ -9430,12 +9088,6 @@ def stripe_product_webhook():
                 (str(uuid.uuid4())[:12], product_id, email, price, session_data.get('id', ''), download_token))
             db.commit()
             db.close()
-            
-            # 🔔 Owner alert: product purchase payment (email + SMS)
-            amt = (session_data.get('amount_total') or 0) / 100
-            notify_owner('payment', name=product_name, email=email,
-                         plan='product', amount=amt or price, business_id='',
-                         source='product-purchase')
     
     return jsonify({'received': True})
 
@@ -9681,7 +9333,16 @@ def _agentmail_key():
     return key
 
 
-def send_email_via_smtp(to, subject, body):
+def send_email_via_smtp(to, subject, body, business_id=None):
+    """Send email; if business_id given, append company signature from KB."""
+    if business_id:
+        try:
+            from premium_features import business_signature
+            sig = business_signature(business_id)
+            if sig and sig not in body:
+                body = body.rstrip() + f"\n\n{sig}"
+        except Exception:
+            pass
     """Send email — AgentMail first (verified working), Resend SMTP fallback."""
     # 1) AgentMail (proven: appointment confirmations use this path)
     try:
@@ -10237,6 +9898,87 @@ def api_inbox():
                        'which': 'out', 'saved': m.get('saved', 0)})
     merged.sort(key=lambda x: x.get('received_at') or x.get('sent_at') or '', reverse=True)
     return jsonify({'messages': merged[:100], 'total': len(merged)})
+
+@app.route('/api/vapi/send-sms', methods=['POST'])
+def api_vapi_send_sms():
+    """VAPI server tool — called by the AI during a call to text the caller.
+    Receives VAPI's function-call payload with the message + customer number.
+    Looks up the business by matching the assistant ID from VAPI."""
+    data = request.get_json(silent=True) or {}
+    
+    # VAPI wraps the call in message.functionCall or message.toolCallList
+    msg = data.get('message', data)
+    func = msg.get('functionCall', {}) or msg.get('toolCall', {})
+    
+    # Try toolCallList format
+    tcl = msg.get('toolCallList', [])
+    if tcl and isinstance(tcl, list) and len(tcl) > 0:
+        func = tcl[0].get('function', tcl[0])
+    
+    args = func.get('arguments', {})
+    if isinstance(args, str):
+        try:
+            args = json.loads(args)
+        except:
+            args = {}
+    
+    sms_message = args.get('message', '') or ''
+    if not sms_message:
+        return jsonify({'results': [{'toolCallId': func.get('id',''), 'result': 'No message provided'}]})
+    
+    # Get caller number from VAPI call context
+    call_info = msg.get('call', {}) or data.get('call', {})
+    customer = call_info.get('customer', {}) or msg.get('customer', {})
+    caller_number = customer.get('number', '') or ''
+    
+    # Also try to extract from the phoneNumber field
+    if not caller_number:
+        caller_number = call_info.get('phoneNumber', '') or msg.get('phoneNumber', '') or ''
+    
+    if not caller_number:
+        return jsonify({'results': [{'toolCallId': func.get('id',''), 'result': 'No caller number found'}]})
+    
+    # Find business by matching assistant ID
+    assistant_id = call_info.get('assistantId', '') or msg.get('assistantId', '') or data.get('assistantId', '')
+    bid = None
+    if assistant_id:
+        db = get_db()
+        c = db.cursor()
+        c.execute("SELECT id FROM businesses WHERE vapi_assistant_id = ?", (assistant_id,))
+        row = c.fetchone()
+        if row:
+            bid = row['id']
+        db.close()
+    
+    if not bid:
+        # Fallback: use daytona-auto-mall as default
+        bid = 'daytona-auto-mall'
+    
+    # Clean phone
+    from smsgate_sms import _clean_phone, send_sms
+    cleaned = _clean_phone(caller_number)
+    
+    # Try to find lead
+    lead_id = None
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT id FROM leads WHERE business_id = ? AND phone = ? LIMIT 1", (bid, cleaned))
+    row = c.fetchone()
+    if row:
+        lead_id = row['id']
+    db.close()
+    
+    # Send SMS
+    try:
+        ok = send_sms(cleaned, sms_message, business_id=bid, lead_id=lead_id)
+        if ok:
+            print(f"📱 VAPI tool SMS sent to {cleaned[-4:]}: {sms_message[:60]}")
+            return jsonify({'results': [{'toolCallId': func.get('id',''), 'result': 'SMS sent successfully'}]})
+        return jsonify({'results': [{'toolCallId': func.get('id',''), 'result': 'SMS provider failed'}]})
+    except Exception as e:
+        print(f"❌ VAPI tool SMS error: {e}")
+        return jsonify({'results': [{'toolCallId': func.get('id',''), 'result': str(e)}]})
+
 
 @app.route('/api/sms/send', methods=['POST'])
 @login_required
