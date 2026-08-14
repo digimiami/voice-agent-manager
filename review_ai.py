@@ -361,14 +361,14 @@ def ensure_assistant():
         "firstMessageMode": "assistant-speaks-first",
         "model": {
             "provider": "xai",
-            "model": "grok-4.3",
+            "model": "grok-4-fast-non-reasoning",
             "maxTokens": 300,
             "temperature": 0.3,
             "systemPrompt": system_prompt,
         },
         "voice": {
             "provider": "11labs",
-            "model": "eleven_v3",
+            "model": "eleven_flash_v2_5",
             "voiceId": s.get("voice_id", "mark"),
             "stability": 0.4,
             "similarityBoost": 0.85,
@@ -376,7 +376,7 @@ def ensure_assistant():
             "useSpeakerBoost": True,
             "speed": 0.97,
         },
-        "transcriber": {"provider": "openai", "model": "gpt-4o-transcribe"},
+        "transcriber": {"provider": "deepgram", "model": "nova-3"},
         "serverUrl": s.get("webhook_url", ""),
         "serverMessages": ["end-of-call-report"],
     }
@@ -828,7 +828,7 @@ def _run_calls_child(max_calls=None, delay=None, category=None):
                 "phoneNumberId": phone_id,
                 "customer": {"number": r["phone"], "name": (r["business_name"] or "")[:40]},
                 "assistantOverrides": {"model": {
-                    "provider": "xai", "model": "grok-4.3",
+                    "provider": "xai", "model": "grok-4-fast-non-reasoning",
                     "maxTokens": 300, "temperature": 0.3,
                     "systemPrompt": script,
                 }},
@@ -1623,14 +1623,14 @@ def ensure_painter_assistant():
         "firstMessageMode": "assistant-speaks-first",
         "model": {
             "provider": "xai",
-            "model": "grok-4.3",
+            "model": "grok-4-fast-non-reasoning",
             "maxTokens": 300,
             "temperature": 0.3,
             "systemPrompt": system_prompt,
         },
         "voice": {
             "provider": "11labs",
-            "model": "eleven_v3",
+            "model": "eleven_flash_v2_5",
             "voiceId": s.get("voice_id", "mark"),
             "stability": 0.4,
             "similarityBoost": 0.85,
@@ -1638,7 +1638,7 @@ def ensure_painter_assistant():
             "useSpeakerBoost": True,
             "speed": 0.97,
         },
-        "transcriber": {"provider": "openai", "model": "gpt-4o-transcribe"},
+        "transcriber": {"provider": "deepgram", "model": "nova-3"},
         "serverUrl": s.get("webhook_url", ""),
         "serverMessages": ["end-of-call-report"],
     }
@@ -1770,7 +1770,7 @@ def call_again(pid):
     d = _vapi("POST", "/call", {
         "assistantId": s["assistant_id"], "phoneNumberId": s["phone_number_id"],
         "customer": {"number": r["phone"], "name": r["business_name"]},
-        "assistantOverrides": {"model": {"provider": "xai", "model": "grok-4.3",
+        "assistantOverrides": {"model": {"provider": "xai", "model": "grok-4-fast-non-reasoning",
             "maxTokens": 300, "temperature": 0.3, "systemPrompt": script}}})
     if not d.get("id"):
         return {"success": False, "message": str(d)[:120]}

@@ -246,18 +246,20 @@ def setup_vapi_assistant(business_id):
             "name": f"{name} Voice Agent",
             "model": {
                 "provider": "xai",
-                "model": "grok-4.3",
+                "model": "grok-4-fast-non-reasoning",
                 "temperature": 0.3,
                 "maxTokens": 300,
                 "systemPrompt": full_script
             },
             "voice": {
                 "provider": "11labs",
-                "voiceId": "burt"
+                "voiceId": "burt",
+                "model": "eleven_flash_v2_5"
             },
+            "transcriber": {"provider": "deepgram", "model": "nova-3"},
             "firstMessage": f"Hi, this is {name}'s assistant from AI Workers. We help {industry} businesses never miss a call. Do you have a moment?",
             "firstMessageMode": "assistant-speaks-first",
-            "silenceTimeoutSeconds": 10,
+            "silenceTimeoutSeconds": 18,
             "maxDurationSeconds": 300,
             "backgroundSound": "off"
         })

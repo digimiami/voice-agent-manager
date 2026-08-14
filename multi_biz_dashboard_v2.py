@@ -5728,7 +5728,7 @@ def make_vapi_call(lead, biz, assistant_id, phone_id, call_delay):
             asst_data = json.loads(r_model.stdout)
             model_config = asst_data.get('model', {})
             model_provider = model_config.get('provider', 'xai')
-            model_name = model_config.get('model', 'grok-4.3')
+            model_name = model_config.get('model', 'grok-4-fast-non-reasoning')
         except:
             model_provider = 'openai'
             model_name = 'openai-gpt-4o-2024-11-20'
@@ -6815,7 +6815,7 @@ def build_model_patch(cur_assistant, full_prompt, temperature=None, max_tokens=N
     cur_model = (cur_assistant or {}).get("model") or {}
     patch = {
         "provider": cur_model.get("provider", "xai"),
-        "model": cur_model.get("model", "grok-4.3"),
+        "model": cur_model.get("model", "grok-4-fast-non-reasoning"),
     }
     # CRITICAL: preserve any registered tools (e.g. search_inventory) — a PATCH
     # that omits them wipes them and the agent silently loses its tools.

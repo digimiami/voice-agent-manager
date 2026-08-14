@@ -1133,16 +1133,16 @@ def api_provision_phone(api_key, bid):
             "name": f"{name} Voice Agent",
             "model": {
                 "provider": "xai",
-                "model": "grok-4.3",
+                "model": "grok-4-fast-non-reasoning",
                 "temperature": temperature,
                 "maxTokens": max_tokens,
                 "systemPrompt": full_script
             },
-            "transcriber": {"provider": "openai", "model": "gpt-4o-transcribe"},
-            "voice": {"provider": "11labs", "voiceId": voice_id, "model": "eleven_v3"},
+            "transcriber": {"provider": "deepgram", "model": "nova-3"},
+            "voice": {"provider": "11labs", "voiceId": voice_id, "model": "eleven_flash_v2_5"},
             "firstMessage": f"Hi, this is {name}'s assistant. I'm calling because we help {industry} businesses. Am I catching you at a good time?",
             "firstMessageMode": "assistant-speaks-first",
-            "silenceTimeoutSeconds": 40,
+            "silenceTimeoutSeconds": 18,
             "maxDurationSeconds": 300,
             "backgroundSound": "off",
             # CRITICAL: 8083 webhook (vapi_webhook_server.py) does the email/SMS/calendar

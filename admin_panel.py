@@ -14,7 +14,7 @@ Admin login: http://localhost:8086/admin
 Password:    from .env (ADMIN_PASSWORD)
 """
 
-import os, sys, json, sqlite3, csv, io, hashlib, time, threading, subprocess, uuid, urllib.request, urllib.error
+import os, sys, json, sqlite3, csv, io, hashlib, time, threading, subprocess, uuid, urllib.request, urllib.error, re
 from datetime import datetime, date, timedelta
 from pathlib import Path
 from flask import Flask, render_template_string, jsonify, request, redirect, session, url_for, flash, send_file
@@ -24,7 +24,6 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 # Import Agent API module
 from agent_api import agent_api, init_api_keys_table, generate_api_key, validate_api_key
 from agent_api import api_key_required
-from owner_alerts import notify_owner
 from diazites_prompt import build_diazites_prompt
 
 DB_PATH = "/root/voice-agent-businesses.db"
@@ -208,7 +207,8 @@ ADMIN_HTML = """<!DOCTYPE html>
             ('coupons', 'ticket-alt', 'Coupons'),
             ('trials', 'hourglass-half', 'Trials'),
             ('usage', 'gauge-high', 'Usage'),
-            ('affiliates', 'hand-holding-usd', 'Affiliates')
+            ('affiliates', 'hand-holding-usd', 'Affiliates'),
+            ('qm', 'brain', 'QM Clients')
         ]),
         ('Communication', [
             ('sms', 'message', 'SMS'),
@@ -222,7 +222,8 @@ ADMIN_HTML = """<!DOCTYPE html>
             ('campaigns', 'rocket', 'Campaigns'),
             ('chatbot', 'robot', 'Chatbot'),
             ('industries', 'industry', 'Industries'),
-            ('abtest', 'vials', 'A/B Tests')
+            ('abtest', 'vials', 'A/B Tests'),
+            ('links', 'link', 'Links')
         ]),
         ('System', [
             ('vapi', 'phone-volume', 'VAPI Config'),
@@ -863,17 +864,18 @@ ADMIN_HTML = """<!DOCTYPE html>
                         <label class="text-xs text-[#64748b] block mb-1">Provider</label>
                         <select name="chatbot_provider">
                             <option value="xai" {% if chatbot_provider == 'xai' %}selected{% endif %}>xAI (Grok) — Recommended</option>
+                            <option value="venice" {% if chatbot_provider == 'venice' %}selected{% endif %}>Venice (Recommended - no credit issues)</option>
                             <option value="deepseek" {% if chatbot_provider == 'deepseek' %}selected{% endif %}>DeepSeek</option>
                         </select>
                     </div>
                     <div>
                         <label class="text-xs text-[#64748b] block mb-1">Model</label>
-                        <input type="text" name="chatbot_model" value="{{ chatbot_model or '' }}" placeholder="Leave blank for default (grok-4-mini / deepseek-chat)">
+                        <input type="text" name="chatbot_model" value="{{ chatbot_model or '' }}" placeholder="Leave blank for Venice OpenAI model (e.g. openai-gpt-4o-2024-11-20 or openai-gpt-52)">
                     </div>
                     <div>
                         <label class="text-xs text-[#64748b] block mb-1">API Key</label>
                         <input type="password" name="chatbot_api_key" value="{{ chatbot_api_key or '' }}" placeholder="sk-...">
-                        <p class="text-[10px] text-[#475569] mt-1">Uses XAI_API_KEY from env as fallback</p>
+                        <p class="text-[10px] text-[#475569] mt-1">Uses VENICE_API_KEY from env (OpenAI-compatible GPT models via Venice)</p>
                     </div>
                     <button type="submit" class="btn-primary"><i class="fas fa-save mr-1"></i> Save Chatbot Settings</button>
                 </form>
@@ -2719,6 +2721,209 @@ curl -s -X POST -H "Authorization: Bearer YOUR_API_KEY" \
         raPoll();
         setInterval(raPoll, 6000);
         </script>
+        {% elif tab == 'qm' %}
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold">🤖 AI Back-Office Clients</h2>
+            <span class="text-xs font-semibold px-3 py-1.5 rounded-lg" style="background:#1a1a28;border:1px solid #252533;color:#94a3b8">{{ qm_clients|length }} clients</span>
+        </div>
+
+        <!-- Invite form -->
+        <div class="card mb-6">
+            <h3 class="font-bold mb-3">📨 Invite a client to their AI back-office workspace</h3>
+            <form method="POST" action="/admin/qm-invite" class="flex gap-3 items-end">
+                <div class="flex-1">
+                    <label class="text-[10px] text-[#64748b] uppercase font-semibold">Client email *</label>
+                    <input type="email" name="email" required placeholder="owner@theirbusiness.com" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px">
+                </div>
+                <button class="btn-primary text-sm">Send invite</button>
+            </form>
+            <p class="text-[11px] text-[#64748b] mt-2">The client signs in at <code>https://qm.diazites.online/auth/login</code> with that email — their private workspace mints automatically at first sign-in.</p>
+        </div>
+
+        <!-- Paying clients -->
+        <div class="card">
+            <h3 class="font-bold mb-3">💳 Paying clients <span class="text-[10px] font-normal text-[#64748b]">(recorded automatically by the Stripe webhook)</span></h3>
+            {% if qm_clients %}
+            <div class="overflow-x-auto">
+            <table class="table-auto w-full text-xs">
+                <thead><tr><th>Email</th><th>Plan</th><th>Status</th><th>Invited</th><th>Created</th><th></th></tr></thead>
+                <tbody>
+                {% for c in qm_clients %}
+                <tr>
+                    <td class="font-mono">{{ c.email }}</td>
+                    <td>{{ c.plan }}</td>
+                    <td><span class="text-emerald-400">{{ c.status }}</span></td>
+                    <td>{{ "✅" if c.invited else "—" }}</td>
+                    <td class="text-[#5c5c70]">{{ c.created_at }}</td>
+                    <td>
+                        <form method="POST" action="/admin/qm-invite" class="inline">
+                            <input type="hidden" name="email" value="{{ c.email }}">
+                            <button class="btn-secondary text-xs" style="padding:6px 12px">Invite</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            {% else %}
+            <p class="text-[#5c5c70] text-sm">No AI back-office purchases yet. Send people to the landing page: <a href="https://qm.diazites.online" class="text-[#a5b4fc]" target="_blank">https://qm.diazites.online</a></p>
+            {% endif %}
+        </div>
+{% elif tab == 'links' %}
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold">🔗 Link Tracking</h2>
+            <span class="text-xs font-semibold px-3 py-1.5 rounded-lg" style="background:#1a1a28;border:1px solid #252533;color:#94a3b8">{{ links_total_clicks }} total clicks</span>
+        </div>
+
+        <!-- Create form -->
+        <div class="card mb-6">
+            <h3 class="font-bold mb-3">➕ Create Tracked Link</h3>
+            <form method="POST" action="/admin/links/create" class="space-y-3">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="md:col-span-2">
+                        <label class="text-[10px] text-[#64748b] uppercase font-semibold">Destination URL *</label>
+                        <input name="url" required placeholder="https://example.com/page" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-[#64748b] uppercase font-semibold">Custom code (optional)</label>
+                        <input name="code" placeholder="e.g. spring-sale (2-20 chars)" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="text-[10px] text-[#64748b] uppercase font-semibold">Title / label (optional)</label>
+                        <input name="title" placeholder="e.g. Spring promo flyer" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:13px">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] text-[#64748b] uppercase font-semibold">UTM Parameters (all optional — appended to destination on click)</label>
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-2 mt-1">
+                        <input name="utm_source" placeholder="utm_source" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
+                        <input name="utm_medium" placeholder="utm_medium" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
+                        <input name="utm_campaign" placeholder="utm_campaign" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
+                        <input name="utm_term" placeholder="utm_term" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
+                        <input name="utm_content" placeholder="utm_content" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px">
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button class="btn-primary text-sm">🔗 Create Link</button>
+                    <a href="/admin/links/export" class="btn-secondary text-xs" style="padding:8px 14px">⬇ CSV Export</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Stats detail (expands per link) -->
+        <div id="linkStatsBox" class="card mb-6" style="display:none">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold" id="linkStatsTitle">📊 Link Stats</h3>
+                <button class="btn-secondary text-xs" onclick="document.getElementById('linkStatsBox').style.display='none'">✕</button>
+            </div>
+            <div id="linkStatsBody" class="text-xs"></div>
+        </div>
+
+        <!-- Links list -->
+        <div class="card">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold">📋 Tracked Links ({{ links_rows|length }})</h3>
+                <input id="linkFilter" oninput="linkFilterRows()" placeholder="🔍 filter…" style="padding:8px 12px;border-radius:8px;border:1px solid #252533;background:#0c0c18;color:#f1f1f5;font-size:12px;width:180px">
+            </div>
+            {% if links_rows %}
+            <div class="overflow-x-auto">
+            <table class="table-auto w-full text-xs">
+                <thead><tr><th>Code</th><th>Destination</th><th>UTM</th><th>Clicks</th><th>Created</th><th></th></tr></thead>
+                <tbody>
+                {% for l in links_rows %}
+                <tr class="link-row" data-search="{{ l.code }} {{ l.url }} {{ l.title }}">
+                    <td class="font-mono">
+                        <b>{{ l.code }}</b>
+                        <div class="text-[10px] text-[#5c5c70]"><a href="{{ links_base }}{{ l.code }}" target="_blank">{{ links_base }}{{ l.code }}</a></div>
+                        {% if l.title %}<div class="text-[10px] text-[#94a3b8]">{{ l.title }}</div>{% endif %}
+                    </td>
+                    <td class="max-w-[220px] truncate"><a href="{{ l.url }}" target="_blank" class="text-[#818cf8] hover:underline">{{ l.url[:60] }}</a></td>
+                    <td class="text-[#94a3b8]">
+                        {% if l.utm_campaign %}<span class="text-[10px] px-2 py-0.5 rounded-full" style="background:#a855f720;color:#c084fc">{{ l.utm_campaign }}</span>{% endif %}
+                        {% if l.utm_source %}<span class="text-[10px] text-[#64748b]">{{ l.utm_source }}{% if l.utm_medium %}/{{ l.utm_medium }}{% endif %}</span>{% endif %}
+                    </td>
+                    <td><b class="text-[#4ade80]">{{ l.clicks }}</b></td>
+                    <td class="text-[#5c5c70]">{{ (l.created_at or '')[:16] }}</td>
+                    <td class="whitespace-nowrap">
+                        <button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="copyLink('{{ links_base }}{{ l.code }}')">📋 Copy</button>
+                        <button class="btn-secondary text-[10px]" style="padding:4px 8px" onclick="linkStats({{ l.id }},'{{ l.code }}')">📊 Stats</button>
+                        <a href="/admin/links/{{ l.id }}/qr" class="btn-secondary text-[10px]" style="padding:4px 8px;display:inline-block">▦ QR</a>
+                        <a href="/admin/links/{{ l.id }}/barcode" class="btn-secondary text-[10px]" style="padding:4px 8px;display:inline-block">▤ Bar</a>
+                        <form method="POST" action="/admin/links/delete/{{ l.id }}" class="inline" onsubmit="return confirm('Delete this link and all its click data?')"><button class="btn-danger text-[10px]" style="padding:4px 8px">🗑</button></form>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            {% else %}
+            <p class="text-[12px] text-[#5c5c70] py-6 text-center">No tracked links yet — create your first one above.</p>
+            {% endif %}
+        </div>
+
+        <script>
+        function copyLink(url){
+            navigator.clipboard.writeText(url).then(function(){ alert('Copied: ' + url); });
+        }
+        function linkFilterRows(){
+            var q = document.getElementById('linkFilter').value.toLowerCase();
+            document.querySelectorAll('.link-row').forEach(function(r){
+                r.style.display = (r.getAttribute('data-search')||'').toLowerCase().indexOf(q) !== -1 ? '' : 'none';
+            });
+        }
+        function linkStats(id, code){
+            var box = document.getElementById('linkStatsBox');
+            var body = document.getElementById('linkStatsBody');
+            var title = document.getElementById('linkStatsTitle');
+            title.textContent = '📊 Stats — /l/' + code;
+            box.style.display = '';
+            body.textContent = 'Loading…';
+            fetch('/admin/links/' + id + '/stats').then(function(r){ return r.json(); }).then(function(d){
+                if (d.error){ body.textContent = d.error; return; }
+                var h = '<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">';
+                h += '<div class="card text-center"><div class="stat-value" style="color:#4ade80">' + d.total + '</div><div class="text-[10px] text-[#64748b] mt-1">Total Clicks</div></div>';
+                h += '<div class="card text-center"><div class="stat-value" style="color:#60a5fa">' + d.days.length + '</div><div class="text-[10px] text-[#64748b] mt-1">Active Days</div></div>';
+                h += '<div class="card text-center"><div class="stat-value" style="color:#c084fc">' + d.referrers.length + '</div><div class="text-[10px] text-[#64748b] mt-1">Referrer Types</div></div>';
+                h += '<div class="card text-center"><div class="stat-value" style="color:#fbbf24">' + d.link.clicks + '</div><div class="text-[10px] text-[#64748b] mt-1">Counter</div></div>';
+                h += '</div>';
+                h += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+                h += '<div><div class="font-bold mb-2">🌐 Referrers</div>';
+                if (d.referrers.length){
+                    h += '<table class="table-auto w-full"><tbody>';
+                    d.referrers.forEach(function(r){
+                        var ref = r.ref || '(direct)';
+                        if (ref.length > 60) ref = ref.substring(0,57) + '…';
+                        h += '<tr><td class="py-1 text-[#94a3b8] max-w-[200px] truncate">' + ref + '</td><td class="py-1 text-right"><b>' + r.c + '</b></td></tr>';
+                    });
+                    h += '</tbody></table>';
+                } else { h += '<p class="text-[#5c5c70] py-2">No clicks yet.</p>'; }
+                h += '</div>';
+                h += '<div><div class="font-bold mb-2">📅 Clicks by day</div>';
+                if (d.days.length){
+                    h += '<table class="table-auto w-full"><tbody>';
+                    d.days.forEach(function(x){
+                        h += '<tr><td class="py-1 text-[#94a3b8]">' + x.d + '</td><td class="py-1 text-right"><b>' + x.c + '</b></td></tr>';
+                    });
+                    h += '</tbody></table>';
+                } else { h += '<p class="text-[#5c5c70] py-2">No clicks yet.</p>'; }
+                h += '</div></div>';
+                h += '<div class="mt-4"><div class="font-bold mb-2">🕒 Recent clicks (last 100)</div>';
+                if (d.recent.length){
+                    h += '<table class="table-auto w-full"><tbody>';
+                    d.recent.forEach(function(c){
+                        var ua = c.ua || '';
+                        var ip = c.ip || '';
+                        var line = (c.created_at || '').substring(0,19) + ' · ' + ip;
+                        h += '<tr><td class="py-1 text-[#94a3b8] whitespace-nowrap">' + line + '</td><td class="py-1 text-[#5c5c70] max-w-[300px] truncate">' + ua.substring(0,80) + '</td></tr>';
+                    });
+                    h += '</tbody></table>';
+                } else { h += '<p class="text-[#5c5c70] py-2">No clicks yet.</p>'; }
+                h += '</div>';
+                body.innerHTML = h;
+            }).catch(function(){ body.textContent = 'Failed to load stats.'; });
+        }
+        </script>
         {% endif %}
     </div>
 
@@ -3049,22 +3254,25 @@ def setup_vapi(bid):
             "name": f"{name} Voice Agent",
             "model": {
                 "provider": "xai",
-                "model": "grok-4.3",
+                "model": "grok-4-fast-non-reasoning",
                 "temperature": 0.3,
                 "maxTokens": max_tokens,
                 "systemPrompt": full_script
             },
-            "transcriber": {"provider": "openai", "model": "gpt-4o-transcribe"},
+            "transcriber": {"provider": "deepgram", "model": "nova-3"},
             "voice": {
                 "provider": "11labs",
                 "voiceId": voice_id,
-                "model": "eleven_v3"
+                "model": "eleven_flash_v2_5"
             },
             "firstMessage": f"Hi, this is {name}'s assistant from Diazites. We help {industry} businesses never miss a call. Do you have a moment?",
             "firstMessageMode": "assistant-speaks-first",
-            "silenceTimeoutSeconds": 40,
+            "silenceTimeoutSeconds": 18,
             "maxDurationSeconds": 300,
-            "backgroundSound": "off"
+            "backgroundSound": "off",
+            # Hang up automatically: end the call when the conversation is over
+                        "endCallPhrases": ["goodbye", "bye", "have a great day", "thank you for calling", "talk to you soon", "see you later", "have a good one"],
+            "endCallMessage": "Thanks for calling! Have a great day. Goodbye.",
         })
     ], capture_output=True, text=True)
     
@@ -3206,14 +3414,6 @@ def create_business():
     
     db.commit()
     
-    # 🔔 Owner alert: new business created in admin (email + SMS)
-    try:
-        notify_owner('signup', name=name, email=request.form.get('email', ''),
-                     phone=request.form.get('phone_number', ''),
-                     plan=plan_label, industry=industry, business_id=bid, source='admin-panel')
-    except Exception:
-        pass
-    
     flash(f'✅ Business "<a href="/admin/business/{bid}" class="underline">{name}</a>" created! ID: <code>{bid}</code>', 'success')
     
     # Send email with login credentials
@@ -3261,7 +3461,16 @@ def load_smtp_config():
     except:
         return {'host': '', 'port': '587', 'tls': '1', 'email': '', 'password': ''}
 
-def send_email(to, subject, body):
+def send_email(to, subject, body, business_id=None):
+    """Send email; if business_id given, append company signature from KB."""
+    if business_id:
+        try:
+            from premium_features import business_signature
+            sig = business_signature(business_id)
+            if sig and sig not in body:
+                body = body.rstrip() + f"\n\n{sig}"
+        except Exception:
+            pass
     """Send email — AgentMail first (verified working), Resend SMTP fallback."""
     # 1) AgentMail (proven path: appointment confirmations use it)
     try:
@@ -3282,7 +3491,7 @@ def send_email(to, subject, body):
         if key:
             payload = {"to": to, "subject": subject, "text": body}
             req = urllib.request.Request(
-                "https://api.agentmail.to/v0/inboxes/aiworkers@agentmail.to/messages/send",
+                "https://api.agentmail.to/v0/inboxes/diazites@agentmail.to/messages/send",
                 data=json.dumps(payload).encode(),
                 headers={"Authorization": "Bearer " + key, "Content-Type": "application/json",
                          "User-Agent": "DiazitesAdmin/1.0"},
@@ -3747,7 +3956,7 @@ def agent_tars_status():
         <div class="card space-y-3">
             <div class="flex justify-between"><span class="text-[#64748b]">Binary</span><span class="font-mono text-xs">{which}</span></div>
             <div class="flex justify-between"><span class="text-[#64748b]">Version</span><span class="font-mono text-xs">v0.3.0</span></div>
-            <div class="flex justify-between"><span class="text-[#64748b]">Model</span><span class="font-mono text-xs">DeepSeek v4 Flash</span></div>
+            <div class="flex justify-between"><span class="text-[#64748b]">Model</span><span class="font-mono text-xs">Venice / Current Model</span></div>
             <div class="flex justify-between"><span class="text-[#64748b]">Status</span><span class="text-green-400">✅ Ready</span></div>
         </div>
         <div class="card mt-6">
@@ -4070,6 +4279,44 @@ def admin_business_update_settings(bid):
     db.commit()
     flash('✅ Settings updated!', 'success')
     return redirect(f'/admin/business/{bid}')
+
+def get_qm_clients():
+    try:
+        init_tables()
+        db = sqlite3.connect(DB_PATH)
+        db.row_factory = sqlite3.Row
+        rows = [dict(r) for r in db.execute("SELECT * FROM qm_clients ORDER BY id DESC")]
+        db.close()
+        return rows
+    except Exception:
+        return []
+
+
+@app.route('/admin/qm-invite', methods=['POST'])
+def admin_qm_invite():
+    email = (request.form.get('email') or '').strip()
+    if not email:
+        flash('Email required', 'error')
+        return redirect('/admin?tab=qm')
+    try:
+        sys.path.insert(0, '/root')
+        import qm_invite
+        url = qm_invite.invite(email)
+        # mark invited in the clients table
+        try:
+            db = sqlite3.connect(DB_PATH)
+            db.execute("CREATE TABLE IF NOT EXISTS qm_clients (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE, plan TEXT DEFAULT '', status TEXT DEFAULT 'paid', invited INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+            db.execute("INSERT INTO qm_clients (email, invited) VALUES (?, 1) ON CONFLICT(email) DO UPDATE SET invited=1", (email,))
+            db.commit()
+            db.close()
+        except Exception:
+            pass
+        audit('qm_invite', f'invited {email}')
+        flash(f'{email} invited — link: {url}', 'success')
+    except Exception as e:
+        flash(f'Invite failed: {e}', 'error')
+    return redirect('/admin?tab=qm')
+
 
 def admin_dashboard():
     tab = request.args.get('tab', 'dashboard')
@@ -4439,6 +4686,9 @@ def init_tables():
     db.execute("CREATE TABLE IF NOT EXISTS script_variants (id INTEGER PRIMARY KEY AUTOINCREMENT, business_id TEXT, name TEXT, script TEXT, active INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
     db.execute("CREATE TABLE IF NOT EXISTS call_flags (call_id TEXT PRIMARY KEY, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
     db.execute("CREATE TABLE IF NOT EXISTS admin_audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT, detail TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+    db.execute("CREATE TABLE IF NOT EXISTS tracked_links (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL, url TEXT NOT NULL, utm_source TEXT DEFAULT '', utm_medium TEXT DEFAULT '', utm_campaign TEXT DEFAULT '', utm_term TEXT DEFAULT '', utm_content TEXT DEFAULT '', title TEXT DEFAULT '', clicks INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+    db.execute("CREATE TABLE IF NOT EXISTS link_clicks (id INTEGER PRIMARY KEY AUTOINCREMENT, link_id INTEGER NOT NULL, ip TEXT DEFAULT '', ua TEXT DEFAULT '', referrer TEXT DEFAULT '', country TEXT DEFAULT '', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+    db.execute("CREATE TABLE IF NOT EXISTS qm_clients (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE, plan TEXT DEFAULT '', status TEXT DEFAULT 'paid', invited INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
     db.commit()
     db.close()
 
@@ -4782,6 +5032,12 @@ def admin_extra_data(tab):
     elif tab == 'reviews-ai':
         import review_ai
         data.update(review_ai.tab_data())
+    elif tab == 'qm':
+        data['qm_clients'] = get_qm_clients()
+    elif tab == 'links':
+        data['links_rows'] = get_tracked_links()
+        data['links_total_clicks'] = sum(r['clicks'] for r in data['links_rows'])
+        data['links_base'] = request.host_url.rstrip('/') + '/l/'
     if tab in ('broadcast', 'abtest'):
         data['health_rows'] = get_health()
     return data
@@ -5328,6 +5584,167 @@ def admin_review_ai_status():
         'live': d['ra_live'],
     })
 
+
+# ── Git auto-commit (mirrors dashboard; silent failure) ──
+def git_auto_commit(message):
+    try:
+        subprocess.run(["git", "-C", "/root/voice-agent-manager", "add", "-A"],
+                       capture_output=True, timeout=10)
+        subprocess.run(["git", "-C", "/root/voice-agent-manager", "commit",
+                       "-m", f"admin: {message[:80]}"],
+                       capture_output=True, timeout=10)
+        subprocess.run(["git", "-C", "/root/voice-agent-manager", "push", "origin", "master"],
+                       capture_output=True, timeout=30)
+    except Exception:
+        pass
+
+# ── Tracked short links (Links tab) ──
+def get_tracked_links():
+    db = get_db()
+    rows = db.execute("SELECT * FROM tracked_links ORDER BY created_at DESC").fetchall()
+    db.close()
+    return [dict(r) for r in rows]
+
+def _gen_link_code(db):
+    import secrets, string
+    alphabet = string.ascii_letters + string.digits
+    for _ in range(50):
+        code = ''.join(secrets.choice(alphabet) for _ in range(6))
+        if not db.execute("SELECT 1 FROM tracked_links WHERE code = ?", (code,)).fetchone():
+            return code
+    return None
+
+@app.route('/admin/links/create', methods=['POST'])
+@admin_required
+def admin_links_create():
+    url = (request.form.get('url') or '').strip()
+    if not url:
+        flash('Destination URL is required', 'error')
+        return redirect('/admin?tab=links')
+    if not url.startswith(('http://', 'https://')):
+        url = 'https://' + url
+    custom = (request.form.get('code') or '').strip()
+    db = get_db()
+    if custom:
+        if not re.match(r'^[A-Za-z0-9_-]{2,20}$', custom):
+            flash('Custom code: 2-20 chars, letters/numbers/_/- only', 'error')
+            db.close()
+            return redirect('/admin?tab=links')
+        if db.execute("SELECT 1 FROM tracked_links WHERE code = ?", (custom,)).fetchone():
+            flash(f'Code "{custom}" already taken', 'error')
+            db.close()
+            return redirect('/admin?tab=links')
+        code = custom
+    else:
+        code = _gen_link_code(db)
+        if not code:
+            flash('Could not generate a unique code', 'error')
+            db.close()
+            return redirect('/admin?tab=links')
+    db.execute(
+        "INSERT INTO tracked_links (code, url, utm_source, utm_medium, utm_campaign, utm_term, utm_content, title) VALUES (?,?,?,?,?,?,?,?)",
+        (code, url,
+         request.form.get('utm_source', '').strip(),
+         request.form.get('utm_medium', '').strip(),
+         request.form.get('utm_campaign', '').strip(),
+         request.form.get('utm_term', '').strip(),
+         request.form.get('utm_content', '').strip(),
+         request.form.get('title', '').strip() or ''),
+    )
+    db.commit()
+    db.close()
+    git_auto_commit(f"create tracked link {code}")
+    flash(f'Link created: /l/{code}', 'success')
+    return redirect('/admin?tab=links')
+
+@app.route('/admin/links/delete/<int:lid>', methods=['POST'])
+@admin_required
+def admin_links_delete(lid):
+    db = get_db()
+    row = db.execute("SELECT code FROM tracked_links WHERE id = ?", (lid,)).fetchone()
+    db.execute("DELETE FROM tracked_links WHERE id = ?", (lid,))
+    db.execute("DELETE FROM link_clicks WHERE link_id = ?", (lid,))
+    db.commit()
+    db.close()
+    git_auto_commit(f"delete tracked link {row['code'] if row else lid}")
+    flash('Link deleted', 'success')
+    return redirect('/admin?tab=links')
+
+@app.route('/admin/links/<int:lid>/qr')
+@admin_required
+def admin_links_qr(lid):
+    import qrcode
+    db = get_db()
+    row = db.execute("SELECT code FROM tracked_links WHERE id = ?", (lid,)).fetchone()
+    db.close()
+    if not row:
+        return "Not found", 404
+    url = request.host_url.rstrip('/') + '/l/' + row['code']
+    img = qrcode.make(url)
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+    return send_file(buf, mimetype='image/png', as_attachment=True,
+                     download_name=f"qr-{row['code']}.png")
+
+@app.route('/admin/links/<int:lid>/barcode')
+@admin_required
+def admin_links_barcode(lid):
+    import barcode
+    from barcode.writer import ImageWriter
+    db = get_db()
+    row = db.execute("SELECT code FROM tracked_links WHERE id = ?", (lid,)).fetchone()
+    db.close()
+    if not row:
+        return "Not found", 404
+    short = request.host_url.rstrip('/') + '/l/' + row['code']
+    try:
+        code128 = barcode.get('code128', short, writer=ImageWriter())
+        buf = io.BytesIO()
+        code128.write(buf)
+        buf.seek(0)
+        return send_file(buf, mimetype='image/png', as_attachment=True,
+                         download_name=f"barcode-{row['code']}.png")
+    except Exception as e:
+        return f"Barcode error: {e}", 500
+
+@app.route('/admin/links/<int:lid>/stats')
+@admin_required
+def admin_links_stats(lid):
+    db = get_db()
+    row = db.execute("SELECT * FROM tracked_links WHERE id = ?", (lid,)).fetchone()
+    if not row:
+        db.close()
+        return jsonify({'error': 'not found'}), 404
+    clicks = db.execute("SELECT * FROM link_clicks WHERE link_id = ? ORDER BY created_at DESC LIMIT 100", (lid,)).fetchall()
+    total = db.execute("SELECT COUNT(*) c FROM link_clicks WHERE link_id = ?", (lid,)).fetchone()['c']
+    refs = db.execute("SELECT COALESCE(NULLIF(referrer,''), '(direct)') ref, COUNT(*) c FROM link_clicks WHERE link_id = ? GROUP BY ref ORDER BY c DESC LIMIT 10", (lid,)).fetchall()
+    days = db.execute("SELECT date(created_at) d, COUNT(*) c FROM link_clicks WHERE link_id = ? GROUP BY d ORDER BY d DESC LIMIT 14", (lid,)).fetchall()
+    db.close()
+    return jsonify({
+        'link': dict(row),
+        'total': total,
+        'recent': [dict(c) for c in clicks],
+        'referrers': [dict(r) for r in refs],
+        'days': [dict(d) for d in days],
+    })
+
+@app.route('/admin/links/export')
+@admin_required
+def admin_links_export():
+    import csv
+    db = get_db()
+    rows = db.execute("SELECT * FROM tracked_links ORDER BY created_at DESC").fetchall()
+    db.close()
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(['id', 'code', 'short_url', 'url', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'title', 'clicks', 'created_at'])
+    base = request.host_url.rstrip('/') + '/l/'
+    for r in rows:
+        w.writerow([r['id'], r['code'], base + r['code'], r['url'], r['utm_source'], r['utm_medium'], r['utm_campaign'], r['utm_term'], r['utm_content'], r['title'], r['clicks'], r['created_at']])
+    buf.seek(0)
+    return send_file(io.BytesIO(buf.getvalue().encode('utf-8-sig')),
+                     mimetype='text/csv', as_attachment=True, download_name='tracked-links.csv')
 
 if __name__ == '__main__':
     print("🚀 Diazites ADMIN Panel")
